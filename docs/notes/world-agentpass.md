@@ -21,11 +21,11 @@ Questions to ask:
 ## Endpoints and names (as stated in the docs)
 
 - Issuer: `https://auth.world.org`
-- Discovery: `https://auth.world.org/.well-known/openid-configuration` (UNVERIFIED contents, not fetched)
+- Discovery: `https://auth.world.org/.well-known/openid-configuration` (VERIFIED by fetch on 2026-11-06)
 - Authorize: `GET https://auth.world.org/api/v1/authorize`
 - Token: `POST https://auth.world.org/api/v1/token`
 - Device authorization: `POST https://auth.world.org/api/v1/device_authorization`
-- UserInfo and JWKS: read `userinfo_endpoint` and `jwks_uri` from discovery (literal URLs NOT FOUND)
+- UserInfo: `https://auth.world.org/api/v1/userinfo`. JWKS: `https://auth.world.org/.well-known/jwks.json`. Revocation: `https://auth.world.org/api/v1/revoke`. (VERIFIED from discovery)
 - Authorize params: `client_id`, `redirect_uri`, `response_type=code`, `scope=openid`, `state`, `nonce`, `code_challenge`, `code_challenge_method=S256`
 - Step-up params: `max_age` (0 = fresh), `prompt=login`, `prompt=none`, `acr_values`, `claims`
 - Token params: `grant_type=authorization_code`, `client_id`, `client_secret`, `code`, `redirect_uri`, `code_verifier`
@@ -37,6 +37,14 @@ Questions to ask:
 - Validation: RS256 signature via `jwks_uri`; `iss` = issuer; `aud` = our client id; `exp`; apply policy to `auth_time`, `acr`, `amr`. Store `(iss, sub)`.
 - Unsupported: implicit, hybrid, client credentials, request objects, dynamic client registration.
 - SDK or npm package: NOT FOUND (docs say "an OIDC library"). Check npm before choosing one (UNVERIFIED).
+
+## Verified from the live discovery document
+
+- `scopes_supported`: only `openid`. `response_types_supported`: `code`. `response_modes_supported`: `query`. `code_challenge_methods_supported`: `S256`. `id_token_signing_alg_values_supported`: `RS256`.
+- `prompt_values_supported`: `none`, `login`, `consent`. `claims_parameter_supported`: true. `authorization_response_iss_parameter_supported`: true.
+- `acr_values_supported`: only `https://world.org/oidc/acr/orb` and `https://world.org/oidc/acr/orb-face` (the docs also list selfie values; discovery does not, so request orb for step-up).
+- `subject_types_supported`: `pairwise` (the `sub` is per-client, so store `(iss, sub)` as the docs say).
+- `token_endpoint_auth_methods_supported`: `client_secret_basic`, `client_secret_post`, `private_key_jwt`, `none`.
 
 ## Client registration
 
