@@ -7,7 +7,7 @@ Branch per phase: `<phase_name>_sidd`. Run `npm run verify` before every commit.
 ## Phase 0: setup (hours 0 to 2) - branch `phase_0_setup_sidd`
 
 - [x] 0.1 `services/backend` with a health route and a SQLite file (test: `GET /health` returns ok)
-- [ ] 0.2 Sepolia wallet with test ETH (ENS publisher). Wallet generated into `.env`; address 0x23aBf449e01D6A199851033Bd531c459A863dAd9; still needs faucet funding
+- [x] 0.2 Sepolia wallet with test ETH (ENS publisher). Address 0x23aBf449e01D6A199851033Bd531c459A863dAd9, key in local `.env`
 - [ ] 0.3 World app installed, mentor contact noted
 
 ## Phase 1: gate spikes (hours 2 to 6) - branch `phase_1_spikes_sidd`
