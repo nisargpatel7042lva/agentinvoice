@@ -37,3 +37,14 @@ npm run ats:web:start
   - Admin App route works immediately for initial issuance and configuration without needing manual contract facet resolution.
   - Scripting can subsequently execute token operations (KYC grant, mint/issue, transfer freeze) using the token Diamond contract address.
 
+## 3. Compliance Configuration & Freeze Controls
+- **Investor KYC / Allowlist Registration:**
+  - Token adheres to ERC-1400 / ERC-3643 with an Identity Registry.
+  - An investor wallet address must be added to the compliance / valid KYC list before token issuance or transfer.
+  - Method / UI: In ATS Compliance/Holders module, add investor address and mark KYC verified (`Valid`).
+- **Transfer Restrictions:**
+  - Enforced at token Diamond contract level: non-KYC recipients or frozen accounts automatically revert on transfer attempts.
+- **Freeze / Lock Mechanism:**
+  - Compliance manager can trigger `lock` / `freeze` on a specific account or token partition.
+  - **Hackathon Demo Alignment:** On buyer agent default, the compliance role locks the defaulting party / revokes subname, visibly proving regulatory control for the Tokenize track video.
+
