@@ -19,7 +19,7 @@ World Agent Pass step-up (v2-S1, replaces old AgentKit Prompt 1; 90 min)
 - [x] 1.2 Notes: portal client registration, redirect URI, scopes, discovery URL, how to request fresh authentication (parameter names UNVERIFIED)
 - [x] 1.3 `src/world/stepup.ts`: `startStepUp(approvalId)` builds the authorization URL (state = approval id, random nonce, PKCE)
 - [x] 1.4 `handleCallback(code, state)`: exchange code, validate ID token (signature, issuer, audience, nonce, expiry, recent auth time), distinct error codes
-- [ ] 1.5 Failure-path tests (cancel, expired approval, reused state, wrong nonce, stale auth time): protected action never happens; mocked key set in unit tests
+- [x] 1.5 Failure-path tests (cancel, expired approval, reused state, wrong nonce, stale auth time): protected action never happens; mocked key set in unit tests
 - [ ] 1.6 One real flow on the real portal
 - [ ] 1.7 Start `docs/FEEDBACK_WORLD.md` (time to first success, friction, doc gaps, top improvement)
 
