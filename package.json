@@ -8,7 +8,27 @@
     "apps/*",
     "packages/*"
   ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run --passWithNoTests",
+    "forge": "cd contracts && forge test -q",
+    "verify:fast": "npm run typecheck && npm run lint && npm run test && npm run forge",
+    "verify": "npm run verify:fast && npm run e2e:local",
+    "e2e:local": "tsx scripts/e2e.ts --local",
+    "e2e:testnet": "tsx scripts/e2e.ts --testnet"
+  },
   "engines": {
     "node": ">=20"
-  }
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.6",
+    "eslint": "^10.14.0",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.1",
+    "vitest": "^5.1.0"
+  },
+  "type": "module"
 }
