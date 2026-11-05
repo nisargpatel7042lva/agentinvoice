@@ -1,0 +1,82 @@
+import { z } from "zod";
+import {
+  STATUSES,
+  type Address,
+  type Approval,
+  type ApprovalStart,
+  type AuditEvent,
+  type EnsAgent,
+  type Hash32,
+  type Invoice,
+  type PayPolicy,
+  type ReviewResult,
+} from "./types.js";
+
+const isHex = (len: number) => (v: unknown) =>
+  typeof v === "string" && new RegExp(`^0x[0-9a-fA-F]{${len}}$`).test(v);
+
+export const AddressSchema = z.custom<Address>(isHex(40), "expected 0x + 40 hex address");
+export const Hash32Schema = z.custom<Hash32>(isHex(64), "expected 0x + 64 hex hash");
+export const AmountSchema = z.string().regex(/^\d+$/, "expected decimal integer string");
+export const StatusSchema = z.enum(STATUSES);
+
+export const InvoiceSchema = z.object({
+  id: z.string(),
+  supplier: AddressSchema,
+  buyerVault: AddressSchema,
+  faceAmount: AmountSchema,
+  price: AmountSchema,
+  dueDate: z.number().int(),
+  status: StatusSchema,
+  bond: AddressSchema.nullable(),
+  holder: AddressSchema.nullable(),
+  evidenceHash: Hash32Schema,
+  description: z.string(),
+}) satisfies z.ZodType<Invoice>;
+export const InvoiceListSchema = z.array(InvoiceSchema);
+
+export const AuditEventSchema = z.object({
+  topicId: z.string().regex(/^\d+\.\d+\.\d+$/),
+  sequenceNumber: z.number().int().nonnegative(),
+  consensusTimestamp: z.string().regex(/^\d+\.\d+$/),
+  type: z.string(),
+  invoiceId: z.string().nullable(),
+  data: z.record(z.string(), z.unknown()),
+}) satisfies z.ZodType<AuditEvent>;
+export const AuditListSchema = z.array(AuditEventSchema);
+
+export const ApprovalStartSchema = z.object({
+  approvalId: z.string(),
+  authorizationUrl: z.url(),
+}) satisfies z.ZodType<ApprovalStart>;
+
+export const ApprovalSchema = z.object({
+  id: z.string(),
+  invoiceId: z.string(),
+  state: z.enum(["pending", "approved", "rejected", "expired"]),
+  createdAt: z.number().int(),
+  decidedAt: z.number().int().nullable(),
+}) satisfies z.ZodType<Approval>;
+
+export const EnsAgentSchema = z.object({
+  name: z.string(),
+  vault: AddressSchema,
+  limit: AmountSchema,
+  threshold: AmountSchema,
+  paid: z.number().int().nonnegative(),
+  late: z.number().int().nonnegative(),
+  status: z.enum(["active", "paused", "defaulted"]),
+  expiresAt: z.number().int(),
+}) satisfies z.ZodType<EnsAgent>;
+
+export const ReviewResultSchema = z.object({
+  action: z.enum(["approve", "reject", "escalate"]),
+  reason: z.string(),
+}) satisfies z.ZodType<ReviewResult>;
+
+export const PayPolicySchema = z.object({
+  dailyBudget: AmountSchema,
+  perCallCap: AmountSchema,
+  allowedPayTo: z.array(AddressSchema),
+  allowedHosts: z.array(z.string()),
+}) satisfies z.ZodType<PayPolicy>;

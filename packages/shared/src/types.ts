@@ -1,32 +1,82 @@
-// Draft shapes. TODO: align field names with the plan's spec before anyone builds on them.
+// Spec v2. See ../spec.md. Amounts are integer base units as decimal strings.
+
+export const SPEC_VERSION = 2 as const;
 
 export type Address = `0x${string}`;
+export type Hash32 = `0x${string}`; // 0x + 64 hex
+export type Amount = string; // decimal integer string, base units
 
-export type Status = "draft" | "issued" | "approved" | "paid" | "rejected" | "cancelled";
-
-export interface Agent {
-  address: Address;
-  ensName?: string;
-}
+export const STATUSES = ["Pending", "Open", "Funded", "Paid", "Late", "Defaulted"] as const;
+export type Status = (typeof STATUSES)[number];
 
 export interface Invoice {
   id: string;
-  issuer: Address;
-  payer: Address;
-  amount: bigint;
-  dueAt: number; // unix seconds
+  supplier: Address;
+  buyerVault: Address;
+  faceAmount: Amount;
+  price: Amount;
+  dueDate: number; // unix seconds
   status: Status;
+  bond: Address | null; // null until a bond exists
+  holder: Address | null; // set at funding
+  evidenceHash: Hash32;
+  description: string;
 }
 
+export interface Agent {
+  ensName: string;
+  vault: Address;
+}
+
+export interface EnsAgent {
+  name: string;
+  vault: Address; // addr record
+  limit: Amount; // sponsor-set
+  threshold: Amount; // sponsor-set
+  paid: number; // publisher-set
+  late: number; // publisher-set
+  status: "active" | "paused" | "defaulted"; // publisher-set
+  expiresAt: number; // unix seconds, from the registry
+}
+
+export type ApprovalState = "pending" | "approved" | "rejected" | "expired";
+
 export interface Approval {
+  id: string;
   invoiceId: string;
-  approver: Address;
-  approved: boolean;
-  at: number; // unix seconds
+  state: ApprovalState;
+  createdAt: number;
+  decidedAt: number | null;
+}
+
+export interface ApprovalStart {
+  approvalId: string;
+  authorizationUrl: string;
 }
 
 export interface Score {
   agent: Address;
   value: number;
-  updatedAt: number; // unix seconds
+  updatedAt: number;
+}
+
+export interface AuditEvent {
+  topicId: string; // HCS topic, e.g. 0.0.12345
+  sequenceNumber: number;
+  consensusTimestamp: string; // HCS "seconds.nanos"
+  type: string; // e.g. invoice.created, invoice.funded
+  invoiceId: string | null;
+  data: Record<string, unknown>;
+}
+
+export interface ReviewResult {
+  action: "approve" | "reject" | "escalate";
+  reason: string;
+}
+
+export interface PayPolicy {
+  dailyBudget: Amount;
+  perCallCap: Amount;
+  allowedPayTo: Address[];
+  allowedHosts: string[];
 }
