@@ -80,3 +80,13 @@ npm run ats:web:start
   });
   ```
 
+## 5. Architectural Q&A (Route Evaluation)
+- **(a) Can the issuer/agent role be given to a smart contract so `InvoiceMarket` issues on buy (route T1a)?**
+  - While role assignment allows contract addresses, calling the ATS Diamond proxy facets (`issueByPartition`) from Solidity requires diamond facet interfaces, identity registration of the calling contract, and high gas overhead on Hedera EVM. This makes T1a fragile for a 36-hour hackathon build.
+- **(b) Can a backend wallet issue after `InvoiceFunded` (route T1b, one trusted step)?**
+  - **Yes, recommended.** `InvoiceMarket.buy()` accepts investor payment, transfers HBAR to supplier, stores `invoice.holder = msg.sender`, and emits `InvoiceFunded(id, holder, face)`. An off-chain backend service holding the issuer key then calls the ATS SDK to issue units to the investor. We declare this trusted issuance step transparently in the submission.
+- **(c) Which maturity, redeem or coupon functions exist for the lifecycle step?**
+  - Zero-coupon discounted invoices do not require periodic coupons. For the video lifecycle step, we use `redeem(uint256 value, bytes data)` upon maturity when the investor is settled, burning the bond units.
+- **(d) Can transfers be blocked so the holder cannot move units after funding?**
+  - Yes, ATS compliance lock/freeze can restrict transfers. Furthermore, our contract stores `holder` at funding time and `payInvoice` pays that stored address directly, making any post-funding token transfer irrelevant to fund routing.
+
