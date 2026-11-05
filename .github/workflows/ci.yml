@@ -21,11 +21,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
 
       - uses: foundry-rs/foundry-toolchain@v1
         with:
           version: stable
 
-      - run: npm ci
-      - run: npm run verify:fast
+      - run: bun install --frozen-lockfile
+      - run: bun run verify:fast

@@ -2,13 +2,13 @@
 
 ## Setup
 
-Requirements: Node 20+, git, and [Foundry](https://getfoundry.sh) (`forge` on your PATH).
+Requirements: Node 20+, Bun 1.4+, git, and [Foundry](https://getfoundry.sh) (`forge` on your PATH).
 
 ```bash
 git clone https://github.com/nisargpatel7042lva/agentinvoice.git
 cd agentinvoice
-npm install
-npm run verify
+bun install
+bun run verify
 ```
 
 ## Layout
@@ -20,5 +20,5 @@ npm run verify
 ## Rules
 
 - `main` is protected: open a pull request; CI (`verify-fast`) must pass.
-- Run `npm run verify` before every commit.
+- Run `bun run verify` before every commit.
 - Never commit `.env`; see `.env.example`.
