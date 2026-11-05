@@ -13,8 +13,8 @@
     "lint": "eslint .",
     "test": "vitest run --passWithNoTests",
     "forge": "cd contracts && forge test -q",
-    "verify:fast": "npm run typecheck && npm run lint && npm run test && npm run forge",
-    "verify": "npm run verify:fast && npm run e2e:local",
+    "verify:fast": "bun run typecheck && bun run lint && bun run test && bun run forge",
+    "verify": "bun run verify:fast && bun run e2e:local",
     "e2e:local": "tsx scripts/e2e.ts --local",
     "e2e:testnet": "tsx scripts/e2e.ts --testnet"
   },
@@ -30,5 +30,9 @@
     "typescript-eslint": "^8.72.1",
     "vitest": "^5.1.0"
   },
-  "type": "module"
+  "type": "module",
+  "trustedDependencies": [
+    "better-sqlite3"
+  ],
+  "packageManager": "bun@1.4.2"
 }

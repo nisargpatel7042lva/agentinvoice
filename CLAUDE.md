@@ -10,6 +10,6 @@ Credit saver applies: plan in 10 lines and wait for my "go"; one small step per 
 
 ## Repo rules
 
-- Run `npm run verify` before every commit.
+- Run `bun run verify` before every commit.
 - `contracts/` is a Foundry project owned by Mann.
 - Never commit `.env` or private keys. `.env.example` lists variable names only.
