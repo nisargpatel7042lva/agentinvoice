@@ -48,3 +48,35 @@ npm run ats:web:start
   - Compliance manager can trigger `lock` / `freeze` on a specific account or token partition.
   - **Hackathon Demo Alignment:** On buyer agent default, the compliance role locks the defaulting party / revokes subname, visibly proving regulatory control for the Tokenize track video.
 
+## 4. Issuing Units and EVM Balance Verification (`balanceOf`)
+- **Unit Issuance:**
+  - Token issuer calls `issue(address tokenHolder, uint256 value, bytes data)` on the bond contract.
+  - Recipient must be on the KYC list.
+- **EVM Balance Verification via viem:**
+  - ATS Diamond exposes standard ERC-20 / ERC-1400 `balanceOf(address)`.
+  - RPC URL: `https://testnet.hashio.io/api` (Chain ID `296`).
+  ```typescript
+  import { createPublicClient, http, parseAbi } from "viem";
+
+  export const atsBondAbi = parseAbi([
+    "function balanceOf(address account) view returns (uint256)",
+    "function name() view returns (string)",
+    "function symbol() view returns (string)",
+    "function decimals() view returns (uint8)",
+    "function totalSupply() view returns (uint256)",
+    "function issue(address tokenHolder, uint256 value, bytes data) external",
+    "function redeem(uint256 value, bytes data) external"
+  ]);
+
+  const client = createPublicClient({
+    transport: http("https://testnet.hashio.io/api")
+  });
+
+  const balance = await client.readContract({
+    address: bondAddress,
+    abi: atsBondAbi,
+    functionName: "balanceOf",
+    args: [investorAddress]
+  });
+  ```
+
