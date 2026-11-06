@@ -14,7 +14,8 @@ import { FundButton } from "@/components/FundButton";
 import { DemoControls } from "@/components/InvoiceActions";
 import { ChainActions } from "@/components/ChainActions";
 import { api, isMock } from "@/lib/api";
-import { loadEnsByVault, loadScore } from "@/lib/agents";
+import { loadEnsByVault } from "@/lib/agents";
+import { loadCreditReport } from "@/lib/credit";
 import { cn } from "@/lib/cn";
 import { copy } from "@/lib/copy";
 import { discountPct, formatAmount, formatDate, shortHex } from "@/lib/format";
@@ -35,8 +36,8 @@ function Row({ label, children, last }: { label: React.ReactNode; children: Reac
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const inv = await api.getInvoice(id).catch(() => null);
-  if (!inv) return <EmptyState message={copy.error.notFound} action={{ label: copy.nav.backMarket, href: "/" }} />;
-  const [score, ens, audit] = await Promise.all([loadScore(inv.buyerVault), loadEnsByVault(inv.buyerVault), api.listAudit().catch(() => [])]);
+  if (!inv) return <EmptyState message={copy.error.notFound} action={{ label: copy.nav.backMarket, href: "/market" }} />;
+  const [creditReport, ens, audit] = await Promise.all([loadCreditReport(inv.buyerVault), loadEnsByVault(inv.buyerVault), api.listAudit().catch(() => [])]);
   const agent = "agent" in ens ? ens.agent : undefined;
   const buyer = agent?.name ?? shortHex(inv.buyerVault);
   const history = audit.filter((e) => e.invoiceId === inv.id);
@@ -45,12 +46,12 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   );
   const ret = BigInt(inv.faceAmount) - BigInt(inv.price);
   const retPct = ((Number(ret) / Number(inv.price)) * 100).toFixed(1);
-  const settled = score ? score.paid + score.late + score.defaulted : 0;
+  const settled = creditReport?.counts.settled ?? 0;
   const pct = (n: number) => (settled ? (n / settled) * 100 : 0);
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-5">
-      <Link href="/" className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
+      <Link href="/market" className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
         <ChevronLeft aria-hidden="true" className="size-4" />
         {copy.nav.backMarket}
       </Link>
@@ -83,10 +84,15 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-subtle pt-4 text-sm text-ink-soft">
           Buyer
           <Link href={`/agent/${inv.buyerVault}`} className="font-medium text-accent">{buyer}</Link>
-          {score && (
-            <Term explain="score">
-              <ScoreBadge band={score.band} value={score.band === "New" ? null : score.onTimeRate} />
-            </Term>
+          {creditReport && (
+            <Link
+              href={`/agent/${inv.buyerVault}`}
+              className="inline-flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+              title="View buyer credit score profile"
+            >
+              <span className="text-xs text-ink-muted">Credit score</span>
+              <ScoreBadge band={creditReport.band} score={creditReport.score} />
+            </Link>
           )}
         </div>
 
@@ -108,18 +114,35 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         </dl>
       </Section>
 
-      <Section title={copy.sections.record} hint={score ? `${score.paid} paid on time, ${score.late} late, ${score.defaulted} defaulted` : copy.scoreHelp.New}>
-        {!score || settled === 0 ? (
+      <Section
+        title={copy.sections.record}
+        hint={
+          creditReport
+            ? `${creditReport.counts.onTime} paid on time, ${creditReport.counts.paidLate} late, ${creditReport.counts.defaulted} defaulted`
+            : copy.scoreHelp.New
+        }
+      >
+        {!creditReport || settled === 0 ? (
           <p className="text-sm text-ink-muted">{copy.scoreHelp.New}</p>
         ) : (
           <>
-            <div role="img" aria-label={`${score.paid} on time, ${score.late} late, ${score.defaulted} defaulted`} className="flex h-3 overflow-hidden rounded-full bg-subtle">
-              <div className="bg-accent" style={{ width: `${pct(score.paid)}%` }} />
-              <div className="bg-warn" style={{ width: `${pct(score.late)}%` }} />
-              <div className="bg-danger" style={{ width: `${pct(score.defaulted)}%` }} />
+            <div
+              role="img"
+              aria-label={`${creditReport.counts.onTime} on time, ${creditReport.counts.late + creditReport.counts.paidLate} late, ${creditReport.counts.defaulted} defaulted`}
+              className="flex h-3 overflow-hidden rounded-full bg-subtle"
+            >
+              <div className="bg-accent" style={{ width: `${pct(creditReport.counts.onTime)}%` }} />
+              <div className="bg-warn" style={{ width: `${pct(creditReport.counts.late + creditReport.counts.paidLate)}%` }} />
+              <div className="bg-danger" style={{ width: `${pct(creditReport.counts.defaulted)}%` }} />
             </div>
             <div className="mt-3">
-              <Legend items={[{ label: `On time · ${score.paid}`, color: "accent" }, { label: `Late · ${score.late}`, color: "warn" }, { label: `Defaulted · ${score.defaulted}`, color: "danger" }]} />
+              <Legend
+                items={[
+                  { label: `On time · ${creditReport.counts.onTime}`, color: "accent" },
+                  { label: `Late · ${creditReport.counts.late + creditReport.counts.paidLate}`, color: "warn" },
+                  { label: `Defaulted · ${creditReport.counts.defaulted}`, color: "danger" },
+                ]}
+              />
             </div>
           </>
         )}

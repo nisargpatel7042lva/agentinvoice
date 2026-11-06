@@ -1,10 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CircleCheck } from "lucide-react";
-import { contracts, ensAgentFixture, type Hash32 } from "@agentinvoice/shared";
-import { createInvoice } from "@/app/actions";
+import { ensAgentFixture, type Hash32 } from "@agentinvoice/shared";
+import { createInvoice, lookupBuyer } from "@/app/actions";
+import type { BuyerLookup } from "@/lib/ens";
 import { useAction } from "@/components/ActionButton";
 import { Button, Card } from "@/components/ui";
 import { copy } from "@/lib/copy";
@@ -33,19 +34,25 @@ export function SupplierForm() {
   const [description, setDescription] = useState("");
   const [evidence, setEvidence] = useState<Hash32 | null>(null);
 
-  // Demo: the sample ENS buyer. Real: the configured buyer name (NEXT_PUBLIC_BUYER_ENS_NAME) maps to the deployed
-  // BuyerVault, or a 0x vault address is used as-is. Live ENS resolution replaces this when it lands.
-  const realName = process.env.NEXT_PUBLIC_BUYER_ENS_NAME || "buyer-agent.eth";
+  // The buyer is looked up live: a 0x vault address as typed, or an ENS name read from Sepolia (mock mode: the sample name).
   const typed = buyer.trim();
-  const resolved: { vault: string; status?: string; limit?: string } | null = isMock
-    ? typed === ensAgentFixture.name
-      ? ensAgentFixture
-      : null
-    : /^0x[0-9a-fA-F]{40}$/.test(typed)
-      ? { vault: typed }
-      : typed.toLowerCase() === realName.toLowerCase()
-        ? { vault: contracts.buyerVault }
-        : null;
+  const [lookup, setLookup] = useState<{ for: string; result: BuyerLookup | "loading" }>({ for: "", result: "loading" });
+  useEffect(() => {
+    if (!typed) return;
+    let stale = false;
+    const t = setTimeout(() => {
+      lookupBuyer(typed).then(
+        (result) => !stale && setLookup({ for: typed, result }),
+        () => !stale && setLookup({ for: typed, result: { kind: "unreachable" } }),
+      );
+    }, 400);
+    return () => {
+      stale = true;
+      clearTimeout(t);
+    };
+  }, [typed]);
+  const current = lookup.for === typed ? lookup.result : "loading";
+  const resolved = current !== "loading" && current.kind === "ok" ? { vault: current.vault, status: current.agent?.status, limit: current.agent?.limit } : null;
   const ready = !!resolved && !!evidence && !!face && !!price && !!due && !!description.trim();
 
   async function fillSample() {
@@ -86,7 +93,11 @@ export function SupplierForm() {
               {resolved.limit ? ` · limit ${formatAmount(resolved.limit)} a day` : ""}
             </span>
           ) : (
-            buyer.trim() && <span className="mt-1.5 block text-xs font-normal text-ink-muted">{copy.error.ensNotFound}</span>
+            typed && (
+              <span className="mt-1.5 block text-xs font-normal text-ink-muted">
+                {current === "loading" ? "Checking ENS…" : current.kind === "unreachable" ? "ENS is not reachable right now. Try again, or paste the buyer vault's 0x address." : copy.error.ensNotFound}
+              </span>
+            )
           )}
         </label>
         <div className="grid gap-5 sm:grid-cols-2">

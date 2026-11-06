@@ -68,3 +68,23 @@ Base unit `--spacing: 0.25rem` (4px). Use 1, 2, 3, 4, 6, 8 and 12 (4–48px). Ca
 
 ## Layout
 Max content width is 1120px. The top nav is 56px tall. The testnet banner is 32px tall and always visible above the nav.
+
+## Redesign v2: Halden-led (2026-11-06)
+- **Type:** Inter Tight 400/500/600 (next/font), tabular numbers kept.
+- **Palette:**
+  - ink navy `#0B1D3A`, primary buttons are navy pills
+  - periwinkle `#5B7CF0` for display highlights only
+  - accent `#3B5BDB` for links and focus (5.6:1 on white)
+  - glowing cyan dot `#2FE0D0`
+  - sky glow `#8FD5F1` with a periwinkle `#D2DAFF` rim
+  - dark panel `#0E1F3D`
+- **Night mode:** harbour navy (`#071226` canvas, `#0E1F3D` surface), not black.
+- **Buttons:** pill-shaped. The primary button carries the `.btn-dot` hover: the dot grows into a cyan circle with a navy chevron. Sizes: default 42px, lg 52px, xl 62px (hero).
+- **Landing (`/`):**
+  - bowl glow on a 96×60 canvas, driven by scroll
+  - letter-by-letter reveals, then a pinned statement
+  - a dark split with a tilted product panel (CSS, no photo)
+  - a dark closing CTA, footer and a sinking wordmark
+- **App:** lives under `/market`, `/invoice`, `/agent`, `/network`, `/supplier` and `/approval`, with the same floating pill nav and a soft top glow.
+- **Imagery:** code-only for now; the Higgsfield account had 0 credits. The dark split has an image slot (`components/landing/Landing.tsx`) for a generated photo later.
+- **Motion:** respects `prefers-reduced-motion`: reveals show final text, with no drift, rise or zoom.

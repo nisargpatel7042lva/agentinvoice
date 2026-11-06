@@ -5,6 +5,9 @@ import {
   type Approval,
   type ApprovalStart,
   type AuditEvent,
+  type BuyerScore,
+  type CreditFactor,
+  type CreditReport,
   type EnsAgent,
   type Hash32,
   type Invoice,
@@ -77,6 +80,34 @@ export const ReviewResultSchema = z.object({
 
 export const ScoreBandSchema = z.enum(SCORE_BANDS);
 
+export const CreditFactorSchema = z.object({
+  key: z.enum(["payment", "defaults", "exposure", "history", "volume"]),
+  label: z.string(),
+  weight: z.number(),
+  value: z.number().min(0).max(1),
+  points: z.number().int(),
+  detail: z.string(),
+  evidence: z.array(z.string()),
+}) satisfies z.ZodType<CreditFactor>;
+
+export const CreditReportSchema = z.object({
+  vault: AddressSchema,
+  score: z.number().int().min(300).max(900).nullable(),
+  band: ScoreBandSchema,
+  model: z.string(),
+  factors: z.array(CreditFactorSchema),
+  summary: z.string(),
+  asOf: z.number().int(),
+  counts: z.object({
+    onTime: z.number().int().nonnegative(),
+    paidLate: z.number().int().nonnegative(),
+    late: z.number().int().nonnegative(),
+    defaulted: z.number().int().nonnegative(),
+    settled: z.number().int().nonnegative(),
+  }),
+  openExposure: AmountSchema,
+}) satisfies z.ZodType<CreditReport>;
+
 export const HealthSchema = z.object({ ok: z.boolean() }).loose();
 
 export const PayPolicySchema = z.object({
@@ -87,7 +118,6 @@ export const PayPolicySchema = z.object({
 }) satisfies z.ZodType<PayPolicy>;
 
 export const BuyerScoreSchema = z.object({
-
   vault: AddressSchema,
   band: ScoreBandSchema,
   onTimeRate: z.number().min(0).max(100),
@@ -97,5 +127,7 @@ export const BuyerScoreSchema = z.object({
   openExposure: AmountSchema,
   evidence: z.array(z.string()),
   asOf: z.number().int(),
-});
+  creditScore: z.number().int().min(300).max(900).nullable().optional(),
+  credit: CreditReportSchema.optional(),
+}) satisfies z.ZodType<BuyerScore>;
 
