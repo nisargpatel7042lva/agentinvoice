@@ -3,6 +3,7 @@ import { auditEventForStatus, hederaSubmit, publishAudit, type AuditInput } from
 import { buildApp } from "./app.js";
 import { hederaIssuer } from "./chain/issuer.js";
 import { hederaReader } from "./chain/reader.js";
+import { errorMessage } from "./errors.js";
 import { EnvError, loadEnv, type Config } from "./env.js";
 import { liveEnsDeps } from "./ens/live.js";
 import { createEnsPublisher } from "./ens/publisher.js";
@@ -35,7 +36,7 @@ const app = buildApp({
   features: { indexer: Boolean(config.indexer), ens: Boolean(config.ens), audit: Boolean(submit) },
   onAudit: (event: AuditInput) => {
     if (!submit) return;
-    void publishAudit(event, { submit, onError: (err) => app.log.warn({ message: (err as Error).message }, "audit publish failed") });
+    void publishAudit(event, { submit, onError: (err) => app.log.warn({ message: errorMessage(err) }, "audit publish failed") });
   },
 });
 
@@ -47,7 +48,7 @@ const publisher = config.ens
       vault: config.ens.vault,
       deps: {
         ...liveEnsDeps({ name: config.ens.agentName, resolver: config.ens.resolver, publisherKey: config.ens.publisherKey, rpcUrl: config.ens.sepoliaRpcUrl }),
-        onError: (err) => app.log.warn({ message: (err as Error).message }, "ens publish attempt failed"), // message only, never keys
+        onError: (err) => app.log.warn({ message: errorMessage(err) }, "ens publish attempt failed"), // message only, never keys
       },
     })
   : undefined;

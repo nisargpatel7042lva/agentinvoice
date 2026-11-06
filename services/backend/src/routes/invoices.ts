@@ -2,6 +2,7 @@ import { AddressSchema, AmountSchema, Hash32Schema, InvoiceListSchema, InvoiceSc
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { InvoiceIssuer } from "../chain/issuer.js";
+import { errorMessage } from "../errors.js";
 import { upsertChainInvoice } from "../indexer.js";
 
 interface InvoiceRow {
@@ -134,7 +135,7 @@ export function invoiceCreateRoutes(app: FastifyInstance, opts: CreateInvoiceOpt
       const row = app.db.prepare("SELECT * FROM invoices WHERE id = ?").get(issued.id) as InvoiceRow;
       return reply.code(201).send(toInvoice(row));
     } catch (err) {
-      req.log.warn({ message: (err as Error).message }, "create invoice failed"); // message only, never the key
+      req.log.warn({ message: errorMessage(err) }, "create invoice failed"); // message only, never the key
       return reply.code(502).send({ error: "chain_error" });
     } finally {
       inFlight.delete(key);
