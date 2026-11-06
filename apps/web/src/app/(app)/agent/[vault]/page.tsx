@@ -13,7 +13,8 @@ import { Section } from "@/components/Section";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Term } from "@/components/Term";
 import { TxLink } from "@/components/TxLink";
-import { Progress, StatCard, Table, TableBox, Td, Th } from "@/components/ui";
+import { buttonVariants, Table, TableBox, Td, Th } from "@/components/ui";
+import { Banner } from "@/components/Banner";
 import { api, isMock } from "@/lib/api";
 import { loadEnsByVault } from "@/lib/agents";
 import { loadCreditReport } from "@/lib/credit";
@@ -45,67 +46,97 @@ export default async function AgentPage({ params }: { params: Promise<{ vault: s
   const spentPct = spent && agent ? (Number(spent) / Number(agent.limit)) * 100 : null;
   const summary = creditReport?.summary ?? (settled === 0 ? "No payment history yet." : `${settled} settled invoices.`);
 
+  const bandWord = creditReport ? (creditReport.band === "New" ? "new to the network" : "a Band " + creditReport.band + " payer") : "no score yet";
+  const d = (n: number) => ({ ["--d" as string]: n + "s" });
+
   return (
-    <div className="flex flex-col gap-6">
-      <section className="flex flex-wrap items-center gap-4">
-        <span aria-hidden="true" className="flex size-14 items-center justify-center rounded-[14px] bg-ink text-xl font-semibold text-canvas">
-          {(displayName ?? vault.slice(2)).slice(0, 2).toUpperCase()}
-        </span>
-        <div className="min-w-60 flex-1">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-[30px] leading-9 font-semibold tracking-[-0.025em]">{displayName ?? shortHex(vault)}</h1>
-            {creditReport && (
-              <Term explain="score">
-                <ScoreBadge band={creditReport.band} score={creditReport.score} />
-              </Term>
-            )}
+    <div className="flex flex-col gap-8">
+      <Banner
+        hue="lilac"
+        eyebrow="Buyer agent"
+        title={
+          <>
+            {displayName ?? shortHex(vault)}
+            <br />
+            <em>{bandWord}.</em>
+          </>
+        }
+        sub={
+          <>
+            {summary}
+            <span className="mt-2 flex flex-wrap items-center gap-x-1.5 text-sm">
+              <Term explain="agent">Software that pays</Term> from <TxLink address={vault as Address} />
+            </span>
+          </>
+        }
+        action={
+          mine.some((i) => i.status === "Open") ? (
+            <Link href="/market" className={buttonVariants({ size: "lg" })}>
+              Fund its invoices
+            </Link>
+          ) : undefined
+        }
+        cards={
+          <div className="grid grid-cols-2 gap-3">
+            <div className="pl-card pl-dark col-span-2 flex items-end justify-between gap-4 p-5 sm:col-span-1 sm:row-span-2 sm:flex-col sm:items-start" style={d(0.1)}>
+              <span className="pl-k">Credit score</span>
+              <span className="pl-serif text-[64px] leading-none">{creditReport?.score ?? "—"}</span>
+              <span className="flex items-center gap-2 text-xs text-white/60">
+                {creditReport && <ScoreBadge band={creditReport.band} score={creditReport.score} />}
+                300 to 900
+              </span>
+            </div>
+            <div className="pl-card pl-coral flex flex-col gap-1.5" style={d(0.22)}>
+              <span className="pl-k">Spent today</span>
+              <span className="pl-big">{spent ? formatAmount(spent) : "—"}</span>
+              {spentPct != null && (
+                <span role="progressbar" aria-label="Share of daily limit spent today" aria-valuenow={Math.round(spentPct)} aria-valuemin={0} aria-valuemax={100} className="block h-1.5 overflow-hidden rounded-full bg-white/50">
+                  <span className="block h-full rounded-full bg-[#161513]" style={{ width: Math.min(100, spentPct) + "%" }} />
+                </span>
+              )}
+              {agent && <span className="text-[11.5px] opacity-75">of {formatAmount(agent.limit)} a day</span>}
+            </div>
+            <div className="pl-card pl-glass grid grid-cols-3 gap-2" style={d(0.34)}>
+              {[
+                ["On time", creditReport?.counts.onTime],
+                ["Late", creditReport ? creditReport.counts.paidLate + creditReport.counts.late : undefined],
+                ["Defaulted", creditReport?.counts.defaulted],
+              ].map(([k, v]) => (
+                <span key={k as string}>
+                  <span className="block text-[10.5px] font-semibold tracking-[0.06em] uppercase opacity-65">{k}</span>
+                  <span className="mt-0.5 block text-xl font-semibold">{v ?? "—"}</span>
+                </span>
+              ))}
+            </div>
           </div>
-          <p className="mt-1 text-[15px] text-ink-soft">{summary}</p>
-          <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-sm text-ink-muted">
-            <Term explain="agent">Buyer agent</Term> · pays from <TxLink address={vault as Address} />
-          </p>
-        </div>
-      </section>
+        }
+      />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
-        <aside className="flex flex-col gap-4 lg:sticky lg:top-24 lg:col-start-2 lg:row-start-1">
-      <section aria-label="Key figures" className="flex flex-col gap-4">
-        <StatCard
-          label="Repayment track record"
-          value={creditReport?.score !== null && creditReport?.score !== undefined ? `${creditReport.score}` : "—"}
-          sub={
-            creditReport
-              ? `${creditReport.counts.onTime} on time · ${creditReport.counts.paidLate} paid late · ${creditReport.counts.defaulted} defaulted`
-              : copy.scoreHelp.New
-          }
-        />
-        <StatCard label="Spent today" value={spent ? formatAmount(spent) : "—"} sub={agent ? `Limit ${formatAmount(agent.limit)} a day, set by the sponsor` : undefined}>
-          {spentPct != null && <Progress value={spentPct} label="Share of daily limit spent today" />}
-        </StatCard>
-      </section>
-      {isMock && agent && (
-        <Section open title={copy.policy.title} hint="Limits the sponsor set for this agent">
-          <PolicyPanel policy={payPolicyFixture} dailyLimit={agent.limit} threshold={agent.threshold} spentToday={spent ?? "0"} allowedSuppliers={3} />
-        </Section>
-      )}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
+        <div className="min-w-0">{creditReport && <CreditScoreCard report={creditReport} />}</div>
+        <aside className="flex flex-col gap-4 lg:sticky lg:top-24">
+          <EnsPanel state={ens} vaultOnChain={vault as Address} />
+          {isMock && agent && (
+            <Section open title={copy.policy.title} hint="Limits the sponsor set for this agent">
+              <PolicyPanel policy={payPolicyFixture} dailyLimit={agent.limit} threshold={agent.threshold} spentToday={spent ?? "0"} allowedSuppliers={3} />
+            </Section>
+          )}
         </aside>
-        <div className="flex min-w-0 flex-col gap-5 lg:col-start-1 lg:row-start-1">
-      {/* Credit score breakdown card */}
-      {creditReport && <CreditScoreCard report={creditReport} />}
-
-
-      <EnsPanel state={ens} vaultOnChain={vault as Address} />
+      </div>
 
       {ego.links.length > 0 && (
-        <section aria-labelledby="conn-title" className="flex flex-col gap-2">
+        <section data-theme="dark" aria-labelledby="conn-title" className="flex flex-col gap-3 rounded-[24px] bg-canvas p-5 text-ink sm:p-6">
           <div className="flex items-baseline justify-between gap-2">
-            <h2 id="conn-title" className="text-base font-semibold">Connections</h2>
-            <Link href="/network" className="text-sm text-accent">Open full network</Link>
+            <h2 id="conn-title" className="text-lg font-semibold tracking-[-0.02em]">
+              Who it <span className="pl-serif text-accent">deals with</span>
+            </h2>
+            <Link href="/network" className="text-sm text-ink-muted hover:text-ink">Open full network</Link>
           </div>
-          <NetworkGraph nodes={ego.nodes} links={ego.links} height={300} compact focusId={vault} />
+          <NetworkGraph nodes={ego.nodes} links={ego.links} height={320} compact focusId={vault} />
         </section>
       )}
 
+      <div className="flex flex-col gap-4">
       <Section title={copy.sections.permissions} hint="Sponsor, publisher and registry each control different values">
         <PermissionsPanel />
       </Section>
@@ -143,7 +174,6 @@ export default async function AgentPage({ params }: { params: Promise<{ vault: s
         )}
       </Section>
 
-        </div>
       </div>
     </div>
   );

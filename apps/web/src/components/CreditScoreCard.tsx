@@ -22,6 +22,9 @@ function describeArc(cx: number, cy: number, r: number, startAngle: number, endA
   return `M ${start.x.toFixed(1)} ${start.y.toFixed(1)} A ${r} ${r} 0 0 1 ${end.x.toFixed(1)} ${end.y.toFixed(1)}`;
 }
 
+// Landing hues: coral for weak, lemon for fair, sage for strong.
+const GAUGE = { C: "#f79a5e", B: "#ecc94b", A: "#7cc488" };
+
 export function CreditScoreCard({ report, className = "" }: { report: CreditReport; className?: string }) {
   const [expandedFactors, setExpandedFactors] = useState<Record<string, boolean>>({});
 
@@ -58,20 +61,20 @@ export function CreditScoreCard({ report, className = "" }: { report: CreditRepo
     <div
       role="region"
       aria-label="Buyer credit score"
-      className={`rounded-xl border border-line bg-surface p-5 text-ink shadow-card ${className}`}
+      className={`rounded-2xl border border-line bg-surface p-6 text-ink ${className}`}
     >
       {/* Top Header */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-subtle pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-semibold text-ink">{copy.creditScore.title}</h2>
+            <h2 className="text-lg font-semibold tracking-[-0.02em] text-ink">Credit <span className="pl-serif text-accent">score</span></h2>
             <span className="rounded-full bg-subtle px-2 py-0.5 text-[11px] font-mono text-ink-muted">
               {copy.creditScore.scale}
             </span>
           </div>
-          <p className="mt-0.5 text-xs text-ink-muted">{report.summary}</p>
+          <p className="mt-0.5 text-xs text-ink-muted">{report.model}</p>
         </div>
-        <div className="text-xs text-ink-muted font-mono">{copy.creditScore.asOf(formattedDate)}</div>
+        <div className="rounded-full border border-line px-2.5 py-1 text-xs text-ink-muted">{copy.creditScore.asOf(formattedDate)}</div>
       </div>
 
       {/* Main Gauge and Numbers Grid */}
@@ -84,27 +87,27 @@ export function CreditScoreCard({ report, className = "" }: { report: CreditRepo
               <path
                 d={arcC}
                 fill="none"
-                stroke={isNew ? "var(--color-status-pending)" : "var(--color-band-c)"}
-                strokeWidth="14"
+                stroke={isNew ? "var(--color-line)" : GAUGE.C}
+                strokeWidth="16"
                 strokeLinecap="round"
-                className="opacity-90"
+                
               />
               {/* Arc B */}
               <path
                 d={arcB}
                 fill="none"
-                stroke={isNew ? "var(--color-status-pending)" : "var(--color-band-b)"}
-                strokeWidth="14"
-                className="opacity-90"
+                stroke={isNew ? "var(--color-line)" : GAUGE.B}
+                strokeWidth="16"
+                
               />
               {/* Arc A */}
               <path
                 d={arcA}
                 fill="none"
-                stroke={isNew ? "var(--color-status-pending)" : "var(--color-band-a)"}
-                strokeWidth="14"
+                stroke={isNew ? "var(--color-line)" : GAUGE.A}
+                strokeWidth="16"
                 strokeLinecap="round"
-                className="opacity-90"
+                
               />
 
               {/* Ticks and scale labels */}
@@ -127,19 +130,20 @@ export function CreditScoreCard({ report, className = "" }: { report: CreditRepo
                   <line
                     x1={cx}
                     y1={cy}
-                    x2={needleTip.x}
-                    y2={needleTip.y}
+                    x2={needleTip.x.toFixed(2)}
+                    y2={needleTip.y.toFixed(2)}
                     stroke="var(--color-ink)"
                     strokeWidth="3.5"
                     strokeLinecap="round"
                   />
-                  <circle cx={cx} cy={cy} r="5" fill="var(--color-ink)" />
+                  <circle cx={cx} cy={cy} r="7" fill="var(--color-ink)" />
+                  <circle cx={cx} cy={cy} r="2.5" fill="var(--color-surface)" />
                 </>
               )}
             </svg>
           </div>
           <div className="mt-1 flex items-center gap-2">
-            <span className="text-2xl font-bold font-mono tracking-tight text-ink">
+            <span className="pl-serif text-[52px] leading-none text-ink">
               {report.score !== null ? report.score : copy.creditScore.noScore}
             </span>
             <ScoreBadge band={report.band} score={report.score} />
@@ -148,27 +152,27 @@ export function CreditScoreCard({ report, className = "" }: { report: CreditRepo
 
         {/* Counts & Key Stats Breakdown */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:col-span-7">
-          <div className="rounded-lg border border-subtle bg-subtle/50 p-2.5">
-            <div className="text-[11px] font-medium text-ink-muted">On time</div>
-            <div className="mt-1 text-base font-semibold font-mono text-status-paid">{report.counts.onTime}</div>
+          <div className="bg-[#dfe9d4] rounded-xl p-3 text-[#161513]">
+            <div className="text-[11px] font-semibold tracking-[0.04em] uppercase opacity-65">On time</div>
+            <div className="mt-1 text-2xl font-semibold">{report.counts.onTime}</div>
           </div>
-          <div className="rounded-lg border border-subtle bg-subtle/50 p-2.5">
-            <div className="text-[11px] font-medium text-ink-muted">Paid late</div>
-            <div className="mt-1 text-base font-semibold font-mono text-status-late">{report.counts.paidLate}</div>
+          <div className="bg-[#f4ebc6] rounded-xl p-3 text-[#161513]">
+            <div className="text-[11px] font-semibold tracking-[0.04em] uppercase opacity-65">Paid late</div>
+            <div className="mt-1 text-2xl font-semibold">{report.counts.paidLate}</div>
           </div>
-          <div className="rounded-lg border border-subtle bg-subtle/50 p-2.5">
-            <div className="text-[11px] font-medium text-ink-muted">Late now</div>
-            <div className="mt-1 text-base font-semibold font-mono text-status-late">{report.counts.late}</div>
+          <div className="bg-[#f4ebc6] rounded-xl p-3 text-[#161513]">
+            <div className="text-[11px] font-semibold tracking-[0.04em] uppercase opacity-65">Late now</div>
+            <div className="mt-1 text-2xl font-semibold">{report.counts.late}</div>
           </div>
-          <div className="rounded-lg border border-subtle bg-subtle/50 p-2.5">
-            <div className="text-[11px] font-medium text-ink-muted">Defaulted</div>
-            <div className="mt-1 text-base font-semibold font-mono text-status-defaulted">
+          <div className="bg-[#f9cba9] rounded-xl p-3 text-[#161513]">
+            <div className="text-[11px] font-semibold tracking-[0.04em] uppercase opacity-65">Defaulted</div>
+            <div className="mt-1 text-2xl font-semibold">
               {report.counts.defaulted}
             </div>
           </div>
-          <div className="rounded-lg border border-subtle bg-subtle/50 p-2.5 sm:col-span-2">
-            <div className="text-[11px] font-medium text-ink-muted">Open exposure</div>
-            <div className="mt-1 text-base font-semibold font-mono text-ink">
+          <div className="rounded-xl bg-[#fe8a70] p-3 text-[#161513] sm:col-span-2">
+            <div className="text-[11px] font-semibold tracking-[0.04em] uppercase opacity-65">Open exposure</div>
+            <div className="mt-1 text-2xl font-semibold">
               {formatUnits(report.openExposure)} HBAR
             </div>
           </div>
@@ -177,10 +181,8 @@ export function CreditScoreCard({ report, className = "" }: { report: CreditRepo
 
       {/* Factor Breakdown */}
       <div className="mt-6 border-t border-subtle pt-5">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
-          Factor Breakdown (5 on-chain dimensions)
-        </h3>
-        <div className="mt-3 space-y-4">
+        <h3 className="font-mono text-[11px] font-medium tracking-[0.08em] text-ink-muted uppercase">What makes up the score</h3>
+        <div className="mt-2 divide-y divide-line">
           {report.factors.map((factor: CreditFactor) => {
             const isExpanded = !!expandedFactors[factor.key];
             const pct = Math.round(factor.value * 100);
@@ -189,30 +191,30 @@ export function CreditScoreCard({ report, className = "" }: { report: CreditRepo
             // Progress bar color based on factor performance
             const barColor =
               factor.value >= 0.8
-                ? "var(--color-band-a)"
+                ? GAUGE.A
                 : factor.value >= 0.5
-                  ? "var(--color-band-b)"
-                  : "var(--color-band-c)";
+                  ? GAUGE.B
+                  : GAUGE.C;
 
             return (
-              <div key={factor.key} className="rounded-lg border border-line/60 bg-subtle/30 p-3">
+              <div key={factor.key} className="py-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-ink">{factor.label}</span>
-                    <span className="rounded-full bg-subtle px-1.5 py-0.2 text-[10px] font-mono text-ink-muted">
+                    <span className="rounded-full border border-line px-2 py-px text-[11px] text-ink-muted">
                       {weightPct}% weight
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-semibold text-ink">
+                    <span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-semibold text-accent">
                       {copy.creditScore.points(factor.points)}
                     </span>
-                    <span className="text-xs font-mono text-ink-muted">({pct}%)</span>
+                    <span className="text-xs text-ink-muted">{pct}%</span>
                   </div>
                 </div>
 
                 {/* Progress bar */}
-                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-line">
+                <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-subtle">
                   <div
                     className="h-full rounded-full transition-all duration-300"
                     style={{ width: `${pct}%`, backgroundColor: barColor }}
