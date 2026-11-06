@@ -75,3 +75,7 @@ Deployed bytecode matched the docs, not the newer repo source: `UserRegistry.ini
 - The publisher wallet got `grantSetterRoles(calldata of setText for the key, publisher)` for `agentinvoice.paid`, `.late` and `.status` only. The setter calldata is `setText("0x", key, "")`; only the key scopes the role. `hasRoles(keccak256(key), ROLE_SET_TEXT, publisher)` is true for exactly those three keys.
 - Proof: `bun scripts/ens/refusal.ts` simulates `setText` from the publisher for all six keys: paid, late and status succeed; limit, threshold and sponsor revert. The refused write is simulated (eth_call), not sent.
 - Gotcha: the public Sepolia RPC can lag a block behind, so a `hasRoles` read right after a grant may show false. Re-read after a few seconds.
+
+## Task 1.11 result: revocation (2026-11-06, Sepolia)
+
+`bun scripts/ens/revoke.ts <label>` calls `unregister(labelId)` on the user registry as the sponsor (it holds ROLE_UNREGISTER). Tested on a throwaway subname (`--create-temp`): before = owner sponsor, expiry in 7 days, active; after = owner 0x0, expiry = now, inactive. The real demo agent `buyer` was not revoked; run the script against it only for the default demo step (a revoked name needs re-registering via `register.ts`).
