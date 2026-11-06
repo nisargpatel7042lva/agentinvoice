@@ -1,11 +1,9 @@
-import { EnsReadError, ensAgentFixture, readAgentFromEns, scoreFromInvoices, type Address, type EnsAgent, type BuyerScore } from "@invoiceagent/shared";
+import { EnsReadError, readAgentFromEns, scoreFromInvoices, type Address, type EnsAgent, type BuyerScore } from "@invoiceagent/shared";
 import type { EnsState } from "@/components/EnsPanel";
-import { isMock } from "./api";
 import { loadAllInvoices, loadEverLateIds, readDailyLimit } from "./credit";
 
 /** Mock: the fixture agent is the only known name. Real: live ENS read; any failure is "unreachable", never a guess. */
 export async function loadEnsByName(name: string): Promise<EnsState> {
-  if (isMock) return name === ensAgentFixture.name ? toState(ensAgentFixture) : { kind: "missing" };
   try {
     return toState(await readAgentFromEns(name));
   } catch {
@@ -14,7 +12,6 @@ export async function loadEnsByName(name: string): Promise<EnsState> {
 }
 
 export async function loadEnsByVault(vault: string): Promise<EnsState> {
-  if (isMock) return vault.toLowerCase() === ensAgentFixture.vault.toLowerCase() ? toState(ensAgentFixture) : { kind: "missing" };
   // No reverse lookup yet: ask ENS for the configured demo name and accept it only if it points at this vault.
   const name = process.env.NEXT_PUBLIC_BUYER_ENS_NAME;
   if (!name) return { kind: "unreachable" };

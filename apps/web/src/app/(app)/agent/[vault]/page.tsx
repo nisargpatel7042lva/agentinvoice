@@ -1,13 +1,11 @@
 import Link from "next/link";
-import { payPolicyFixture, type Address } from "@invoiceagent/shared";
+import type { Address } from "@invoiceagent/shared";
 import { Legend, RepaymentChart } from "@/components/charts";
 import { CreditScoreCard } from "@/components/CreditScoreCard";
 import { EnsPanel, PermissionsPanel } from "@/components/EnsPanel";
 import { NetworkGraph } from "@/components/NetworkGraph";
 import { egoGraph } from "@/lib/graph";
 import { loadNetwork } from "@/lib/network";
-import { partyOf } from "@/lib/directory";
-import { PolicyPanel } from "@/components/PolicyPanel";
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { Section } from "@/components/Section";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -15,7 +13,8 @@ import { Term } from "@/components/Term";
 import { TxLink } from "@/components/TxLink";
 import { buttonVariants, Table, TableBox, Td, Th } from "@/components/ui";
 import { Banner } from "@/components/Banner";
-import { api, isMock } from "@/lib/api";
+import { api } from "@/lib/api";
+import { readSpentToday } from "@/lib/credit";
 import { loadEnsByVault } from "@/lib/agents";
 import { loadCreditReport } from "@/lib/credit";
 import { copy } from "@/lib/copy";
@@ -24,8 +23,6 @@ import { repaymentsByWeek } from "@/lib/stats";
 
 export const dynamic = "force-dynamic";
 
-// Spent-today comes from the vault contract; mock mode shows a sample value.
-const MOCK_SPENT_TODAY = "1200000000";
 
 export default async function AgentPage({ params }: { params: Promise<{ vault: string }> }) {
   const { vault } = await params;
@@ -37,12 +34,12 @@ export default async function AgentPage({ params }: { params: Promise<{ vault: s
   ]);
   const ego = egoGraph(network, vault);
   const agent = "agent" in ens ? ens.agent : undefined;
-  // ENS name when published; in demo mode fall back to the sample directory.
-  const displayName = agent?.name ?? (isMock ? partyOf(vault)?.name : undefined);
+  // The agent's ENS name when it has published records; otherwise the short vault address.
+  const displayName = agent?.name;
   const mine = invoices.filter((i) => i.buyerVault.toLowerCase() === vault.toLowerCase());
   const weekly = repaymentsByWeek(mine);
   const settled = creditReport?.counts.settled ?? 0;
-  const spent = isMock ? MOCK_SPENT_TODAY : null;
+  const spent = await readSpentToday(vault);
   const spentPct = spent && agent ? (Number(spent) / Number(agent.limit)) * 100 : null;
   const summary = creditReport?.summary ?? (settled === 0 ? "No payment history yet." : `${settled} settled invoices.`);
 
@@ -116,11 +113,6 @@ export default async function AgentPage({ params }: { params: Promise<{ vault: s
         <div className="min-w-0">{creditReport && <CreditScoreCard report={creditReport} />}</div>
         <aside className="flex flex-col gap-4 lg:sticky lg:top-24">
           <EnsPanel state={ens} vaultOnChain={vault as Address} />
-          {isMock && agent && (
-            <Section open title={copy.policy.title} hint="Limits the sponsor set for this agent">
-              <PolicyPanel policy={payPolicyFixture} dailyLimit={agent.limit} threshold={agent.threshold} spentToday={spent ?? "0"} allowedSuppliers={3} />
-            </Section>
-          )}
         </aside>
       </div>
 

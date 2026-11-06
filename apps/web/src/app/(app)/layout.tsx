@@ -4,8 +4,8 @@ import { BrandMark } from "@/components/BrandMark";
 import { NavLinks } from "@/components/NavLinks";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { WalletButton } from "@/components/WalletButton";
+import { NameOnboarding } from "@/components/NameOnboarding";
 import { copy } from "@/lib/copy";
-import { isMock } from "@/lib/env";
 import { ArrowRight } from "lucide-react";
 import { api } from "@/lib/api";
 import { formatAmount } from "@/lib/format";
@@ -65,7 +65,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             <span aria-hidden="true" className="size-1.5 rounded-full bg-good" />
             Hedera testnet
           </span>
-          {isMock && <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">Demo data</span>}
         </div>
         <p className="mt-2.5 px-2 text-[11px] leading-relaxed text-ink-faint">{copy.banner.testnet}</p>
       </aside>
@@ -85,8 +84,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             <NavLinks variant="bar" />
           </nav>
         </header>
-        {isMock && <p className="border-b border-line bg-subtle px-4 py-1.5 text-center text-xs text-ink-muted lg:hidden">{copy.banner.mock}</p>}
         <main className="mx-auto max-w-[1160px] px-4 pt-8 pb-20 md:px-8">{children}</main>
+        <NameOnboarding />
       </div>
     </div>
   );

@@ -1,8 +1,8 @@
-// Who is who: display names for addresses. Mock mode uses this sample directory.
-// Real mode: names come from ENS (reverse records), and unknown addresses fall back to a short hex.
+// TEST FIXTURE ONLY (imported by graph.test.ts). Sample parties and invoices, not real people or companies.
+// The app itself never imports this file.
 import type { Address, Invoice } from "@invoiceagent/shared";
 
-export type Role = "buyer" | "supplier" | "investor" | "sponsor";
+import type { Role } from "./graph";
 
 export interface Party {
   address: Address;
