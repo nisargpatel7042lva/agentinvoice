@@ -1,4 +1,5 @@
 import type Database from "better-sqlite3";
+import { getMeta, setMeta } from "./db.js";
 import type { Status } from "@agentinvoice/shared";
 import { keccak256, toHex, zeroAddress, type Address, type Hex } from "viem";
 
@@ -58,12 +59,9 @@ export interface IndexerOptions {
 }
 
 export function getLastSyncedAt(db: Database.Database): number | null {
-  const row = db.prepare("SELECT value FROM meta WHERE key = 'last_synced_at'").get() as { value: string } | undefined;
-  return row ? Number(row.value) : null;
+  const v = getMeta(db, "last_synced_at");
+  return v === null ? null : Number(v);
 }
-
-const setMeta = (db: Database.Database, key: string, value: string) =>
-  db.prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value").run(key, value);
 
 export function createIndexer(opts: IndexerOptions) {
   const { db, reader } = opts;
@@ -146,10 +144,10 @@ export function createIndexer(opts: IndexerOptions) {
   // after every chunk succeeded, so a failure is simply retried on the next poll.
   async function pollOnce() {
     const head = await withRetry(() => reader.getBlockNumber());
-    const lastRow = db.prepare("SELECT value FROM meta WHERE key = 'last_block'").get() as { value: string } | undefined;
+    const lastBlock = getMeta(db, "last_block");
     let from: bigint;
-    if (lastRow) {
-      from = BigInt(lastRow.value) - reorgDepth + 1n;
+    if (lastBlock !== null) {
+      from = BigInt(lastBlock) - reorgDepth + 1n;
       if (opts.startBlock !== undefined && from < opts.startBlock) from = opts.startBlock;
     } else {
       from = opts.startBlock ?? head - reorgDepth + 1n;
