@@ -5,8 +5,8 @@ Source of truth in code: `apps/web/src/app/theme.css` (Tailwind v4 `@theme`). Us
 ## Principles
 Calm, plain and trustworthy, like a bank statement, not a trading app. There is **one accent colour** (teal), used only for primary actions and links. Everything else is neutral grey. Status colours are muted and always paired with a text label.
 
-## Dark mode: NO
-We ship light mode only. Finance products read as more trustworthy in light mode, judges watch on projectors, and one theme halves the QA work during a 36-hour build. The tokens are CSS variables, so dark mode can be added later without touching components.
+## Dark mode: YES (updated 2026-11-06)
+A sun/moon toggle in the header switches themes. The first visit follows the device setting, and the choice is saved per device. Dark values override the same token names under `[data-theme="dark"]` in `apps/web/src/app/globals.css`, so components never branch on the theme. In dark mode the accent becomes `#2DD4BF` with dark text on accent fills (`on-accent`), and status colours become light text on deep tinted backgrounds. All pairs keep at least 4.5:1 contrast.
 
 ## Colour
 

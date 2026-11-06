@@ -1,6 +1,7 @@
-/* Design tokens. Source: docs/design/tokens.md. Light mode only. */
+/* Design tokens. Source: docs/design/tokens.md. Light by default; dark overrides live in globals.css under [data-theme="dark"]. */
 @theme {
   --color-*: initial;
+  --color-on-accent: #ffffff;
   --color-accent: #0f766e;
   --color-accent-hover: #115e59;
   --color-accent-soft: #f0fdfa;

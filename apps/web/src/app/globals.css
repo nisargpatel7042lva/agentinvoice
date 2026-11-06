@@ -1,6 +1,54 @@
 @import "tailwindcss";
 @import "./theme.css";
 
+/* Tailwind v4 utilities read these as CSS variables, so overriding them here re-themes every component. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --color-on-accent: #042f2e;
+  --color-accent: #2dd4bf;
+  --color-accent-hover: #5eead4;
+  --color-accent-soft: #042f2e;
+  --color-accent-200: #134e4a;
+  --color-ink: #fafafa;
+  --color-ink-soft: #d4d4d8;
+  --color-ink-muted: #a1a1aa;
+  --color-ink-faint: #71717a;
+  --color-line: #27272a;
+  --color-subtle: #1f1f23;
+  --color-surface: #18181b;
+  --color-canvas: #09090b;
+  --color-danger: #f87171;
+  --color-warn: #fbbf24;
+  --color-good: #4ade80;
+
+  --color-status-pending: #cbd5e1;
+  --color-status-pending-bg: #1e293b;
+  --color-status-open: #93c5fd;
+  --color-status-open-bg: #172554;
+  --color-status-funded: #5eead4;
+  --color-status-funded-bg: #042f2e;
+  --color-status-paid: #86efac;
+  --color-status-paid-bg: #052e16;
+  --color-status-late: #fcd34d;
+  --color-status-late-bg: #451a03;
+  --color-status-defaulted: #fca5a5;
+  --color-status-defaulted-bg: #450a0a;
+
+  --color-band-a: #86efac;
+  --color-band-a-bg: #052e16;
+  --color-band-b: #93c5fd;
+  --color-band-b-bg: #172554;
+  --color-band-c: #fcd34d;
+  --color-band-c-bg: #451a03;
+  --color-band-new: #cbd5e1;
+  --color-band-new-bg: #1e293b;
+
+  --shadow-card: 0 0 0 1px rgb(255 255 255 / 0.04);
+  --shadow-raised: 0 8px 24px rgb(0 0 0 / 0.5);
+}
+
 body {
   background: var(--color-canvas);
   color: var(--color-ink);

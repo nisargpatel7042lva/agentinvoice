@@ -22,7 +22,7 @@ export function ApprovalCard({ approval, agentName, amount, threshold, onApprove
       {approval.state === "pending" && (
         <>
           <div className="mt-6 flex gap-3">
-            <button type="button" onClick={onApprove} className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover">
+            <button type="button" onClick={onApprove} className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover">
               {copy.approval.approve}
             </button>
             <button type="button" onClick={onReject} className="rounded-md border border-line px-4 py-2 text-sm font-medium hover:bg-canvas">
