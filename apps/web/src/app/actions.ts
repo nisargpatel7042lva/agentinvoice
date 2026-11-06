@@ -3,7 +3,7 @@
 // mock mode changes the in-memory demo store; real mode is where each owner wires their piece.
 // See docs/notes/frontend-actions.md.
 import { revalidatePath } from "next/cache";
-import { ApiError, createApiClient, parseUnits, type Address, type Hash32 } from "@agentinvoice/shared";
+import { ApiError, createApiClient, parseUnits, type Address, type Hash32, type Invoice } from "@agentinvoice/shared";
 import { isMock } from "@/lib/env";
 import { lookupBuyer as lookupBuyerName, type BuyerLookup } from "@/lib/ens";
 import { MockError, mockStore } from "@/lib/mockStore";
@@ -13,6 +13,47 @@ const backend = createApiClient({ baseUrl: process.env.NEXT_PUBLIC_BACKEND_URL }
 /** Live buyer lookup for the create form: a 0x vault address, or an ENS name read from Sepolia. */
 export async function lookupBuyer(input: string): Promise<BuyerLookup> {
   return lookupBuyerName(input);
+}
+
+// ---- profile: seller ENS name (the backend registers it on Sepolia and pays the gas) ----
+const backendUrl = () => (process.env.NEXT_PUBLIC_BACKEND_URL ?? "").replace(/\/$/, "");
+
+/** The wallet's invoices (as supplier or holder) and its minted ENS name. Mock mode has no names. */
+export async function loadProfile(owner: string): Promise<{ name: string | null; parent: string | null; invoices: Invoice[]; canMint: boolean }> {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(owner)) return { name: null, parent: null, invoices: [], canMint: false };
+  const me = owner.toLowerCase();
+  const all: Invoice[] = isMock ? await mockStore.listInvoices() : await backend.listInvoices().catch(() => []);
+  const invoices = all.filter((i) => i.supplier.toLowerCase() === me || i.holder?.toLowerCase() === me);
+  if (isMock || !backendUrl()) return { name: null, parent: null, invoices, canMint: false };
+  try {
+    const r = await fetch(`${backendUrl()}/api/names/${owner}`, { cache: "no-store" });
+    const j = (await r.json()) as { name: string | null; parent: string | null };
+    return { name: j.name, parent: j.parent, invoices, canMint: Boolean(j.parent) };
+  } catch {
+    return { name: null, parent: null, invoices, canMint: false };
+  }
+}
+
+export async function nameClaimMessage(label: string, owner: string): Promise<ActionResult<{ message: string }>> {
+  try {
+    const r = await fetch(`${backendUrl()}/api/names/message?label=${encodeURIComponent(label)}&owner=${owner}`, { cache: "no-store" });
+    if (!r.ok) return { ok: false, message: r.status === 503 ? "Name minting is not set up on the backend." : "That name or wallet is not valid." };
+    return { ok: true, message: "ok", data: (await r.json()) as { message: string } };
+  } catch {
+    return { ok: false, message: "Our server is not responding. Is the backend running?" };
+  }
+}
+
+export async function mintName(label: string, owner: string, signature: string): Promise<ActionResult<{ name: string; txHash: string }>> {
+  try {
+    const r = await fetch(`${backendUrl()}/api/names`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ label, owner, signature }) });
+    const j = (await r.json()) as { name?: string; txHash?: string; message?: string };
+    if (!r.ok || !j.name || !j.txHash) return { ok: false, message: j.message ?? "Could not register the name." };
+    revalidatePath("/", "layout");
+    return { ok: true, message: `Registered ${j.name} on Sepolia.`, data: { name: j.name, txHash: j.txHash } };
+  } catch {
+    return { ok: false, message: "Our server is not responding. Is the backend running?" };
+  }
 }
 
 export type ActionResult<T = undefined> = { ok: true; message: string; data?: T } | { ok: false; message: string };
