@@ -34,12 +34,12 @@ ENSv2 namespaces (Prompt 2 + v2-S2)
 
 ## Phase 2: backend core (hours 6 to 16) - branch `phase_2_backend_sidd`
 
-- [ ] 2.1 Schema and migrations: invoices, events, approvals, agents, meta
-- [ ] 2.2 `src/indexer.ts`: poll events every 5s, dedupe by tx hash + log index, re-read last 5 blocks, retries capped at 3, expose `lastSyncedAt`
-- [ ] 2.3 `src/score.ts`: paid, late, defaulted, openExposure, onTimeRate, band (table-driven test of band edges)
-- [ ] 2.4 Routes with zod: `/health`, `/api/invoices`, `/api/invoices/:id`, `/api/agents/:vault`, `/api/events`
-- [ ] 2.5 `scripts/seed.ts`: DEMO rows only when `SEED=1`, `source="seed"`; real rows `source="chain"`
-- [ ] 2.6 Tests: indexer dedupe and idempotency, score bands, each route once, tinybar and value conversion
+- [x] 2.1 Schema and migrations: invoices, events, approvals, agents, meta
+- [x] 2.2 `src/indexer.ts`: poll events every 5s, dedupe by tx hash + log index, re-read last 5 blocks, retries capped at 3, expose `lastSyncedAt`
+- [x] 2.3 `src/score.ts`: paid, late, defaulted, openExposure, onTimeRate, band (table-driven test of band edges)
+- [x] 2.4 Routes with zod: `/health`, `GET /api/invoices`, `GET /api/invoices/:id` (spec v2 API; `/api/agents/:vault` and `/api/events` are not in spec v2, so not built; POST /api/invoices, /api/approvals, /api/world/callback, /api/audit come later)
+- [x] 2.5 `scripts/seed.ts`: DEMO rows only when `SEED=1`, `source="seed"`; real rows `source="chain"`
+- [x] 2.6 Tests: indexer dedupe and idempotency, score bands, each route once, tinybar and value conversion
 - [ ] Gate 2: a real invoice shows in `/api/invoices` within 10s with a HashScan link, score returns sensible bands
 
 HCS audit log (v2-S3, Phase 2 or 3; notes in `docs/notes/hcs.md`)
