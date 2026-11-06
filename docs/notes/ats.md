@@ -1,8 +1,11 @@
 # Asset Tokenization Studio (ATS) Spike Notes
 
 ## Status and Route Decision
-- **Status:** In Progress (Spike S1/v2-M1)
-- **Initial Route Evaluation:** Target route `T1b` (backend issuer wallet calling ATS SDK on `InvoiceFunded`) or `T1a` if contract can hold issuer role.
+- **Final Decision: Route T1b (ATS Bond via Backend Issuer on `InvoiceFunded`)**
+  - **Why T1b:** ATS uses an EIP-2535 Diamond architecture with off-chain SDK tooling. Having `InvoiceMarket.sol` invoke Diamond facets directly on-chain (`T1a`) introduces high contract complexity and gas/calldata friction. In `T1b`, `InvoiceMarket` cleanly records the investor address as `holder` at funding time and emits `InvoiceFunded`. The backend issuer wallet (holding ATS role) then issues the bond to the investor via `@hashgraph/asset-tokenization-sdk`.
+  - **Payment Routing Safety:** `InvoiceMarket.payInvoice()` pays the recorded `holder` address directly, preventing any token transfer desynchronization.
+  - **Fallback (Route T2):** Stablecoin Studio (custodial mint/KYC/freeze). Kept as contingency if ATS testnet facilitators fail.
+- **Status:** Complete (Spike v2-M1)
 
 ## 1. Local Setup Commands (Verified)
 - **Repository:** `https://github.com/hashgraph/asset-tokenization-studio.git`
