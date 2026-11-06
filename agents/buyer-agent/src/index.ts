@@ -44,6 +44,9 @@ async function start(stop: { stopped: boolean }): Promise<void> {
     log,
     readSupplier: (supplier) => spender.recipient(supplier),
     readThreshold: async () => (await spender.rules()).approvalThreshold,
+    readDailyLimit: async () => (await spender.rules()).dailyLimit,
+    readSpentToday: async () => (await spender.rules()).spentToday,
+    readBalance: () => reader.getBalance({ address: spender.address }),
     accept: (id) => spender.accept(market, id),
     pay: (id) => spender.pay(market, id),
   });

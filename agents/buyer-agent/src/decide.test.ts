@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Invoice } from "@invoiceagent/shared";
-import { decide, decisionLine, type DecideInput } from "./decide.js";
+import { DUE_WITHIN_SECONDS, decide, decisionLine, type DecideInput } from "./decide.js";
 
 function invoice(overrides: Partial<Invoice> = {}): Invoice {
   return {
@@ -25,6 +25,9 @@ function input(overrides: Partial<DecideInput> = {}): DecideInput {
     supplierAllowed: true,
     supplierLimit: 100n,
     approvalThreshold: 100n,
+    dailyLimit: 1_000n,
+    spentToday: 0n,
+    balance: 1_000n,
     now: 1_000,
     sponsorApprovalAvailable: false,
     ...overrides,
@@ -50,12 +53,65 @@ describe("buyer decide", () => {
     );
   });
 
+  it("pays a funded invoice due within 10 seconds", () => {
+    const decision = decide(
+      input({
+        invoice: invoice({ status: "Funded", faceAmount: "100", dueDate: 2_000 + DUE_WITHIN_SECONDS }),
+        now: 2_000,
+      }),
+    );
+    expect(decision.action).toBe("pay");
+  });
+
+  it("skips a funded invoice due in more than 10 seconds", () => {
+    const decision = decide(
+      input({
+        invoice: invoice({ status: "Funded", faceAmount: "100", dueDate: 2_000 + DUE_WITHIN_SECONDS + 1 }),
+        now: 2_000,
+      }),
+    );
+    expect(decision).toEqual({ action: "skip", reason: "not due yet" });
+  });
+
   it("pays a funded invoice that is due and below the threshold", () => {
     const decision = decide(
       input({ invoice: invoice({ status: "Funded", faceAmount: "100" }), now: 2_000 }),
     );
     expect(decision.action).toBe("pay");
     expect(decision.reason).toBe("due and below approval threshold");
+  });
+
+  it("pays when the face amount uses the last of the daily limit and the balance", () => {
+    const decision = decide(
+      input({
+        invoice: invoice({ status: "Funded", faceAmount: "100" }),
+        now: 2_000,
+        dailyLimit: 100n,
+        spentToday: 0n,
+        balance: 100n,
+      }),
+    );
+    expect(decision.action).toBe("pay");
+  });
+
+  it("skips a due payment the vault balance cannot cover", () => {
+    const decision = decide(
+      input({ invoice: invoice({ status: "Funded", faceAmount: "100" }), now: 2_000, balance: 99n }),
+    );
+    expect(decision).toEqual({ action: "skip", reason: "vault balance is too low" });
+  });
+
+  it("skips a due payment that would pass the daily limit even with sponsor approval", () => {
+    const decision = decide(
+      input({
+        invoice: invoice({ status: "Funded", faceAmount: "100" }),
+        now: 2_000,
+        dailyLimit: 100n,
+        spentToday: 1n,
+        sponsorApprovalAvailable: true,
+      }),
+    );
+    expect(decision).toEqual({ action: "skip", reason: "daily limit would be exceeded" });
   });
 
   it("skips a due payment above the threshold when sponsor approval is unavailable", () => {

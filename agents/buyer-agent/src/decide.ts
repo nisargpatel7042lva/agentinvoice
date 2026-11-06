@@ -10,9 +10,15 @@ export interface DecideInput {
   supplierAllowed: boolean;
   supplierLimit: bigint;
   approvalThreshold: bigint;
+  dailyLimit: bigint;
+  spentToday: bigint;
+  balance: bigint;
   now: number;
   sponsorApprovalAvailable: boolean;
 }
+
+/** A funded invoice can be paid this many seconds before its due time. */
+export const DUE_WITHIN_SECONDS = 10;
 
 /** Pure: same inputs, same answer. Amounts are the invoice face amount in tinybar. */
 export function decide(input: DecideInput): BuyerDecision {
@@ -27,7 +33,9 @@ export function decide(input: DecideInput): BuyerDecision {
   }
 
   if (invoice.status === "Funded") {
-    if (now < invoice.dueDate) return { action: "skip", reason: "not due yet" };
+    if (invoice.dueDate > now + DUE_WITHIN_SECONDS) return { action: "skip", reason: "not due yet" };
+    if (input.balance < face) return { action: "skip", reason: "vault balance is too low" };
+    if (input.spentToday + face > input.dailyLimit) return { action: "skip", reason: "daily limit would be exceeded" };
     if (face > input.approvalThreshold && !input.sponsorApprovalAvailable) {
       return { action: "skip", reason: "needs sponsor approval" };
     }
