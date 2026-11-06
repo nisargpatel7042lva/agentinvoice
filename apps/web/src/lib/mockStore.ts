@@ -15,10 +15,10 @@ import {
   type Invoice,
   type Status,
 } from "@agentinvoice/shared";
-import { sampleNetworkInvoices } from "./directory";
+import { sampleNetworkInvoices, sampleParties } from "./directory";
 
 // Bump when the seed data changes, so a running dev server reseeds instead of keeping stale demo data.
-const SEED_VERSION = 2;
+const SEED_VERSION = 3;
 
 interface State {
   version: number;
@@ -29,14 +29,36 @@ interface State {
   nextSeq: number;
 }
 
-const fresh = (): State => ({
-  version: SEED_VERSION,
-  invoices: structuredClone([...invoiceFixtures, ...sampleNetworkInvoices]),
-  audit: structuredClone(auditFixtures),
-  approvals: [structuredClone(approvalFixture)],
-  nextId: 100,
-  nextSeq: Math.max(...auditFixtures.map((e) => e.sequenceNumber)) + 1,
-});
+const fresh = (): State => {
+  const audit = structuredClone(auditFixtures);
+  // Add an invoice.late event for invoice 11 (which is Paid), proving late payment tracking
+  const lateSeq = Math.max(...auditFixtures.map((e) => e.sequenceNumber)) + 1;
+  audit.unshift({
+    topicId: "0.0.5005",
+    sequenceNumber: lateSeq,
+    consensusTimestamp: "1793850000.000000000",
+    type: "invoice.late",
+    invoiceId: "11",
+    data: {},
+  });
+
+  // Invoice 5 (Late) and 6 (Defaulted) from test fixtures belong to globex (C buyer) in mock store
+  const seededInvoices = [
+    ...invoiceFixtures.map((i) =>
+      i.id === "5" || i.id === "6" ? { ...i, buyerVault: sampleParties[2].address } : i
+    ),
+    ...sampleNetworkInvoices,
+  ];
+
+  return {
+    version: SEED_VERSION,
+    invoices: structuredClone(seededInvoices),
+    audit,
+    approvals: [structuredClone(approvalFixture)],
+    nextId: 100,
+    nextSeq: lateSeq + 1,
+  };
+};
 
 // Kept on globalThis so Next dev hot-reload does not wipe the demo state on every edit.
 const g = globalThis as unknown as { __aiMock?: State };

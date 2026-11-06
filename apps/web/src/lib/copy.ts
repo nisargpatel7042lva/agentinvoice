@@ -46,6 +46,10 @@ export const copy = {
     overview: "Market overview",
     overviewHint: "Totals and charts for every invoice",
     filterAll: "All statuses",
+    filterScore: "Minimum score",
+    filterScoreAny: "Any score",
+    filterScore650: "650+ (Band B/A)",
+    filterScore750: "750+ (Band A)",
     col: { invoice: "Invoice", buyer: "Buyer", sponsor: "Sponsor", face: "Face amount", price: "Price", due: "Due", score: "Score", status: "Status" },
   },
   empty: {
@@ -134,6 +138,48 @@ export const copy = {
     expired: "This request expired. The agent will ask again if it still needs to pay.",
   },
   toast: { pending: "Waiting for the network to confirm…", success: "Done.", viewTx: "View transaction" },
+  creditScore: {
+    title: "Credit score",
+    scale: "300–900",
+    minScoreFilter: "Minimum score",
+    filterAny: "Any score",
+    filter650: "650+ (Good)",
+    filter750: "750+ (Excellent)",
+    noScore: "—",
+    newChip: "New",
+    asOf: (date: string) => `As of ${date}`,
+    points: (pts: number) => `+${pts} pts`,
+    factors: {
+      payment: "Payment history",
+      defaults: "Defaults & recency",
+      exposure: "Exposure vs limit",
+      history: "History length",
+      volume: "Track record size",
+    },
+    evidence: {
+      show: "Show invoices",
+      hide: "Hide invoices",
+      empty: "No invoices associated with this factor.",
+    },
+    howItWorks: {
+      title: "How this score works",
+      description:
+        "The credit score ranges from 300 to 900 and is computed deterministically from on-chain invoice history. It is tamper-proof: every input is verified from smart contract events on Hedera, with zero off-chain opinion.",
+      factorsIntro: "The score is calculated across 5 weighted factors:",
+      factor1:
+        "Payment history (35%): Rewards invoices paid on time, discounts late payments, and heavily penalizes missed payments.",
+      factor2:
+        "Defaults & recency (20%): Evaluates unfulfilled obligations, with recent defaults penalized twice as heavily as older ones.",
+      factor3:
+        "Exposure vs limit (20%): Measures current open exposure against the vault's daily spending limit.",
+      factor4:
+        "History length (15%): Tracks the time elapsed since the buyer's first invoice (180 days for full score).",
+      factor5:
+        "Track record size (10%): Measures the total count of settled invoices (20 needed for full score).",
+      newRule:
+        "Agents with fewer than 3 settled invoices receive a 'New' band until sufficient history is established.",
+    },
+  },
   error: {
     generic: "Something went wrong. Nothing was charged. Please try again.",
     notFound: "We could not find this invoice.",

@@ -8,7 +8,8 @@ import { Section } from "@/components/Section";
 import { MarketTable, type MarketRow } from "@/components/MarketTable";
 import { buttonVariants, Card, CardContent, CardHeader, CardTitle, Progress, StatCard } from "@/components/ui";
 import { api } from "@/lib/api";
-import { loadEnsByVault, loadScore } from "@/lib/agents";
+import { loadEnsByVault } from "@/lib/agents";
+import { loadCreditReport } from "@/lib/credit";
 import { copy } from "@/lib/copy";
 import { formatAmount } from "@/lib/format";
 import { faceByStatus, marketStats } from "@/lib/stats";
@@ -23,14 +24,19 @@ export default async function MarketplacePage() {
   const info = new Map(
     await Promise.all(
       vaults.map(async (v) => {
-        const [score, ens] = await Promise.all([loadScore(v), loadEnsByVault(v)]);
-        return [v, { score, name: "agent" in ens ? ens.agent?.name : undefined }] as const;
+        const [creditReport, ens] = await Promise.all([loadCreditReport(v), loadEnsByVault(v)]);
+        return [v, { creditReport, name: "agent" in ens ? ens.agent?.name : undefined }] as const;
       }),
     ),
   );
   const rows: MarketRow[] = invoices.map((invoice) => {
     const i = info.get(invoice.buyerVault.toLowerCase());
-    return { invoice, buyerName: i?.name, band: i?.score?.band, score: i?.score && i.score.band !== "New" ? i.score.onTimeRate : null };
+    return {
+      invoice,
+      buyerName: i?.name,
+      band: i?.creditReport?.band,
+      score: i?.creditReport?.score ?? null,
+    };
   });
   const s = marketStats(invoices);
 

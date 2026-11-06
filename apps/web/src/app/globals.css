@@ -4,21 +4,25 @@
 /* Tailwind v4 utilities read these as CSS variables, so overriding them here re-themes every component. */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
+/* Night: deep harbour navy rather than black, so the brand still reads. */
 [data-theme="dark"] {
   color-scheme: dark;
-  --color-on-accent: #042f2e;
-  --color-accent: #2dd4bf;
-  --color-accent-hover: #5eead4;
-  --color-accent-soft: #042f2e;
-  --color-accent-200: #134e4a;
-  --color-ink: #fafafa;
-  --color-ink-soft: #d4d4d8;
-  --color-ink-muted: #a1a1aa;
-  --color-ink-faint: #71717a;
-  --color-line: #27272a;
-  --color-subtle: #1f1f23;
-  --color-surface: #18181b;
-  --color-canvas: #09090b;
+  --color-on-accent: #071226;
+  --color-accent: #8fa9ff;
+  --color-accent-hover: #b4c5ff;
+  --color-accent-soft: #15254a;
+  --color-accent-200: #22346b;
+  --color-highlight: #9db4ff;
+  --color-glow: #1b6f8f;
+  --color-panel: #0a1830;
+  --color-ink: #eef3ff;
+  --color-ink-soft: #c6d2ea;
+  --color-ink-muted: #8fa0c2;
+  --color-ink-faint: #5c6f92;
+  --color-line: #1f3558;
+  --color-subtle: #13274a;
+  --color-surface: #0e1f3d;
+  --color-canvas: #071226;
   --color-danger: #f87171;
   --color-warn: #fbbf24;
   --color-good: #4ade80;
@@ -45,12 +49,96 @@
   --color-band-new: #cbd5e1;
   --color-band-new-bg: #1e293b;
 
-  --shadow-card: 0 0 0 1px rgb(255 255 255 / 0.04);
-  --shadow-raised: 0 8px 24px rgb(0 0 0 / 0.5);
+  --shadow-card: 0 0 0 1px rgb(255 255 255 / 0.05), 0 12px 30px -18px rgb(0 0 0 / 0.6);
+  --shadow-raised: 0 18px 40px -12px rgb(0 0 0 / 0.6);
 }
 
 body {
   background: var(--color-canvas);
   color: var(--color-ink);
   font-feature-settings: "tnum";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Halden button: a glowing cyan dot that grows into a circle holding a navy chevron on hover.
+   Add the `btn-dot` class to any pill button (works on <button> and <a>). */
+.btn-dot {
+  position: relative;
+  padding-right: 46px !important;
+}
+.btn-dot::after {
+  content: "";
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin-top: -5px;
+  border-radius: 9999px;
+  background-color: var(--color-dot);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%230b1d3a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 2.5 8 6l-3.5 3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 0 0;
+  box-shadow: 0 0 10px rgb(47 224 208 / 0.7);
+  transition:
+    width 0.45s var(--ease-out-soft),
+    height 0.45s var(--ease-out-soft),
+    margin 0.45s var(--ease-out-soft),
+    right 0.45s var(--ease-out-soft),
+    box-shadow 0.45s var(--ease-out-soft),
+    background-size 0.3s var(--ease-out-soft) 0.05s;
+}
+.btn-dot:hover::after,
+.btn-dot:focus-visible::after {
+  right: 5px;
+  width: 32px;
+  height: 32px;
+  margin-top: -16px;
+  box-shadow: none;
+  background-size: 12px 12px;
+}
+.btn-dot.btn-lg {
+  padding-right: 62px !important;
+}
+.btn-dot.btn-lg::after {
+  right: 24px;
+  width: 14px;
+  height: 14px;
+  margin-top: -7px;
+}
+.btn-dot.btn-lg:hover::after,
+.btn-dot.btn-lg:focus-visible::after {
+  right: 7px;
+  width: 48px;
+  height: 48px;
+  margin-top: -24px;
+  background-size: 16px 16px;
+}
+
+/* Gentle entrance used across the site. */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.fade-up {
+  opacity: 0;
+  animation: fade-up 0.9s var(--ease-out-soft) forwards;
+  animation-delay: var(--d, 0s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-up {
+    opacity: 1;
+    animation: none;
+  }
+  .btn-dot::after {
+    transition: none;
+  }
 }
