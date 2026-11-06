@@ -30,4 +30,6 @@ Thumbs.db
 # Documents and logs
 *.pdf
 *.log
+package-lock.json
+
 
