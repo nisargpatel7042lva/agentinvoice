@@ -1,12 +1,11 @@
 /**
  * SaucerSwap HBAR→USDC helpers for Hedera testnet.
  *
- * Import from "@invoiceagent/shared/saucerswap" (agents/scripts only).
+ * Import from "@invoiceagent/shared/saucerswap" (agents/scripts/backend only).
  * Do not import from the main "@invoiceagent/shared" entry — this module pulls
- * @hashgraph/sdk on the execute path and must not ship in the web bundle.
+ * @hashgraph/sdk on the execute/associate path and must not ship in the web bundle.
  *
- * Phase 2: library only. No HTTP routes. No live swaps unless dryRun is false
- * and a dedicated SAUCERSWAP_OPERATOR_* key is configured.
+ * For web-safe token labels, import SAUCERSWAP_TESTNET_USDC from "@invoiceagent/shared".
  */
 export {
   WHBAR_TOKEN_ID,
@@ -42,10 +41,14 @@ export {
 } from "./balance";
 export {
   encodeExactInputMulticall,
+  decodeMulticallAmountOut,
   prepareSwap,
   executeHbarToUsdc,
+  swapHbarToUsdc,
   defaultBroadcast,
 } from "./swap";
+export { ensureUsdcAssociated } from "./associate";
+export { getSaucerSwapStatus } from "./status";
 
 export type {
   SaucerSwapNetwork,
@@ -62,3 +65,6 @@ export type {
   SaucerSwapDeps,
   ExecuteRequest,
 } from "./types";
+export type { AssociateResult, AssociateDeps } from "./associate";
+export type { SaucerSwapStatus } from "./status";
+export type { SwapHbarToUsdcRequest } from "./swap";

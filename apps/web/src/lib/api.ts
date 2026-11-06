@@ -10,4 +10,6 @@ export const api = {
   listAudit: real.listAudit,
   getApproval: real.getApproval,
   getScoreMock: real.getScoreMock,
+  getSaucerSwapStatus: real.getSaucerSwapStatus,
+  getSaucerSwapQuote: real.getSaucerSwapQuote,
 };

@@ -21,6 +21,7 @@ export type SaucerSwapErrorCode =
   | "BROADCAST_UNCERTAIN"
   | "CONFIRMATION_FAILED"
   | "USDC_VERIFY_FAILED"
+  | "ASSOCIATE_FAILED"
   | "CONFIG_INVALID";
 
 export interface SaucerSwapPolicy {
@@ -143,4 +144,9 @@ export interface ExecuteRequest {
   quote: SwapQuote;
   /** Override dry-run for this call; still blocked if config.dryRun is true. */
   dryRun?: boolean;
+  /**
+   * When true, associate USDC on the operator account before execute if needed.
+   * Still respects dryRun (association is not broadcast in dry-run).
+   */
+  associateIfNeeded?: boolean;
 }
