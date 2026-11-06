@@ -1,13 +1,12 @@
-import Database from "better-sqlite3";
 import Fastify from "fastify";
+import { openDb } from "./db.js";
 
 export interface AppOptions {
   dbPath: string;
 }
 
 export function buildApp({ dbPath }: AppOptions) {
-  const db = new Database(dbPath);
-  db.pragma("journal_mode = WAL");
+  const db = openDb(dbPath);
 
   const app = Fastify();
   app.addHook("onClose", async () => {
