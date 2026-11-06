@@ -4,6 +4,9 @@ pragma solidity ^0.8.24;
 import {IInvoiceMarket, Invoice, Status} from "./interfaces/IInvoiceMarket.sol";
 import {IBondIssuer} from "./interfaces/IBondIssuer.sol";
 
+// UNITS: faceAmount, price, msg.value and claimable are in tinybars: inside the Hedera EVM msg.value and address.balance are tinybars
+// (1 HBAR = 1e8), so they are compared directly. Never scale by 1e10 here; clients convert to the 18-decimal JSON-RPC wire format
+// at the edge (packages/shared units.ts tinybarToWeibar). See docs/notes/contracts-review.md.
 contract InvoiceMarket is IInvoiceMarket {
     error ZeroAddress();
     error InvalidFaceAmount();

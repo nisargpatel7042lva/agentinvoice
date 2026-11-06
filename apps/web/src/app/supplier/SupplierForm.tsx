@@ -74,7 +74,7 @@ export function SupplierForm() {
           <input className="mt-1 block text-sm" type="file" onChange={async (e) => { const f = e.target.files?.[0]; setEvidence(f ? await sha256(f) : null); }} />
           <span className="mt-1 block text-xs text-ink-muted">{evidence ? shortHex(evidence) : copy.supplier.evidenceHelp}</span>
         </label>
-        <button type="submit" disabled={!resolved || !evidence || !face || !price || !due} className="rounded-md bg-accent px-4 py-2 font-medium text-white hover:bg-accent-hover disabled:opacity-50">
+        <button type="submit" disabled={!resolved || !evidence || !face || !price || !due} className="rounded-md bg-accent px-4 py-2 font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50">
           {copy.supplier.submit}
         </button>
       </form>
