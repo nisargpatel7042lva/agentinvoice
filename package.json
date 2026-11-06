@@ -24,10 +24,12 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.6",
+    "@worldcoin/agentkit": "^0.2.1",
     "eslint": "^10.14.0",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.1",
+    "viem": "^2.57.16",
     "vitest": "^5.1.0"
   },
   "type": "module",
