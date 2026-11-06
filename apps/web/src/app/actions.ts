@@ -16,21 +16,77 @@ export async function lookupBuyer(input: string): Promise<BuyerLookup> {
 // ---- profile: seller ENS name (the backend registers it on Sepolia and pays the gas) ----
 const backendUrl = () => (process.env.NEXT_PUBLIC_BACKEND_URL ?? "").replace(/\/$/, "");
 
-/** The wallet's invoices (as supplier or holder) and its minted ENS name. Mock mode has no names. */
-export async function loadProfile(owner: string): Promise<{ name: string | null; parent: string | null; invoices: Invoice[]; canMint: boolean }> {
-  if (!/^0x[0-9a-fA-F]{40}$/.test(owner)) return { name: null, parent: null, invoices: [], canMint: false };
+export type Role = "buyer" | "seller";
+export interface Profile {
+  name: string | null; // the wallet's ENS name (seller name, or the buyer agent's name)
+  parent: string | null;
+  invoices: Invoice[];
+  canMint: boolean;
+  role: Role | null;
+  vault: string | null; // the buyer's registered vault
+}
+
+/** The wallet's invoices (as supplier or holder), chosen role, and its minted ENS name. */
+export async function loadProfile(owner: string): Promise<Profile> {
+  const empty: Profile = { name: null, parent: null, invoices: [], canMint: false, role: null, vault: null };
+  if (!/^0x[0-9a-fA-F]{40}$/.test(owner)) return empty;
   const me = owner.toLowerCase();
   const all: Invoice[] = await backend.listInvoices().catch(() => []);
   const invoices = all.filter((i) => i.supplier.toLowerCase() === me || i.holder?.toLowerCase() === me);
-  if (!backendUrl()) return { name: null, parent: null, invoices, canMint: false };
+  if (!backendUrl()) return { ...empty, invoices };
+  const get = async <T,>(path: string): Promise<T | null> => {
+    try {
+      return (await (await fetch(`${backendUrl()}${path}`, { cache: "no-store" })).json()) as T;
+    } catch {
+      return null;
+    }
+  };
+  const [names, roleRes, agents] = await Promise.all([
+    get<{ name: string | null; parent: string | null }>(`/api/names/${owner}`),
+    get<{ role: Role | null }>(`/api/roles/${owner}`),
+    get<{ agents: { vault: string; name: string; owner: string }[] }>("/api/agents"),
+  ]);
+  const agent = agents?.agents.find((x) => x.owner.toLowerCase() === me);
+  return {
+    name: agent?.name ?? names?.name ?? null,
+    parent: names?.parent ?? null,
+    invoices,
+    canMint: Boolean(names?.parent),
+    role: roleRes?.role ?? null,
+    vault: agent?.vault ?? null,
+  };
+}
+
+async function signedPost<T>(path: string, body: unknown, ok: (j: T) => string, fallback: string): Promise<ActionResult<T>> {
   try {
-    const r = await fetch(`${backendUrl()}/api/names/${owner}`, { cache: "no-store" });
-    const j = (await r.json()) as { name: string | null; parent: string | null };
-    return { name: j.name, parent: j.parent, invoices, canMint: Boolean(j.parent) };
+    const r = await fetch(`${backendUrl()}${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    const j = (await r.json()) as T & { message?: string; error?: string };
+    if (!r.ok) return { ok: false, message: j.message ?? fallback };
+    revalidatePath("/", "layout");
+    return { ok: true, message: ok(j), data: j };
   } catch {
-    return { name: null, parent: null, invoices, canMint: false };
+    return { ok: false, message: "Our server is not responding. Is the backend running?" };
   }
 }
+
+async function messageFrom(path: string): Promise<ActionResult<{ message: string }>> {
+  try {
+    const r = await fetch(`${backendUrl()}${path}`, { cache: "no-store" });
+    if (!r.ok) return { ok: false, message: r.status === 503 ? "This is not set up on the backend." : "Those details are not valid." };
+    return { ok: true, message: "ok", data: (await r.json()) as { message: string } };
+  } catch {
+    return { ok: false, message: "Our server is not responding. Is the backend running?" };
+  }
+}
+
+export const roleMessage = (role: Role, owner: string) => messageFrom(`/api/roles/message?role=${role}&owner=${owner}`);
+export const setRole = (role: Role, owner: string, signature: string) =>
+  signedPost<{ role: Role }>("/api/roles", { role, owner, signature }, (j) => `You are a ${j.role}.`, "Could not save your role.");
+
+export const buyerNameMessage = (label: string, owner: string, vault: string) =>
+  messageFrom(`/api/buyers/message?label=${encodeURIComponent(label)}&owner=${owner}&vault=${vault}`);
+export const mintBuyerName = (label: string, owner: string, vault: string, signature: string) =>
+  signedPost<{ name: string; vault: string; txHash: string }>("/api/buyers", { label, owner, vault, signature }, (j) => `Registered ${j.name} for your vault on Sepolia.`, "Could not register the name.");
 
 export async function nameClaimMessage(label: string, owner: string): Promise<ActionResult<{ message: string }>> {
   try {

@@ -42,7 +42,7 @@ export function NameOnboarding() {
     if (skipped) return;
     let stale = false;
     loadProfile(address).then((p) => {
-      if (stale || p.name || !p.canMint) return;
+      if (stale || p.name || !p.canMint || p.role !== "seller") return; // only sellers get a wallet name; buyers name their vault
       setParent(p.parent);
       setStep("pick");
       setOpen(true);
