@@ -29,6 +29,10 @@ export const ALL_ROLES = 0x11111111111111111111111111111111111111111111111111111
 export const ROLE_SET_TEXT = 1n << 4n;
 export const ROLE_SET_ADDRESS = 1n << 0n;
 
+// Record keys: the publisher may write only the first three; the sponsor owns the rest.
+export const PUBLISHER_KEYS = ["agentinvoice.paid", "agentinvoice.late", "agentinvoice.status"] as const;
+export const SPONSOR_KEYS = ["agentinvoice.limit", "agentinvoice.threshold", "agentinvoice.sponsor"] as const;
+
 export const abis = {
   registrar: parseAbi([
     "function commit(bytes32 commitment)",

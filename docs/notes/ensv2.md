@@ -68,3 +68,10 @@ Deployed bytecode matched the docs, not the newer repo source: `UserRegistry.ini
 - Checked on-chain: `findOwner("buyer")`, `getExpiry` and `getResolver("buyer")` return the expected owner, date and resolver.
 - UNVERIFIED: resolution through the ENS app or viem `getEnsAddress` (viem's default Sepolia Universal Resolver may be the v1 one).
 - Script: `bun scripts/ens/register.ts` (re-runnable; created addresses are saved to .env).
+
+## Task 1.10 result: roles (2026-11-06, Sepolia)
+
+- The sponsor holds ALL_ROLES at the root of the resolver proxy and of the user registry, so it can set `limit`, `threshold`, `sponsor` and unregister (revoke) names.
+- The publisher wallet got `grantSetterRoles(calldata of setText for the key, publisher)` for `agentinvoice.paid`, `.late` and `.status` only. The setter calldata is `setText("0x", key, "")`; only the key scopes the role. `hasRoles(keccak256(key), ROLE_SET_TEXT, publisher)` is true for exactly those three keys.
+- Proof: `bun scripts/ens/refusal.ts` simulates `setText` from the publisher for all six keys: paid, late and status succeed; limit, threshold and sponsor revert. The refused write is simulated (eth_call), not sent.
+- Gotcha: the public Sepolia RPC can lag a block behind, so a `hasRoles` read right after a grant may show false. Re-read after a few seconds.
