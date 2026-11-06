@@ -1,71 +1,66 @@
-# SaucerSwap HBAR → USDC (Phase 2 library)
+# SaucerSwap HBAR → USDC
 
-Library-only helpers under `@invoiceagent/shared/saucerswap`. **No HTTP routes. No agent wiring.** Testnet only; mainnet is rejected.
+Testnet-only helpers for swapping native HBAR into **SaucerSwap-listed testnet USDC `0.0.5449`** via V2 QuoterV2 + SwapRouter.
 
-Target token: SaucerSwap-listed testnet USDC `0.0.5449` (not Circle `0.0.429274`). Method: V2 QuoterV2 + SwapRouter multicall (SaucerSwap developer docs; Phase 1 testnet validation).
+## Important: which USDC?
 
-## Import
+| Token | ID | SaucerSwap testnet |
+| --- | --- | --- |
+| **SaucerSwap-listed USDC (used here)** | `0.0.5449` | Yes — V2 pool fee 3000 |
+| Circle official testnet USDC | `0.0.429274` | **No** — not listed; QuoterV2 reverts |
 
-```ts
-import {
-  loadSaucerSwapConfig,
-  quoteHbarToUsdc,
-  executeHbarToUsdc,
-  USDC_TOKEN_ID,
-} from "@invoiceagent/shared/saucerswap";
+Invoice **market contracts still settle in HBAR**. USDC is an optional treasury asset after a swap. The website marketplace continues to show HBAR for invoice face/price; `/treasury` shows USDC balances and quotes.
+
+## Phase 2 — library
+
+Import from `@invoiceagent/shared/saucerswap` (agents / scripts / backend only — not the web bundle).
+
+Web-safe label: `SAUCERSWAP_TESTNET_USDC` from `@invoiceagent/shared`.
+
+## Phase 3 — integration
+
+1. **Associate** USDC before the first live swap (`ensureUsdcAssociated` / CLI `associate`).
+2. **Investor agent** optional treasury pass: `SAUCERSWAP_ENABLE_AGENT_SWAP=1` + operator env; keeps `SAUCERSWAP_KEEP_HBAR`, swaps `SAUCERSWAP_SWAP_HBAR`.
+3. **Backend** read-only `GET /api/saucerswap/status` and `GET /api/saucerswap/quote` (never broadcasts).
+4. **Website** `/treasury` — USDC identity, caveat, operator balances, live quote.
+5. **CLI** `scripts/saucerswap-hbar-to-usdc.ts` — `status` | `quote` | `associate` | `swap`.
+
+### Configure
+
+```bash
+# Dedicated operator (do NOT reuse investor/supplier/HCS wallets by default)
+SAUCERSWAP_OPERATOR_ACCOUNT_ID=0.0.x
+SAUCERSWAP_OPERATOR_PRIVATE_KEY=…
+
+# Safety
+DRY_RUN=1                 # or SAUCERSWAP_DRY_RUN=1 — never broadcast
+SAUCERSWAP_STATUS=1       # enable backend read-only routes
+SAUCERSWAP_ENABLE_AGENT_SWAP=1
+SAUCERSWAP_SWAP_HBAR=1
+SAUCERSWAP_KEEP_HBAR=10
 ```
 
-Do **not** import this from the main `@invoiceagent/shared` entry (same rule as `payAndGet`) so the web app does not bundle `@hashgraph/sdk`.
-
-## Configure
-
-Copy names from `.env.example` (SaucerSwap section). Use a **dedicated** operator:
-
-- `SAUCERSWAP_OPERATOR_ACCOUNT_ID`
-- `SAUCERSWAP_OPERATOR_PRIVATE_KEY`
-
-Optional policy / endpoint overrides: `SAUCERSWAP_MAX_SWAP_HBAR`, `SAUCERSWAP_MAX_SLIPPAGE_BPS`, `SAUCERSWAP_MIN_USDC_OUT`, `SAUCERSWAP_GAS_RESERVE_HBAR`, `SAUCERSWAP_MIRROR_NODE_URL`, etc.
-
-`DRY_RUN=1` or `SAUCERSWAP_DRY_RUN=1` ⇒ execute prepares calldata and **never** broadcasts.
+### Quote (library)
 
 ```ts
-const config = loadSaucerSwapConfig(); // reads process.env
-// or
-import { createSaucerSwapConfig } from "@invoiceagent/shared/saucerswap";
-const config = createSaucerSwapConfig({ dryRun: true, operatorAccountId: "0.0.x" });
+import { loadSaucerSwapConfig, quoteHbarToUsdc } from "@invoiceagent/shared/saucerswap";
+const config = loadSaucerSwapConfig();
+const quoted = await quoteHbarToUsdc({ amountInTinybar: 100_000_000n }, config);
 ```
 
-## Quote
+### Associate + dry-run / live swap (CLI)
 
-```ts
-const quoted = await quoteHbarToUsdc(
-  { amountInTinybar: 100_000_000n, slippageBps: 100 }, // 1 HBAR, 1% slippage
-  config,
-);
-if (!quoted.ok) throw new Error(`${quoted.code}: ${quoted.reason}`);
-// quoted.quote.amountOut / amountOutMinimum (USDC 6 decimals)
+```bash
+bunx tsx --env-file-if-exists=.env scripts/saucerswap-hbar-to-usdc.ts status
+bunx tsx --env-file-if-exists=.env scripts/saucerswap-hbar-to-usdc.ts associate
+DRY_RUN=1 bunx tsx --env-file-if-exists=.env scripts/saucerswap-hbar-to-usdc.ts swap 1
+# Live (funded account, associated USDC, dry-run unset):
+bunx tsx --env-file-if-exists=.env scripts/saucerswap-hbar-to-usdc.ts swap 1
 ```
 
-Quotes call Mirror Node `POST /api/v1/contracts/call` on QuoterV2 `0.0.1390002` (path WHBAR `0.0.15058` → fee `3000` → USDC `0.0.5449`).
+### Live swap prerequisites
 
-## Dry-run execute
-
-```ts
-const result = await executeHbarToUsdc({ quote: quoted.quote }, { ...config, dryRun: true });
-// result.ok && result.dryRun → prepared multicall bytes, no broadcast
-```
-
-Live execute (only when `dryRun` is false and operator key is set) broadcasts via `@hashgraph/sdk` to SwapRouter `0.0.1414040`, waits for Mirror confirmation, and verifies USDC balance increased by at least `amountOutMinimum`. Uncertain broadcasts are **not** retried.
-
-## Safety
-
-- Valid, non-stale quote required
-- Max swap HBAR, max slippage bps, min USDC out, gas reserve
-- USDC association preflight
-- No private keys in logs
-- No blind retry after uncertain broadcast
-- Mainnet rejected
-
-## Phase 3 (not done)
-
-HTTP quote/execute routes, agent integration, and any funded live swap are out of scope for Phase 2.
+1. Dedicated funded Hedera **testnet** account.
+2. Associate token `0.0.5449` to that account.
+3. Operator key in env; dry-run off.
+4. Accept that `0.0.5449` is **not** Circle `0.0.429274` (no pool for Circle on SaucerSwap testnet today).

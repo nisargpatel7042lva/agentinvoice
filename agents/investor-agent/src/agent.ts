@@ -12,6 +12,8 @@ export interface AgentDeps {
   dryRun?: boolean;
   log?: (line: string) => void;
   txUrl?: (hash: Hash32) => string;
+  /** Optional HBAR→USDC treasury pass (SaucerSwap) after each invoice loop. */
+  treasurySwap?: () => Promise<void>;
 }
 
 export const MAX_RETRIES = 3;
@@ -61,6 +63,9 @@ export function createInvestorAgent(deps: AgentDeps) {
         failures.set(inv.id, n);
         line(inv, score, d, `buy failed (${n}/${MAX_RETRIES}): ${(err as Error).message}`);
       }
+    }
+    if (deps.treasurySwap) {
+      await deps.treasurySwap().catch((e) => log(`saucerswap error: ${(e as Error).message}`));
     }
     return bought;
   }

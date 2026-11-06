@@ -8,6 +8,7 @@ import { auditRoutes, type AuditOptions } from "./routes/audit.js";
 import type { InvoiceIssuer } from "./chain/issuer.js";
 import { nameRoutes, type NameMinter } from "./routes/names.js";
 import { invoiceCreateRoutes, invoiceRoutes } from "./routes/invoices.js";
+import { saucerswapRoutes, type SaucerSwapRouteOptions } from "./routes/saucerswap.js";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -37,9 +38,10 @@ export interface AppOptions {
   limits?: Partial<RateLimits>; // per-client requests per minute on the rate-limited endpoints
   issuer?: InvoiceIssuer; // creates invoices on-chain for POST /api/invoices; without it the route answers 503
   minter?: NameMinter; // registers seller ENS names on Sepolia for POST /api/names; without it the route answers 503
+  saucerswap?: SaucerSwapRouteOptions; // read-only quote/status; execute stays in agents/scripts
 }
 
-export function buildApp({ dbPath, world, audit, onAudit, features = {}, limits, issuer, minter }: AppOptions) {
+export function buildApp({ dbPath, world, audit, onAudit, features = {}, limits, issuer, minter, saucerswap }: AppOptions) {
   const db = openDb(dbPath);
 
   const app = Fastify({ logger: process.env.NODE_ENV !== "test" && !process.env.VITEST, bodyLimit: MAX_BODY_BYTES });
@@ -85,6 +87,7 @@ export function buildApp({ dbPath, world, audit, onAudit, features = {}, limits,
 
   invoiceRoutes(app);
   auditRoutes(app, audit ?? { topicId: process.env.HCS_TOPIC_ID || undefined });
+  saucerswapRoutes(app, saucerswap ?? {});
   // Rate limiting is opt-in per route (global: false), so only the approval endpoints are limited. The plugin must finish
   // loading before the routes are added, so they are registered inside this scope. POST /api/invoices spends gas, so it is limited too.
   const approvalWorld = world === null ? undefined : (world ?? worldFromEnv());
