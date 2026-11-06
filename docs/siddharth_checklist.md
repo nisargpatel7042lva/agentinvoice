@@ -53,21 +53,21 @@ HCS audit log (v2-S3, Phase 2 or 3; notes in `docs/notes/hcs.md`)
 ## Phase 3: approval service and ENS publisher (hours 16 to 26) - branch `phase_3_approval_ens_sidd`
 
 Approval service (Prompt 4 + v2-S4: step-up replaces AgentKit)
-- [ ] 3.1 `src/approval/machine.ts`: pending, approved, denied, expired, consumed (table-driven transition tests)
-- [ ] 3.2 `POST /api/approval/start`: creates approval, returns authorization URL
-- [ ] 3.3 Callback validates the ID token, then checks subject, action, amount, expiry, not consumed; distinct error codes (wrong agent, wrong action, replay, oversize, expired, stale auth time, other approval id)
-- [ ] 3.4 EIP-712 attestation signing (SupplierApproval, LargePayment) using domain and types from `spec.md`; store hashed subject only
-- [ ] 3.5 `POST /api/approval/:id/deny`, `GET /api/approval/:id`, expiry sweep every 30s; action `buyer-acceptance` if a sponsor must approve a new supplier
-- [ ] 3.6 Demo controls behind `DEMO_CONTROLS=1` plus secret header
-- [ ] 3.7 `docs/FEEDBACK_WORLD.md` finished
+- [x] 3.1 `src/approval/machine.ts`: pending, approved, denied, expired, consumed (table-driven transition tests)
+- [x] 3.2 `POST /api/approval/start`: creates approval, returns authorization URL
+- [x] 3.3 (distinct codes via StepUpError and ApprovalUseError) Callback validates the ID token, then checks subject, action, amount, expiry, not consumed; distinct error codes (wrong agent, wrong action, replay, oversize, expired, stale auth time, other approval id)
+- [ ] 3.4 (NOT IN SPEC v2: no EIP-712 domain or types are frozen, so no attestation is signed; ask Nisarg/Mann) EIP-712 attestation signing (SupplierApproval, LargePayment) using domain and types from `spec.md`; store hashed subject only
+- [x] 3.5 `POST /api/approval/:id/deny`, `GET /api/approval/:id`, expiry sweep every 30s; action `buyer-acceptance` if a sponsor must approve a new supplier
+- [ ] 3.6 (NOT IN SPEC v2 API, not built; ask Nisarg) Demo controls behind `DEMO_CONTROLS=1` plus secret header
+- [x] 3.7 (draft in docs/FEEDBACK_WORLD.md; finish after the real flow) `docs/FEEDBACK_WORLD.md` finished
 
 ENS publisher (Prompt 5 + v2-S4)
-- [ ] 3.8 `buildRecords` (pure, tested)
-- [ ] 3.9 `publishRecords` through v2-S2 roles (publisher wallet only), writes only changed keys
-- [ ] 3.10 `readRecords` via `readAgentFromEns`, exported via `GET /api/agents/:vault`
-- [ ] 3.11 Scheduler: after each indexed event and every 60s, retries capped at 3
-- [ ] 3.12 On default: sponsor flow revokes/expires subname, publisher writes status `defaulted`
-- [ ] 3.13 Tests with mocked viem: unchanged = zero txs, one change = one tx, failed write retries then gives up, publisher writing `limit` is refused
+- [x] 3.8 `buildRecords` (pure, tested)
+- [x] 3.9 `publishRecords` through v2-S2 roles (publisher wallet only), writes only changed keys
+- [x] 3.10 `readRecords` via `readAgentFromEns`, exported via `GET /api/agents/:vault`
+- [x] 3.11 Scheduler: after each indexed event and every 60s, retries capped at 3
+- [ ] 3.12 (publisher writes status defaulted; the sponsor revoke is scripts/ens/revoke.ts, not run by the backend) On default: sponsor flow revokes/expires subname, publisher writes status `defaulted`
+- [x] 3.13 Tests with mocked viem: unchanged = zero txs, one change = one tx, failed write retries then gives up, publisher writing `limit` is refused
 - [ ] 3.14 Review Mann's signature domain against the backend (help him with the testnet attestation test)
 - [ ] Gate 3: E2 to E6 pass, backend-signed attestation accepted on-chain, a revoked name shows as revoked in `readAgentFromEns`
 

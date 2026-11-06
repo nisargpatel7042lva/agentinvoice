@@ -47,6 +47,7 @@ export interface IndexerOptions {
   now?: () => number; // unix seconds
   sleep?: (ms: number) => Promise<void>;
   onError?: (err: unknown) => void;
+  onChange?: (invoiceIds: string[]) => void; // called after invoices were refreshed from new events
 }
 
 export function getLastSyncedAt(db: Database.Database): number | null {
@@ -128,6 +129,7 @@ export function createIndexer(opts: IndexerOptions) {
       }
     })();
     for (const id of touched) await refreshInvoice(id);
+    if (touched.size > 0) opts.onChange?.([...touched]);
   }
 
   // One poll: read from (last indexed block - reorgDepth + 1) to the head, in chunks. Progress is saved only
