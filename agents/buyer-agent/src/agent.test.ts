@@ -1,14 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { invoiceFixtures, type Address, type Hash32, type Invoice } from "@agentinvoice/shared";
+import { createBuyerAgent, MAX_RETRIES } from "./agent.js";
 import { loadConfig } from "./config.js";
-import { runLoop } from "./index.js";
-
-const sample = {
-  NEXT_PUBLIC_MOCK: "1",
-  NEXT_PUBLIC_BACKEND_URL: "http://localhost:3001",
-  PORT: "3001",
-  DB_PATH: "agentinvoice.db",
-  APP_URL: "http://localhost:3000",
-};
+import { log } from "./logger.js";
 
 describe("buyer-agent", () => {
   const previous = new Map<string, string | undefined>();
@@ -23,29 +17,97 @@ describe("buyer-agent", () => {
   });
 
   it("names a missing environment variable", () => {
-    expect(() =>
-      loadConfig({
-        NEXT_PUBLIC_BACKEND_URL: sample.NEXT_PUBLIC_BACKEND_URL,
-        PORT: sample.PORT,
-        DB_PATH: sample.DB_PATH,
-        APP_URL: sample.APP_URL,
-      }),
-    ).toThrow(/Missing environment variables:[\s\S]*NEXT_PUBLIC_MOCK/);
+    expect(() => loadConfig({})).toThrow(/Missing environment variables:[\s\S]*BACKEND_URL/);
   });
 
   it("stops the loop when the stop flag is set", async () => {
-    for (const [key, value] of Object.entries(sample)) {
-      previous.set(key, process.env[key]);
-      process.env[key] = value;
-    }
     vi.spyOn(console, "log").mockImplementation(() => {});
     const stop = { stopped: false };
-    const done = runLoop(5_000, stop);
+    const agent = createBuyerAgent({ ...deps([]), log });
+    const done = agent.run(5_000, stop);
     stop.stopped = true;
     const started = Date.now();
     await done;
     expect(Date.now() - started).toBeLessThan(1_000);
     const lines = vi.mocked(console.log).mock.calls.map((call) => String(call[0]));
     expect(lines.some((line) => line.includes("buyer-agent") && line.includes("stopped"))).toBe(true);
+  });
+});
+
+const VAULT = invoiceFixtures[0].buyerVault;
+const hash = `0x${"11".repeat(32)}` as Hash32;
+
+function deps(invoices: Invoice[], extra: Partial<Parameters<typeof createBuyerAgent>[0]> = {}) {
+  return {
+    api: {
+      listInvoices: vi.fn(async (status?: Invoice["status"]) => invoices.filter((invoice) => invoice.status === status)),
+      getInvoice: vi.fn(async (id: string) => {
+        const found = invoices.find((invoice) => invoice.id === id);
+        if (!found) throw new Error(`missing ${id}`);
+        return found;
+      }),
+    },
+    vaultAddress: VAULT,
+    marketAddress: "0xb41048c7369d33d4e396ccb2e95e974b95a06d8b" as Address,
+    readSupplier: vi.fn(async () => ({ allowed: true, limit: 1_000_000_000n })),
+    readThreshold: vi.fn(async () => 1_000_000_000n),
+    accept: vi.fn(async () => hash),
+    pay: vi.fn(async () => hash),
+    now: () => invoiceFixtures[0].dueDate - 10,
+    log: () => {},
+    ...extra,
+  };
+}
+
+describe("buyer flow", () => {
+  it("accepts a pending invoice for our vault", async () => {
+    const wired = deps([invoiceFixtures[0]]);
+    await createBuyerAgent(wired).tick();
+    expect(wired.accept).toHaveBeenCalledWith(1n);
+    expect(wired.pay).not.toHaveBeenCalled();
+  });
+
+  it("ignores an invoice for another vault", async () => {
+    const other = { ...invoiceFixtures[0], buyerVault: "0x9999999999999999999999999999999999999999" as Address };
+    const wired = deps([other]);
+    await createBuyerAgent(wired).tick();
+    expect(wired.api.getInvoice).not.toHaveBeenCalled();
+    expect(wired.accept).not.toHaveBeenCalled();
+  });
+
+  it("pays a due funded invoice below the threshold with no sponsor bytes", async () => {
+    const funded = invoiceFixtures.find((invoice) => invoice.status === "Funded")!;
+    const wired = deps([funded], { now: () => funded.dueDate });
+    await createBuyerAgent(wired).tick();
+    expect(wired.pay).toHaveBeenCalledWith(BigInt(funded.id));
+    expect(wired.accept).not.toHaveBeenCalled();
+  });
+
+  it("logs needs sponsor approval and does not pay above the threshold", async () => {
+    const funded = invoiceFixtures.find((invoice) => invoice.status === "Funded")!;
+    const lines: string[] = [];
+    const wired = deps([funded], {
+      now: () => funded.dueDate,
+      readThreshold: async () => 1n,
+      log: (line) => lines.push(line),
+    });
+    await createBuyerAgent(wired).tick();
+    expect(wired.pay).not.toHaveBeenCalled();
+    expect(lines.some((line) => line.includes("needs sponsor approval"))).toBe(true);
+  });
+
+  it("does not send a transaction in dry run", async () => {
+    const wired = deps([invoiceFixtures[0]], { dryRun: true });
+    await createBuyerAgent(wired).tick();
+    expect(wired.accept).not.toHaveBeenCalled();
+  });
+
+  it("stops retrying after three failed transactions", async () => {
+    const wired = deps([invoiceFixtures[0]], { accept: vi.fn(async () => { throw new Error("rpc down"); }) });
+    const agent = createBuyerAgent(wired);
+    for (let i = 0; i < MAX_RETRIES; i += 1) await agent.tick();
+    expect(wired.accept).toHaveBeenCalledTimes(MAX_RETRIES);
+    await agent.tick();
+    expect(wired.accept).toHaveBeenCalledTimes(MAX_RETRIES);
   });
 });
