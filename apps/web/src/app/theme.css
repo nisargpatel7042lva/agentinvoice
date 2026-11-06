@@ -1,0 +1,64 @@
+/* Design tokens. Source: docs/design/tokens.md. Light mode only. */
+@theme {
+  --color-*: initial;
+  --color-accent: #0f766e;
+  --color-accent-hover: #115e59;
+  --color-accent-soft: #f0fdfa;
+  --color-ink: #0f172a;
+  --color-ink-muted: #475569;
+  --color-ink-faint: #94a3b8;
+  --color-line: #e2e8f0;
+  --color-surface: #ffffff;
+  --color-canvas: #f8fafc;
+  --color-danger: #b91c1c;
+  --color-white: #ffffff;
+
+  --color-status-pending: #475569;
+  --color-status-pending-bg: #f1f5f9;
+  --color-status-open: #1d4ed8;
+  --color-status-open-bg: #eff6ff;
+  --color-status-funded: #0f766e;
+  --color-status-funded-bg: #f0fdfa;
+  --color-status-paid: #15803d;
+  --color-status-paid-bg: #f0fdf4;
+  --color-status-late: #b45309;
+  --color-status-late-bg: #fffbeb;
+  --color-status-defaulted: #b91c1c;
+  --color-status-defaulted-bg: #fef2f2;
+
+  --color-band-a: #15803d;
+  --color-band-a-bg: #f0fdf4;
+  --color-band-b: #1d4ed8;
+  --color-band-b-bg: #eff6ff;
+  --color-band-c: #b45309;
+  --color-band-c-bg: #fffbeb;
+  --color-band-new: #475569;
+  --color-band-new-bg: #f1f5f9;
+
+  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: 2.25rem;
+
+  --spacing: 0.25rem;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-full: 9999px;
+
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.06), 0 1px 3px rgb(15 23 42 / 0.08);
+  --shadow-raised: 0 4px 12px rgb(15 23 42 / 0.12);
+}
