@@ -28,8 +28,8 @@ ENSv2 namespaces (Prompt 2 + v2-S2)
 - [x] 1.9 Register or reuse parent name on Sepolia; subname for the demo buyer agent with an expiry and the permissioned resolver; addr record = vault address
 - [x] 1.10 Roles via Enhanced Access Control: sponsor wallet sets limit/threshold and revokes; ens-publisher sets only paid, late, status; script proves publisher cannot write `limit`
 - [x] 1.11 `scripts/ens-revoke.ts`: revoke/expire subname, show resolution before and after
-- [ ] 1.12 `src/ens/read.ts`: `readAgentFromEns(name)` returns { vault, limit, threshold, sponsor, paid, late, status, expiresAt }
-- [ ] 1.13 Older scripts (register, grant, check) keep working
+- [x] 1.12 `src/ens/read.ts`: `readAgentFromEns(name)` returns { vault, limit, threshold, sponsor, paid, late, status, expiresAt }
+- [x] 1.13 Older scripts (register, grant, check) keep working
 - [ ] Gate 1: World step-up and ENS refused-write + revocation both work, or the fallback is written in the notes (World fallback: wallet-signed sponsor approval; ENS fallback: text records)
 
 ## Phase 2: backend core (hours 6 to 16) - branch `phase_2_backend_sidd`

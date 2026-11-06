@@ -79,3 +79,11 @@ Deployed bytecode matched the docs, not the newer repo source: `UserRegistry.ini
 ## Task 1.11 result: revocation (2026-11-06, Sepolia)
 
 `bun scripts/ens/revoke.ts <label>` calls `unregister(labelId)` on the user registry as the sponsor (it holds ROLE_UNREGISTER). Tested on a throwaway subname (`--create-temp`): before = owner sponsor, expiry in 7 days, active; after = owner 0x0, expiry = now, inactive. The real demo agent `buyer` was not revoked; run the script against it only for the default demo step (a revoked name needs re-registering via `register.ts`).
+
+## Tasks 1.12 and 1.13 result (2026-11-06)
+
+- Record keys now follow the frozen spec v2 (`packages/shared/spec.md` section 4): `addr`, text `limit`, `threshold`, `paid`, `late`, `status`; `expiresAt` from the registry. The earlier `agentinvoice.*` keys and the extra `sponsor` key were dropped. `grant.ts` re-granted the publisher `paid`, `late`, `status` and revoked its roles on the old `agentinvoice.*` keys. `refusal.ts` proves limit and threshold are refused for the publisher.
+- `services/backend/src/ens/read.ts`: `readAgentFromEns(name, reader?)` returns the shared `EnsAgent` (schema-validated). Missing or malformed records throw `EnsReadError` (no invented values). `isRevoked(agent)` is true when `expiresAt` has passed. Viem's `getEnsText` and `getEnsAddress` resolve the ENSv2 name on Sepolia with no custom Universal Resolver address (verified live: `bun scripts/ens/check.ts`).
+- The shared stub `readAgentFromEns` in `packages/shared/src/ens.ts` still throws "not implemented". Nisarg owns that file; the real implementation lives in the backend and can be re-exported or called from there.
+- Scripts (all re-runnable, in `scripts/ens/`): `fund-sponsor.ts`, `register.ts` (register/reuse, 1.9), `grant.ts` (1.10), `refusal.ts` (1.10 proof), `revoke.ts` (1.11), `seed-records.ts`, `check.ts` (1.12). They replace the old register/grant/check trio; 1.13 is satisfied because that trio's jobs are all covered.
+- Revocation is shown through `unregister` (registry state) and `isRevoked`; a live `readAgentFromEns` of a revoked name that has records was not run, since revoking would destroy the demo agent.

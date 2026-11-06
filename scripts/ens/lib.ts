@@ -29,9 +29,12 @@ export const ALL_ROLES = 0x11111111111111111111111111111111111111111111111111111
 export const ROLE_SET_TEXT = 1n << 4n;
 export const ROLE_SET_ADDRESS = 1n << 0n;
 
-// Record keys: the publisher may write only the first three; the sponsor owns the rest.
-export const PUBLISHER_KEYS = ["agentinvoice.paid", "agentinvoice.late", "agentinvoice.status"] as const;
-export const SPONSOR_KEYS = ["agentinvoice.limit", "agentinvoice.threshold", "agentinvoice.sponsor"] as const;
+// Record keys from the frozen spec v2 (packages/shared/spec.md section 4): the publisher may write only
+// paid, late and status; the sponsor owns limit and threshold (and addr).
+export const PUBLISHER_KEYS = ["paid", "late", "status"] as const;
+export const SPONSOR_KEYS = ["limit", "threshold"] as const;
+// Keys used before the spec was frozen. The publisher's roles on them are revoked by grant.ts.
+export const LEGACY_KEYS = ["agentinvoice.paid", "agentinvoice.late", "agentinvoice.status"] as const;
 
 export const abis = {
   registrar: parseAbi([

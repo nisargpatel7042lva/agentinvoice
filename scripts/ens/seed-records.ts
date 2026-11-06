@@ -1,4 +1,4 @@
-// Writes the initial agentinvoice.* text records on the demo agent subname, using the right wallet for each key:
+// Writes the initial text records (spec v2 keys) on the demo agent subname, using the right wallet for each key:
 // sponsor writes limit/threshold/sponsor, the ens-publisher writes paid/late/status (real transactions).
 // Usage: bun scripts/ens/seed-records.ts
 import { toHex, type Address } from "viem";
@@ -11,12 +11,11 @@ const sponsor = walletFor("SPONSOR_PRIVATE_KEY");
 const publisher = walletFor("ENS_PUBLISHER_KEY");
 
 const records: [string, string, typeof sponsor][] = [
-  ["agentinvoice.limit", "100", sponsor],
-  ["agentinvoice.threshold", "10", sponsor],
-  ["agentinvoice.sponsor", "pending", sponsor],
-  ["agentinvoice.paid", "0", publisher],
-  ["agentinvoice.late", "0", publisher],
-  ["agentinvoice.status", "active", publisher],
+  ["limit", "100", sponsor],
+  ["threshold", "10", sponsor],
+  ["paid", "0", publisher],
+  ["late", "0", publisher],
+  ["status", "active", publisher],
 ];
 
 for (const [key, value, wallet] of records) {

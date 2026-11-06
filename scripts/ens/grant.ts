@@ -3,7 +3,7 @@
 // Usage: bun scripts/ens/grant.ts
 import { encodeFunctionData, keccak256, toHex, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { abis, PUBLISHER_KEYS, ROLE_SET_TEXT, SPONSOR_KEYS, publicClient, requireEnv, txLink, walletFor } from "./lib.js";
+import { abis, LEGACY_KEYS, PUBLISHER_KEYS, ROLE_SET_TEXT, SPONSOR_KEYS, publicClient, requireEnv, txLink, walletFor } from "./lib.js";
 
 const resolver = requireEnv("ENS_RESOLVER_ADDRESS") as Address;
 const { client } = walletFor("SPONSOR_PRIVATE_KEY");
@@ -36,7 +36,22 @@ for (const key of PUBLISHER_KEYS) {
   console.log(`granted ${key}: ${txLink(hash)}`);
 }
 
+// Remove the publisher's roles on the pre-spec keys (least privilege).
+for (const key of LEGACY_KEYS) {
+  if (!(await canSetText(key, publisher))) continue;
+  const hash = await client.writeContract({
+    address: resolver,
+    abi: abis.resolver,
+    functionName: "revokeRoles",
+    args: [keyResource(key), ROLE_SET_TEXT, publisher],
+  });
+  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success") throw new Error(`revoke ${key} reverted: ${txLink(hash)}`);
+  console.log(`revoked legacy ${key}: ${txLink(hash)}`);
+}
+await new Promise((r) => setTimeout(r, 4000)); // public RPC can lag a block
+
 console.log("publisher", publisher);
-for (const key of [...PUBLISHER_KEYS, ...SPONSOR_KEYS]) {
+for (const key of [...PUBLISHER_KEYS, ...SPONSOR_KEYS, ...LEGACY_KEYS]) {
   console.log(`  can set ${key}: ${await canSetText(key, publisher)}`);
 }

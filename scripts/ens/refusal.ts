@@ -1,4 +1,4 @@
-// Task 1.10 proof: simulates a setText from the ens-publisher wallet for every agentinvoice.* key.
+// Task 1.10 proof: simulates a setText from the ens-publisher wallet for every record key.
 // Publisher keys must be allowed and sponsor keys must be refused (the refused write is part of the demo).
 // Usage: bun scripts/ens/refusal.ts
 import { toHex, type Address } from "viem";
