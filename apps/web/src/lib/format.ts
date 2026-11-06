@@ -20,3 +20,8 @@ export function discountPct(inv: Pick<Invoice, "faceAmount" | "price">): string 
 export function formatDate(unixSeconds: number): string {
   return new Date(unixSeconds * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
+
+/** A plain HBAR number (already in whole HBAR) as "1,234.5 HBAR". */
+export function formatHbar(n: number): string {
+  return `${n.toLocaleString("en-US", { maximumFractionDigits: 2 })} HBAR`;
+}
