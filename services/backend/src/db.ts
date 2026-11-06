@@ -50,6 +50,19 @@ const MIGRATIONS: string[] = [
     value TEXT NOT NULL
   );
   `,
+  // Approval details: what the sponsor approves is derived from the invoice on the server, never from the client.
+  `
+  ALTER TABLE approvals ADD COLUMN vault TEXT NOT NULL DEFAULT '';
+  ALTER TABLE approvals ADD COLUMN amount TEXT NOT NULL DEFAULT '0';
+  ALTER TABLE approvals ADD COLUMN action TEXT NOT NULL DEFAULT 'large-payment';
+  ALTER TABLE approvals ADD COLUMN nonce TEXT;
+  ALTER TABLE approvals ADD COLUMN code_verifier TEXT;
+  ALTER TABLE approvals ADD COLUMN expires_at INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE approvals ADD COLUMN step_up_used_at INTEGER;
+  ALTER TABLE approvals ADD COLUMN consumed_at INTEGER;
+  ALTER TABLE approvals ADD COLUMN subject_hash TEXT;
+  CREATE INDEX approvals_invoice ON approvals (invoice_id);
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

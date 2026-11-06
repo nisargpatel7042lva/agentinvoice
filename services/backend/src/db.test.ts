@@ -15,6 +15,7 @@ describe("migrate", () => {
     expect(tables(db)).toEqual(["approvals", "events", "invoices", "meta"]);
     const v = db.prepare("SELECT value FROM meta WHERE key = 'schema_version'").get() as { value: string };
     expect(Number(v.value)).toBe(SCHEMA_VERSION);
+    expect(SCHEMA_VERSION).toBe(2);
   });
 
   it("is idempotent and keeps existing rows", () => {
