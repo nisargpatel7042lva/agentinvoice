@@ -245,3 +245,79 @@ describe("buyer flow", () => {
     expect(wired.accept).toHaveBeenCalledTimes(MAX_RETRIES);
   });
 });
+
+describe("six invoice reviews", () => {
+  const cases: {
+    name: string;
+    action: "accept" | "dispute";
+    reason: string;
+    pay: boolean;
+    askModel: boolean;
+    overDailyLimit?: boolean;
+  }[] = [
+    {
+      name: "delivery matches the invoice and evidence",
+      action: "accept",
+      reason: "delivery matches the evidence",
+      pay: true,
+      askModel: true,
+    },
+    {
+      name: "delivery details do not match",
+      action: "dispute",
+      reason: "delivery details do not match",
+      pay: false,
+      askModel: true,
+    },
+    {
+      name: "amount exceeds the vault limit",
+      action: "accept",
+      reason: "delivery matches the evidence",
+      pay: false,
+      askModel: false,
+      overDailyLimit: true,
+    },
+    {
+      name: "evidence is missing",
+      action: "dispute",
+      reason: "evidence is missing",
+      pay: false,
+      askModel: true,
+    },
+    {
+      name: "invoice appears to be a duplicate",
+      action: "dispute",
+      reason: "invoice appears to be a duplicate",
+      pay: false,
+      askModel: true,
+    },
+    {
+      name: "invoice amount appears suspicious",
+      action: "dispute",
+      reason: "invoice amount appears suspicious",
+      pay: false,
+      askModel: true,
+    },
+  ];
+
+  it.each(cases)("$name", async (row) => {
+    const invoice = invoiceFixtures.find((item) => item.status === "Funded")!;
+    const lines: string[] = [];
+    const model = reviewModel(row.action, row.reason);
+    const wired = deps([invoice], {
+      now: () => invoice.dueDate,
+      model,
+      log: (line) => lines.push(line),
+      ...(row.overDailyLimit
+        ? { readDailyLimit: async () => BigInt(invoice.faceAmount), readSpentToday: async () => 1n }
+        : {}),
+    });
+    await createBuyerAgent(wired).tick();
+    if (row.pay) expect(wired.pay).toHaveBeenCalledTimes(1);
+    else expect(wired.pay).not.toHaveBeenCalled();
+    if (row.askModel) expect(model.complete).toHaveBeenCalledTimes(1);
+    else expect(model.complete).not.toHaveBeenCalled();
+    const expected = row.overDailyLimit ? "daily limit would be exceeded" : row.pay ? "action=pay" : row.reason;
+    expect(lines.some((line) => line.includes(expected))).toBe(true);
+  });
+});

@@ -29,3 +29,14 @@
 - The agent caches that result by invoice id and `evidenceHash`. The same pair is not sent to the model again, including after a failed call. A new `evidenceHash` is a new review. A description change with the same hash keeps the cached review.
 - Invalid, malformed, uncertain, or failed calls return `escalate` and never `accept`.
 - Prompts and logs must not include private keys or API keys.
+
+## Six mocked outcomes
+
+The model is faked. A live call still waits on the model name.
+
+1. Delivery matches the evidence: model `accept`, then pay if the vault rules already allow it.
+2. Delivery does not match: model `dispute`, no payment.
+3. Amount exceeds the daily limit: skip before the model, even when the fake model would accept.
+4. Evidence is missing: model `dispute`, no payment.
+5. Invoice looks like a duplicate: model `dispute`, no payment.
+6. Amount looks suspicious: model `dispute`, no payment.
