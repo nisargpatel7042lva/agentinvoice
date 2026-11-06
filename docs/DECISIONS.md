@@ -39,3 +39,4 @@ This log records major technical and architectural decisions agreed upon by the 
   - `InvoiceMarket.sol` emits `InvoiceFunded(invoiceId, holder, price)`.
   - The trusted backend issuer listens for the event and issues the ATS ERC-1400/ERC-3643 bond to `holder`.
   - Payout on maturity is strictly locked to the immutable `holder` on-chain, guaranteeing investor safety even under secondary market transfers.
+

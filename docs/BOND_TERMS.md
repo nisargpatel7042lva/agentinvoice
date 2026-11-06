@@ -47,3 +47,4 @@ This document outlines the asset tokenization terms for invoices financed throug
   - The issuer or admin retains the compliance right to freeze tokens or restrict transfers in cases of regulatory or sanctions enforcement.
 - **Holder Isolation:**
   - The on-chain settlement and pull-payment claim on `InvoiceMarket` is locked to the original funding investor (`holder`), ensuring financial integrity and preventing unauthorized claims.
+
