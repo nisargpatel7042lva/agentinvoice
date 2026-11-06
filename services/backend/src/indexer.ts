@@ -43,7 +43,27 @@ export interface InvoiceChange {
 const STATUS_NAMES = ["Pending", "Open", "Funded", "Paid", "Late", "Defaulted"] as const;
 
 const topic0 = (signature: string) => keccak256(toHex(signature));
-const KNOWN_EVENTS = new Map<string, string>([[topic0("InvoiceFunded(uint256,address,uint256)"), "InvoiceFunded"]]);
+
+// InvoiceMarket events, signatures taken from Mann's contract (contracts/src/interfaces/IInvoiceMarket.sol). Every invoice
+// event has the invoice id as its first indexed argument. Claimed(address indexed account, uint256 amount) does NOT: its first
+// indexed argument is an address, so it must never be read as an invoice id. Events not listed here are still stored, and if
+// their first indexed argument is an id the invoice is refreshed (forward compatibility), but the invoice is only written if the
+// chain really has it (see isEmptyInvoice).
+const KNOWN_EVENTS = new Map<string, { name: string; invoiceId: boolean }>(
+  [
+    ["InvoiceCreated(uint256,address,address,uint256,uint256,uint64,bytes32)", "InvoiceCreated", true],
+    ["InvoiceAccepted(uint256,address)", "InvoiceAccepted", true],
+    ["InvoiceFunded(uint256,address,uint256)", "InvoiceFunded", true],
+    ["InvoicePaid(uint256,address,uint256)", "InvoicePaid", true],
+    ["InvoiceLate(uint256)", "InvoiceLate", true],
+    ["InvoiceDefaulted(uint256)", "InvoiceDefaulted", true],
+    ["BondIssued(uint256,address,address)", "BondIssued", true],
+    ["Claimed(address,uint256)", "Claimed", false],
+  ].map(([sig, name, invoiceId]) => [topic0(sig as string), { name: name as string, invoiceId: invoiceId as boolean }]),
+);
+
+// getInvoice returns an all-zero struct for an id that does not exist. A real invoice always has a supplier.
+const isEmptyInvoice = (inv: ChainInvoice) => inv.supplier === zeroAddress;
 
 // Writes one invoice read from the chain (source = "chain") and reports its status change. Used by the indexer and by
 // POST /api/invoices, so both paths map a ChainInvoice the same way. Never overwrites "seed" rows or the description.
@@ -116,8 +136,9 @@ export function createIndexer(opts: IndexerOptions) {
     `INSERT OR IGNORE INTO events (tx_hash, log_index, block_number, invoice_id, name, data, source)
      VALUES (@txHash, @logIndex, @blockNumber, @invoiceId, @name, @data, 'chain')`,
   );
-  async function refreshInvoice(id: string): Promise<InvoiceChange> {
+  async function refreshInvoice(id: string): Promise<InvoiceChange | null> {
     const inv = await withRetry(() => reader.getInvoice(BigInt(id)));
+    if (isEmptyInvoice(inv)) return null; // not an invoice: never create a row for it
     return upsertChainInvoice(db, id, inv, now());
   }
 
@@ -126,8 +147,9 @@ export function createIndexer(opts: IndexerOptions) {
     const touched = new Set<string>();
     db.transaction(() => {
       for (const l of logs) {
-        const invoiceId = l.topics[1] ? BigInt(l.topics[1]).toString() : null;
-        const name = KNOWN_EVENTS.get(l.topics[0] ?? "") ?? `Unknown:${(l.topics[0] ?? "").slice(0, 10)}`;
+        const known = KNOWN_EVENTS.get(l.topics[0] ?? "");
+        const name = known?.name ?? `Unknown:${(l.topics[0] ?? "").slice(0, 10)}`;
+        const invoiceId = known?.invoiceId === false || !l.topics[1] ? null : BigInt(l.topics[1]).toString();
         const res = insertEvent.run({
           txHash: l.txHash,
           logIndex: l.logIndex,
@@ -140,7 +162,10 @@ export function createIndexer(opts: IndexerOptions) {
       }
     })();
     const changes: InvoiceChange[] = [];
-    for (const id of touched) changes.push(await refreshInvoice(id));
+    for (const id of touched) {
+      const change = await refreshInvoice(id);
+      if (change) changes.push(change);
+    }
     if (changes.length > 0) opts.onChange?.(changes);
   }
 

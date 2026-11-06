@@ -1,5 +1,5 @@
 import Database from "better-sqlite3";
-import type { Hex } from "viem";
+import { keccak256, toHex, type Hex } from "viem";
 import { beforeEach, describe, expect, it } from "vitest";
 import { migrate } from "./db.js";
 import { createIndexer, getLastSyncedAt, type ChainInvoice, type ChainReader, type RawLog } from "./indexer.js";
@@ -68,6 +68,40 @@ beforeEach(() => {
 
 const count = (table: string) => (db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n;
 const sleep = async () => {};
+
+const sigTopic = (sig: string) => keccak256(toHex(sig));
+
+describe("indexer with the real InvoiceMarket events", () => {
+  it("names the real events and refreshes the invoice for an invoice event", async () => {
+    const created: RawLog = { txHash: "0xc", logIndex: 0, blockNumber: 95n, topics: [sigTopic("InvoiceCreated(uint256,address,address,uint256,uint256,uint64,bytes32)"), idTopic(1)], data: "0x" };
+    const { reader } = fakeReader({ logs: [created] });
+    await createIndexer({ db, reader, startBlock: 90n, now: () => 1, sleep }).pollOnce();
+
+    expect(db.prepare("SELECT name, invoice_id FROM events").all()).toEqual([{ name: "InvoiceCreated", invoice_id: "1" }]);
+    expect(count("invoices")).toBe(1);
+  });
+
+  it("never reads the address in Claimed(address indexed, uint256) as an invoice id", async () => {
+    const investor = `0x${"0".repeat(24)}3c44cdddb6a900fa2b585dd299e03d12fa4293bc` as Hex; // an address padded to a topic
+    const claimed: RawLog = { txHash: "0xd", logIndex: 0, blockNumber: 95n, topics: [sigTopic("Claimed(address,uint256)"), investor], data: "0x" };
+    const { reader, calls } = fakeReader({ logs: [claimed] });
+    await createIndexer({ db, reader, startBlock: 90n, now: () => 1, sleep }).pollOnce();
+
+    expect(db.prepare("SELECT name, invoice_id FROM events").all()).toEqual([{ name: "Claimed", invoice_id: null }]);
+    expect(calls.getInvoice).toEqual([]);
+    expect(count("invoices")).toBe(0);
+  });
+
+  it("does not create a row for an id the chain does not have (all-zero invoice)", async () => {
+    const { reader } = fakeReader({ logs: [log(95, 0, 7)], invoices: { 7: invoice({ supplier: ZERO }) } });
+    const seen: unknown[] = [];
+    await createIndexer({ db, reader, startBlock: 90n, now: () => 1, sleep, onChange: (c) => void seen.push(c) }).pollOnce();
+
+    expect(count("events")).toBe(1);
+    expect(count("invoices")).toBe(0);
+    expect(seen).toEqual([]);
+  });
+});
 
 describe("indexer onChange", () => {
   it("reports first sight and a later status change", async () => {
