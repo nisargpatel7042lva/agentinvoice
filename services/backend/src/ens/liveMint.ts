@@ -36,12 +36,12 @@ export function liveMintDeps(o: LiveMintOptions): Pick<MintDeps, "parent" | "isT
   return {
     parent,
     isTaken: async (label) => (await client.readContract({ address: o.userRegistry, abi: registryAbi, functionName: "findOwner", args: [label] })) !== zeroAddress,
-    register: async (label, owner) => {
+    register: async (label, owner, pointsTo) => {
       const parentExpiry = await client.readContract({ address: ETH_REGISTRY, abi: registryAbi, functionName: "getExpiry", args: [BigInt(keccak256(toHex(o.parentLabel)))] });
       const txHash = await wallet.writeContract({ address: o.userRegistry, abi: registryAbi, functionName: "register", args: [label, owner, zeroAddress, o.resolver, ALL_ROLES, parentExpiry - DAY] });
       await wait(txHash);
       const name = toHex(packetToBytes(normalize(`${label}.${parent}`)));
-      await wait(await wallet.writeContract({ address: o.resolver, abi: resolverAbi, functionName: "setAddress", args: [name, 60n, owner] }));
+      await wait(await wallet.writeContract({ address: o.resolver, abi: resolverAbi, functionName: "setAddress", args: [name, 60n, pointsTo ?? owner] }));
       return { txHash };
     },
   };
