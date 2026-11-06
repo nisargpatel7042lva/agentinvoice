@@ -66,12 +66,61 @@ describe("BuyerVaultAccount", () => {
   });
 });
 
-describe("Hedera Agent Accounts placeholder", () => {
-  it("fails loudly on every call until Hedera publishes an API", async () => {
+describe("Hedera Agent Accounts", () => {
+  it("fails loudly on every call in default production mode without API or demo flag", async () => {
     const acct = new HederaAgentAccount(VAULT);
-    for (const call of [acct.rules(), acct.recipient(), acct.accept(), acct.pay()]) {
+    for (const call of [acct.rules(), acct.recipient(SUPPLIER), acct.accept(MARKET, 1n), acct.pay(MARKET, 1n)]) {
       await expect(call).rejects.toThrow(HEDERA_AGENT_ACCOUNTS_UNAVAILABLE);
     }
+  });
+
+  it("operates end-to-end in partner demo mode with spending rules, recipient checks, and audit", async () => {
+    const audits: string[] = [];
+    const acct = new HederaAgentAccount(VAULT, {
+      partnerDemo: true,
+      mockRules: {
+        dailyLimit: 3_000_000_000n,
+        approvalThreshold: 1_000_000_000n,
+        spentToday: 0n,
+        frozen: false,
+      },
+      mockRecipients: {
+        [SUPPLIER]: { allowed: true, limit: 1_500_000_000n },
+      },
+      onAudit: (e) => audits.push(`${e.type}: ${e.detail}`),
+    });
+
+    // 1. Rules check
+    const rules = await acct.rules();
+    expect(rules.dailyLimit).toBe(3_000_000_000n);
+    expect(rules.approvalThreshold).toBe(1_000_000_000n);
+    expect(rules.frozen).toBe(false);
+
+    // 2. Recipient check
+    const supplierCheck = await acct.recipient(SUPPLIER);
+    expect(supplierCheck.allowed).toBe(true);
+    expect(supplierCheck.limit).toBe(1_500_000_000n);
+
+    // 3. Accept execution
+    const acceptHash = await acct.accept(MARKET, 42n);
+    expect(acceptHash.startsWith("0x")).toBe(true);
+
+    // 4. Pay execution
+    const payHash = await acct.pay(MARKET, 42n, "0x1234");
+    expect(payHash.startsWith("0x")).toBe(true);
+
+    // 5. Audit trail
+    expect(audits.some((a) => a.includes("rule_check"))).toBe(true);
+    expect(audits.some((a) => a.includes("accept"))).toBe(true);
+    expect(audits.some((a) => a.includes("pay"))).toBe(true);
+
+    // 6. Frozen account refuses actions
+    const frozenAcct = new HederaAgentAccount(VAULT, {
+      partnerDemo: true,
+      mockRules: { frozen: true },
+    });
+    await expect(frozenAcct.accept(MARKET, 1n)).rejects.toThrow(/frozen/);
+    await expect(frozenAcct.pay(MARKET, 1n)).rejects.toThrow(/frozen/);
   });
 });
 
