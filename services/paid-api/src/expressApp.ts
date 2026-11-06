@@ -1,12 +1,13 @@
 import express, { type Express } from "express";
 import { paymentMiddleware, x402ResourceServer } from "@x402/express";
 import { ExactHederaScheme } from "@x402/hedera/exact/server";
-import { HTTPFacilitatorClient } from "@x402/core/server";
+import { HTTPFacilitatorClient, type FacilitatorClient } from "@x402/core/server";
 
 export interface PaidExpressConfig {
   payTo?: string;
   price?: string; // in tinybars (e.g. 10000000 = 0.1 HBAR)
   facilitatorUrl?: string;
+  facilitatorClient?: FacilitatorClient;
 }
 
 export function buildPaidExpressApp(config?: PaidExpressConfig): Express {
@@ -23,7 +24,9 @@ export function buildPaidExpressApp(config?: PaidExpressConfig): Express {
     process.env.FACILITATOR_URL ||
     "https://api.testnet.blocky402.com";
 
-  const facilitatorClient = new HTTPFacilitatorClient({ url: facilitatorUrl });
+  const facilitatorClient =
+    config?.facilitatorClient || new HTTPFacilitatorClient({ url: facilitatorUrl });
+
   const resourceServer = new x402ResourceServer(facilitatorClient).register(
     "hedera:*",
     new ExactHederaScheme(),
