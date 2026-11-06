@@ -200,4 +200,21 @@ contract InvoiceMarketTest {
         );
         assert(!s1);
     }
+
+    // 6. Fuzz test on price calculation and creation bounds
+    function testFuzz_price_and_discount(uint128 face, uint16 discountBps) public {
+        if (face == 0) return;
+        if (discountBps > 10000) return;
+
+        uint256 price = (uint256(face) * (10000 - discountBps)) / 10000;
+        if (price == 0) price = 1;
+
+        uint64 due = uint64(block.timestamp + 1000);
+        uint256 id = market.createInvoice(address(this), face, price, due, bytes32(0));
+        Invoice memory inv = market.getInvoice(id);
+        assert(inv.faceAmount == face);
+        assert(inv.price == price);
+        assert(inv.price <= inv.faceAmount);
+    }
 }
+
