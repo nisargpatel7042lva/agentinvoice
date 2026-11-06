@@ -1,4 +1,4 @@
-import { formatUnits, type Amount, type Invoice } from "@agentinvoice/shared";
+import { formatUnits, type Amount, type Invoice } from "@invoiceagent/shared";
 
 export function formatAmount(amount: Amount, decimals = 8): string {
   const [whole, frac] = formatUnits(amount, decimals).split(".");

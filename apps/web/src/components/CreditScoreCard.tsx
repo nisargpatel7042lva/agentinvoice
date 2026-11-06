@@ -3,9 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ExternalLink, ShieldCheck } from "lucide-react";
-import { formatUnits, type CreditFactor, type CreditReport } from "@agentinvoice/shared";
+import { formatUnits, type CreditFactor, type CreditReport } from "@invoiceagent/shared";
 import { copy } from "@/lib/copy";
-import { ScoreBadge } from "./ScoreBadge";
 import { Section } from "./Section";
 
 function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
@@ -40,9 +39,9 @@ export function CreditScoreCard({ report, className = "" }: { report: CreditRepo
   // C: 300..650 (span 350 / 600 -> 105 deg) => 180 to 75
   // B: 650..750 (span 100 / 600 -> 30 deg)  => 75 to 45
   // A: 750..900 (span 150 / 600 -> 45 deg)  => 45 to 0
-  const arcC = describeArc(cx, cy, r, 180, 75);
-  const arcB = describeArc(cx, cy, r, 75, 45);
-  const arcA = describeArc(cx, cy, r, 45, 0);
+  const arcC = describeArc(cx, cy, r, 180, 76);
+  const arcB = describeArc(cx, cy, r, 74, 46);
+  const arcA = describeArc(cx, cy, r, 44, 0);
 
   // Needle position:
   const isNew = report.score === null;
@@ -82,47 +81,29 @@ export function CreditScoreCard({ report, className = "" }: { report: CreditRepo
         {/* Semicircle SVG Gauge */}
         <div className="flex flex-col items-center md:col-span-5">
           <div className="relative w-full max-w-[240px]">
-            <svg viewBox="0 0 240 130" className="w-full overflow-visible" aria-hidden="true">
-              {/* Arc C */}
-              <path
-                d={arcC}
-                fill="none"
-                stroke={isNew ? "var(--color-line)" : GAUGE.C}
-                strokeWidth="16"
-                strokeLinecap="round"
-                
-              />
-              {/* Arc B */}
-              <path
-                d={arcB}
-                fill="none"
-                stroke={isNew ? "var(--color-line)" : GAUGE.B}
-                strokeWidth="16"
-                
-              />
-              {/* Arc A */}
-              <path
-                d={arcA}
-                fill="none"
-                stroke={isNew ? "var(--color-line)" : GAUGE.A}
-                strokeWidth="16"
-                strokeLinecap="round"
-                
-              />
+            <svg viewBox="0 -14 240 150" className="w-full overflow-visible" aria-hidden="true">
+              {/* Three bands with a small gap between them; only the two outer ends are rounded. */}
+              <path d={arcC} fill="none" stroke={isNew ? "var(--color-line)" : GAUGE.C} strokeWidth="16" />
+              <path d={arcB} fill="none" stroke={isNew ? "var(--color-line)" : GAUGE.B} strokeWidth="16" />
+              <path d={arcA} fill="none" stroke={isNew ? "var(--color-line)" : GAUGE.A} strokeWidth="16" />
+              <circle cx={cx - r} cy={cy} r="8" fill={isNew ? "var(--color-line)" : GAUGE.C} />
+              <circle cx={cx + r} cy={cy} r="8" fill={isNew ? "var(--color-line)" : GAUGE.A} />
 
-              {/* Ticks and scale labels */}
-              <text x="24" y="124" className="text-[10px] font-mono fill-[var(--color-ink-muted)] text-center">
-                300
-              </text>
-              <text x="135" y="24" className="text-[10px] font-mono fill-[var(--color-ink-muted)] text-center">
-                650
-              </text>
-              <text x="180" y="44" className="text-[10px] font-mono fill-[var(--color-ink-muted)] text-center">
-                750
-              </text>
-              <text x="204" y="124" className="text-[10px] font-mono fill-[var(--color-ink-muted)] text-center">
-                900
-              </text>
+              {/* Scale labels sit outside the arc so they never cover it. */}
+              {[
+                { v: 300, a: 180 },
+                { v: 650, a: 75 },
+                { v: 750, a: 45 },
+                { v: 900, a: 0 },
+              ].map(({ v, a }) => {
+                const edge = a === 180 || a === 0;
+                const p = edge ? { x: a === 180 ? cx - r : cx + r, y: cy + 22 } : polarToCartesian(cx, cy, r + 20, a);
+                return (
+                  <text key={v} x={p.x.toFixed(1)} y={p.y.toFixed(1)} textAnchor="middle" dominantBaseline="middle" className="fill-[var(--color-ink-muted)] text-[10px]">
+                    {v}
+                  </text>
+                );
+              })}
 
               {/* Needle */}
               {!isNew && (
@@ -146,7 +127,9 @@ export function CreditScoreCard({ report, className = "" }: { report: CreditRepo
             <span className="pl-serif text-[52px] leading-none text-ink">
               {report.score !== null ? report.score : copy.creditScore.noScore}
             </span>
-            <ScoreBadge band={report.band} score={report.score} />
+            <span className="rounded-full px-2.5 py-1 text-xs font-semibold text-[#161513]" style={{ background: isNew ? "var(--color-line)" : GAUGE[report.band as "A" | "B" | "C"] }}>
+              {report.band === "New" ? "New" : "Band " + report.band}
+            </span>
           </div>
         </div>
 

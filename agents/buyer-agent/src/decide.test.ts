@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Invoice } from "@agentinvoice/shared";
+import type { Invoice } from "@invoiceagent/shared";
 import { decide, decisionLine, type DecideInput } from "./decide.js";
 
 function invoice(overrides: Partial<Invoice> = {}): Invoice {

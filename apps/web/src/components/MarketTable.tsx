@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ArrowRight, Search } from "lucide-react";
-import type { Invoice, ScoreBand } from "@agentinvoice/shared";
+import type { Invoice, ScoreBand } from "@invoiceagent/shared";
 import { buttonVariants, Table, TableBox, Td, Th } from "@/components/ui";
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { StatusBadge } from "@/components/StatusBadge";

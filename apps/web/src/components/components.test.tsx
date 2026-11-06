@@ -5,7 +5,7 @@ import { HowItWorks } from "./HowItWorks";
 import { Section } from "./Section";
 import { Term } from "./Term";
 import { THEME_KEY, ThemeToggle } from "./ThemeToggle";
-import { STATUSES, approvalFixture, ensAgentFixture, invoiceFixtures, payPolicyFixture } from "@agentinvoice/shared";
+import { STATUSES, approvalFixture, ensAgentFixture, invoiceFixtures, payPolicyFixture } from "@invoiceagent/shared";
 import { ApprovalCard } from "./ApprovalCard";
 import { EmptyState } from "./EmptyState";
 import { EnsPanel, PermissionsPanel } from "./EnsPanel";
@@ -14,15 +14,36 @@ import { InvoiceCard } from "./InvoiceCard";
 import { PolicyPanel } from "./PolicyPanel";
 import { ScoreBadge } from "./ScoreBadge";
 import { CreditScoreCard } from "./CreditScoreCard";
+import { PartyDialog } from "./PartyDialog";
 import { StatusBadge } from "./StatusBadge";
 import { Toast } from "./Toast";
 import { TxLink } from "./TxLink";
 import { copy } from "@/lib/copy";
-import { computeCreditReport } from "@agentinvoice/shared";
+import { computeCreditReport } from "@invoiceagent/shared";
 
 afterEach(cleanup);
 
 describe("components render", () => {
+  it("PartyDialog links the ENS name and address to public verifiers and closes on Escape", () => {
+    const vault = "0x2222222222222222222222222222222222222222";
+    let closed = false;
+    render(
+      <PartyDialog
+        node={{ id: vault, name: "buyer.agentinvoicenf71.eth", role: "buyer", band: "A", volume: 42, invoices: 3 }}
+        links={[{ id: "owes:a->b", source: "0x1111111111111111111111111111111111111111", target: vault, kind: "owes", count: 2, hbar: 20, health: "good" }]}
+        nameOf={(id) => (id === vault ? "buyer" : "acme.eth")}
+        onClose={() => (closed = true)}
+      />,
+    );
+    const hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
+    expect(hrefs).toContain("https://sepolia.app.ens.domains/buyer.agentinvoicenf71.eth");
+    expect(hrefs).toContain("https://sepolia.etherscan.io/address/" + vault);
+    expect(hrefs).toContain("/agent/" + vault);
+    expect(screen.getByRole("dialog").textContent).toContain("acme.eth");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(closed).toBe(true);
+  });
+
   it("StatusBadge shows every status as text", () => {
     for (const s of STATUSES) render(<StatusBadge status={s} />);
     for (const s of STATUSES) expect(screen.getByText(s)).toBeTruthy();

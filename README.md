@@ -1,4 +1,4 @@
-# agentinvoice
+# Invoice Agent
 
 ## Setup
 
@@ -41,7 +41,7 @@ How this meets the ENS requirement, honestly: ENSv2 on Sepolia is the only place
 
 ## Layout
 
-- `packages/*` shared libraries (`@agentinvoice/shared`)
+- `packages/*` shared libraries (`@invoiceagent/shared`)
 - `services/*`, `agents/*`, `apps/*` workspaces
 - `contracts/` Foundry project (owner: Mann)
 

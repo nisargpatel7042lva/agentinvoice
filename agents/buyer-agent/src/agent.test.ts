@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { invoiceFixtures, type Address, type Hash32, type Invoice } from "@agentinvoice/shared";
+import { invoiceFixtures, type Address, type Hash32, type Invoice } from "@invoiceagent/shared";
 import { createBuyerAgent, MAX_RETRIES } from "./agent.js";
 import { loadConfig } from "./config.js";
 import { log } from "./logger.js";

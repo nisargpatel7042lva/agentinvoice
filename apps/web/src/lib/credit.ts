@@ -7,7 +7,7 @@ import {
   hederaTestnet,
   type Address,
   type CreditReport,
-} from "@agentinvoice/shared";
+} from "@invoiceagent/shared";
 import { createPublicClient, http } from "viem";
 import { api, isMock } from "./api";
 

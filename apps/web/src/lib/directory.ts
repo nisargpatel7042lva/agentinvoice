@@ -1,6 +1,6 @@
 // Who is who: display names for addresses. Mock mode uses this sample directory.
 // Real mode: names come from ENS (reverse records), and unknown addresses fall back to a short hex.
-import type { Address, Invoice } from "@agentinvoice/shared";
+import type { Address, Invoice } from "@invoiceagent/shared";
 
 export type Role = "buyer" | "supplier" | "investor" | "sponsor";
 

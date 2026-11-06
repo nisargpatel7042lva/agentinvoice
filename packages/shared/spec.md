@@ -1,6 +1,6 @@
-# AgentInvoice shared spec — v2 (FROZEN)
+# Invoice Agent shared spec — v2 (FROZEN)
 
-`SPEC_VERSION = 2` (exported from `@agentinvoice/shared`). Breaking changes need a v3 and a team heads-up.
+`SPEC_VERSION = 2` (exported from `@invoiceagent/shared`). Breaking changes need a v3 and a team heads-up.
 Chain: Hedera testnet, chain id 296. Amounts are integer base units (`uint256` on-chain, decimal strings in JSON).
 
 ## 1. InvoiceMarket (contracts, owner: Mann)
@@ -94,7 +94,7 @@ Invoices in the API carry `description` (string) and `evidenceHash` (0x + 64 hex
 | text `status` | publisher | `active` \| `paused` \| `defaulted` |
 | `expiresAt` | registry | read from the name registry (not a text record) |
 
-`readAgentFromEns(name): Promise<EnsAgent>` lives in `@agentinvoice/shared` (signature now, implementation later).
+`readAgentFromEns(name): Promise<EnsAgent>` lives in `@invoiceagent/shared` (signature now, implementation later).
 
 ## 5. Shared types (see `src/types.ts`)
 

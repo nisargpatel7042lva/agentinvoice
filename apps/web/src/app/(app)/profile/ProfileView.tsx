@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAccount, useBalance, useSignMessage } from "wagmi";
 import { formatUnits } from "viem";
 import { ArrowUpRight, FilePlus2, LayoutList } from "lucide-react";
-import type { Invoice, Status } from "@agentinvoice/shared";
+import type { Invoice, Status } from "@invoiceagent/shared";
 import { loadProfile, mintName, nameClaimMessage } from "@/app/actions";
 import { Banner } from "@/components/Banner";
 import { StatusBadge } from "@/components/StatusBadge";

@@ -1,5 +1,5 @@
 {
-  "name": "@agentinvoice/paid-api",
+  "name": "@invoiceagent/paid-api",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -7,7 +7,7 @@
     "dev": "tsx src/server.ts"
   },
   "dependencies": {
-    "@agentinvoice/shared": "*",
+    "@invoiceagent/shared": "*",
     "@x402/core": "^2.30.0",
     "@x402/express": "^2.30.0",
     "@x402/hedera": "^2.30.0",

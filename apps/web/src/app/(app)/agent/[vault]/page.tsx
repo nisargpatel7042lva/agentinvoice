@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { payPolicyFixture, type Address } from "@agentinvoice/shared";
+import { payPolicyFixture, type Address } from "@invoiceagent/shared";
 import { Legend, RepaymentChart } from "@/components/charts";
 import { CreditScoreCard } from "@/components/CreditScoreCard";
 import { EnsPanel, PermissionsPanel } from "@/components/EnsPanel";

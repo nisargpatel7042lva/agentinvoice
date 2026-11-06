@@ -1,4 +1,4 @@
-import { AddressSchema } from "@agentinvoice/shared";
+import { AddressSchema } from "@invoiceagent/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { claimMessage, MintError, mintSellerName, type MintDeps } from "../ens/mint.js";

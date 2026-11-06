@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Link2 } from "lucide-react";
 import { useAccount, useReadContract } from "wagmi";
-import { buyerVaultAbi, contracts, formatUnits, invoiceMarketAbi, type Address, type Status } from "@agentinvoice/shared";
+import { buyerVaultAbi, contracts, formatUnits, invoiceMarketAbi, type Address, type Status } from "@invoiceagent/shared";
 import { Button } from "@/components/ui";
 import { useChainTx } from "@/lib/useChainTx";
 import { hederaTestnet } from "@/lib/wagmi";

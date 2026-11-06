@@ -14,7 +14,7 @@ import {
   type CreateInvoiceBody,
   type Invoice,
   type Status,
-} from "@agentinvoice/shared";
+} from "@invoiceagent/shared";
 import { sampleNetworkInvoices, sampleParties } from "./directory";
 
 // Bump when the seed data changes, so a running dev server reseeds instead of keeping stale demo data.

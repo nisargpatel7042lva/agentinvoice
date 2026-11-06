@@ -1,4 +1,4 @@
-import { hederaTestnet, type Address, type Hash32 } from "@agentinvoice/shared";
+import { hederaTestnet, type Address, type Hash32 } from "@invoiceagent/shared";
 import { shortHex } from "@/lib/format";
 
 export function TxLink({ hash, address, label }: { hash?: Hash32; address?: Address; label?: string }) {

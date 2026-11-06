@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Invoice, ScoreBand } from "@agentinvoice/shared";
+import type { Invoice, ScoreBand } from "@invoiceagent/shared";
 import { copy } from "@/lib/copy";
 import { discountPct, formatAmount, formatDate } from "@/lib/format";
 import { ScoreBadge } from "./ScoreBadge";

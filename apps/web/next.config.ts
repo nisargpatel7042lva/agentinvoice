@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const config: NextConfig = {
-  transpilePackages: ["@agentinvoice/shared"],
+  transpilePackages: ["@invoiceagent/shared"],
 };
 
 export default config;

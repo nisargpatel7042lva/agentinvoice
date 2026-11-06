@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowDown, Plus } from "lucide-react";
-import { formatUnits } from "@agentinvoice/shared";
+import { formatUnits } from "@invoiceagent/shared";
 import { Banner } from "@/components/Banner";
 import { BestReturns } from "@/components/BestReturns";
 import { CountUp } from "@/components/CountUp";

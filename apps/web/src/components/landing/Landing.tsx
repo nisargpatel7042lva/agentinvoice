@@ -29,7 +29,7 @@ export async function Landing() {
       <header className="lp-nav">
         <Link href="/" className="lp-brand">
           <BrandMark size={24} />
-          AgentInvoice
+          Invoice Agent
         </Link>
         <nav aria-label="Site" className="lp-links">
           <Link href="/market">Marketplace</Link>
@@ -138,7 +138,7 @@ export async function Landing() {
       <footer className="lp-foot">
         <span className="lp-brand">
           <BrandMark size={20} />
-          AgentInvoice
+          Invoice Agent
         </span>
         <span>Testnet prototype. Not financial advice.</span>
       </footer>

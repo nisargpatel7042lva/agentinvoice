@@ -1,4 +1,4 @@
-import { AddressSchema, AmountSchema, Hash32Schema, InvoiceListSchema, InvoiceSchema, StatusSchema, type Invoice } from "@agentinvoice/shared";
+import { AddressSchema, AmountSchema, Hash32Schema, InvoiceListSchema, InvoiceSchema, StatusSchema, type Invoice } from "@invoiceagent/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { InvoiceIssuer } from "../chain/issuer.js";

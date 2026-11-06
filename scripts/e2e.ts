@@ -6,7 +6,7 @@
 //
 // The earlier version printed a hard-coded table of PASS results without running anything. It is gone.
 import { createPublicClient, http } from "viem";
-import { buyerVaultAbi, contracts, createApiClient, hederaTestnet, invoiceMarketAbi } from "@agentinvoice/shared";
+import { buyerVaultAbi, contracts, createApiClient, hederaTestnet, invoiceMarketAbi } from "@invoiceagent/shared";
 
 const testnet = process.argv.includes("--testnet");
 

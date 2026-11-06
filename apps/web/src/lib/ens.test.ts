@@ -1,8 +1,8 @@
-import { EnsReadError } from "@agentinvoice/shared";
+import { EnsReadError } from "@invoiceagent/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({ impl: (async () => undefined) as (name: string) => Promise<unknown>, calls: [] as string[] }));
-vi.mock("@agentinvoice/shared", async (orig) => ({ ...(await orig<typeof import("@agentinvoice/shared")>()), readAgentFromEns: async (name: string) => { state.calls.push(name); return state.impl(name); } }));
+vi.mock("@invoiceagent/shared", async (orig) => ({ ...(await orig<typeof import("@invoiceagent/shared")>()), readAgentFromEns: async (name: string) => { state.calls.push(name); return state.impl(name); } }));
 vi.mock("./env", () => ({ isMock: false }));
 
 const { lookupBuyer } = await import("./ens");

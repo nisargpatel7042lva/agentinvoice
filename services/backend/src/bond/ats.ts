@@ -1,4 +1,4 @@
-import { atsBondAbi, atsFactoryAbi, hederaTestnet } from "@agentinvoice/shared";
+import { atsBondAbi, atsFactoryAbi, hederaTestnet } from "@invoiceagent/shared";
 import { createPublicClient, createWalletClient, decodeEventLog, defineChain, http, pad, parseAbi, toHex, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
@@ -132,7 +132,7 @@ export function atsIssuer(privateKey: Hex, rpcUrl = hederaTestnet.rpcUrl): AtsIs
       throw new Error(`deployBond succeeded but no BondDeployed event was found (${hash})`);
     },
 
-    grantKyc: (bond, investor) => send(bond, "grantKyc", [investor, "agentinvoice", 0n, BigInt(2 ** 40), account.address]),
+    grantKyc: (bond, investor) => send(bond, "grantKyc", [investor, "invoiceagent", 0n, BigInt(2 ** 40), account.address]),
     issue: (bond, holder, units, data = "0x") => send(bond, "issue", [holder, units, data]),
     balanceOf: (bond, holder) => reader.readContract({ address: bond, abi: atsBondAbi, functionName: "balanceOf", args: [holder] }) as Promise<bigint>,
     freeze: (bond, who, frozen) => send(bond, "setAddressFrozen", [who, frozen]),

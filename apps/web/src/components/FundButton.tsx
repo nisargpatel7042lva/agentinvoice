@@ -1,7 +1,7 @@
 "use client";
 
 import { useAccount, useConnect, useSwitchChain } from "wagmi";
-import { contracts, invoiceMarketAbi, isDeployed, tinybarToWeibar } from "@agentinvoice/shared";
+import { contracts, invoiceMarketAbi, isDeployed, tinybarToWeibar } from "@invoiceagent/shared";
 import { fundInvoice } from "@/app/actions";
 import { useAction } from "@/components/ActionButton";
 import { toast } from "@/components/ToastHost";

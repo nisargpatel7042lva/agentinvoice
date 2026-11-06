@@ -1,4 +1,4 @@
-import type { ScoreBand } from "@agentinvoice/shared";
+import type { ScoreBand } from "@invoiceagent/shared";
 import { copy } from "@/lib/copy";
 
 const styles: Record<ScoreBand, string> = {

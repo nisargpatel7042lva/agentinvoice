@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { invoiceFixtures, scoreFixtures, type Invoice, type BuyerScore } from "@agentinvoice/shared";
+import { invoiceFixtures, scoreFixtures, type Invoice, type BuyerScore } from "@invoiceagent/shared";
 import { createInvestorAgent, MAX_RETRIES } from "./agent.js";
 import { decide, rulesFromEnv, type Rules } from "./decide.js";
 import { createScoreReader, SCORE_TTL_MS } from "./score.js";

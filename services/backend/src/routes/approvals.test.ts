@@ -1,4 +1,4 @@
-import { ApprovalSchema, ApprovalStartSchema } from "@agentinvoice/shared";
+import { ApprovalSchema, ApprovalStartSchema } from "@invoiceagent/shared";
 import { generateKeyPair, SignJWT, type CryptoKey } from "jose";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { buildApp } from "../app.js";

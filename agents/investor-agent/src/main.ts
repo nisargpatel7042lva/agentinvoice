@@ -1,8 +1,8 @@
 // Entry point: bun run --cwd agents/investor-agent start
 // Env: BACKEND_URL, SCORE_API_URL, MARKET_ADDRESS, INVESTOR_PRIVATE_KEY, HEDERA_TESTNET_RPC_URL,
 //      MIN_BAND, MIN_DISCOUNT_BPS, MAX_PRICE, MAX_OPEN_EXPOSURE, DRY_RUN=1, INVESTOR_AGENT_POLL_INTERVAL_MS
-import * as shared from "@agentinvoice/shared";
-import { payAndGet } from "@agentinvoice/shared/payAndGet";
+import * as shared from "@invoiceagent/shared";
+import { payAndGet } from "@invoiceagent/shared/payAndGet";
 import { createPublicClient, createWalletClient, http, parseAbi, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { createInvestorAgent } from "./agent.js";

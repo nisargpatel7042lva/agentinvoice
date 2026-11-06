@@ -1,4 +1,4 @@
-# Run AgentInvoice on Hedera testnet (real transactions)
+# Run Invoice Agent on Hedera testnet (real transactions)
 
 Every step below moves real **testnet** HBAR. Testnet HBAR is free and has no value. Never commit `.env` or paste keys in chat.
 

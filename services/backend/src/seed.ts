@@ -1,5 +1,5 @@
 import type Database from "better-sqlite3";
-import { STATUSES } from "@agentinvoice/shared";
+import { STATUSES } from "@invoiceagent/shared";
 
 // Clearly labelled DEMO rows so the UI is never empty before real chain data exists. Every row is tagged
 // source = "seed" and its description starts with "DEMO", so the UI can tell it apart from rows indexed from the chain.

@@ -3,7 +3,7 @@ import { Landing } from "@/components/landing/Landing";
 import "./landing.css";
 
 export const metadata: Metadata = {
-  title: "AgentInvoice: get paid today for invoices due next month",
+  title: "Invoice Agent: get paid today for invoices due next month",
 };
 
 export const dynamic = "force-dynamic";

@@ -10,7 +10,7 @@ const units = BigInt(process.argv[3] ?? "100000000"); // tinybar: 1 HBAR
 
 const ats = atsIssuer(key);
 console.log("issuer", ats.address);
-const bond = await ats.createBond({ name: "AgentInvoice test bond", symbol: "AINV", isin: makeIsin(Date.now()), units: units * 10n, maturity: Math.floor(Date.now() / 1000) + 3600 });
+const bond = await ats.createBond({ name: "Invoice Agent test bond", symbol: "AINV", isin: makeIsin(Date.now()), units: units * 10n, maturity: Math.floor(Date.now() / 1000) + 3600 });
 console.log("bond", bond, `https://hashscan.io/testnet/contract/${bond}`);
 console.log("kyc", await ats.grantKyc(bond, investor));
 console.log("issue", await ats.issue(bond, investor, units));

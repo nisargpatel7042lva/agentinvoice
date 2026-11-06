@@ -15,7 +15,7 @@ export class MintError extends Error {
   }
 }
 
-export const claimMessage = (label: string, parent: string, owner: Address) => `Claim ${label}.${parent} for ${getAddress(owner)} on AgentInvoice`;
+export const claimMessage = (label: string, parent: string, owner: Address) => `Claim ${label}.${parent} for ${getAddress(owner)} on Invoice Agent`;
 
 export interface MintDeps {
   parent: string; // e.g. agentinvoicenf71.eth

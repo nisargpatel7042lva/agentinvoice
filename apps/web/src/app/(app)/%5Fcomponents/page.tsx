@@ -6,7 +6,7 @@ import {
   ensAgentFixture,
   invoiceFixtures,
   payPolicyFixture,
-} from "@agentinvoice/shared";
+} from "@invoiceagent/shared";
 import { ApprovalCard } from "@/components/ApprovalCard";
 import { EmptyState } from "@/components/EmptyState";
 import { EnsPanel } from "@/components/EnsPanel";
