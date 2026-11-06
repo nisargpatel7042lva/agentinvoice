@@ -8,7 +8,7 @@ export const copy = {
     mock: "Showing sample data (mock mode).",
   },
   onboarding: {
-    title: "New here? It takes three steps",
+    title: "New here? Start with your role",
     dismiss: "Got it",
     steps: [
       { title: "Pick an invoice", body: "Each one is money a buyer owes a supplier. Start with an A score: those buyers pay on time." },
@@ -41,8 +41,8 @@ export const copy = {
   money: { where: "Where the money is" },
   sponsor: { accountable: "Sponsor (accountable for this buyer)" },
   market: {
-    title: "Fund an invoice, get paid back more",
-    subtitle: "Pay a supplier now. The buyer pays you the full amount on the due date.",
+    title: "Marketplace",
+    subtitle: "Fund an invoice today, get the full amount back on the due date.",
     overview: "Market overview",
     overviewHint: "Totals and charts for every invoice",
     filterAll: "All statuses",

@@ -4,25 +4,28 @@
 /* Tailwind v4 utilities read these as CSS variables, so overriding them here re-themes every component. */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-/* Night: deep harbour navy rather than black, so the brand still reads. */
+/* Night: warm charcoal, never pure black. */
 [data-theme="dark"] {
   color-scheme: dark;
-  --color-on-accent: #071226;
-  --color-accent: #8fa9ff;
-  --color-accent-hover: #b4c5ff;
-  --color-accent-soft: #15254a;
-  --color-accent-200: #22346b;
-  --color-highlight: #9db4ff;
-  --color-glow: #1b6f8f;
-  --color-panel: #0a1830;
-  --color-ink: #eef3ff;
-  --color-ink-soft: #c6d2ea;
-  --color-ink-muted: #8fa0c2;
-  --color-ink-faint: #5c6f92;
-  --color-line: #1f3558;
-  --color-subtle: #13274a;
-  --color-surface: #0e1f3d;
-  --color-canvas: #071226;
+  --color-on-accent: #161513;
+  --color-accent: #ff9466;
+  --color-accent-hover: #ffb38f;
+  --color-accent-soft: #2c1d15;
+  --color-accent-200: #4a2c1c;
+  --color-hot: #ff8a5b;
+  --color-highlight: #ff9466;
+  --color-dot: #ff8a5b;
+  --color-glow: #5a3422;
+  --color-panel: #0f0f0e;
+  --color-ink: #f3f1ec;
+  --color-ink-soft: #d6d3cb;
+  --color-ink-muted: #9c988e;
+  --color-ink-faint: #6b6860;
+  --color-line: #2e2d29;
+  --color-subtle: #232220;
+  --color-surface: #1b1a18;
+  --color-canvas: #131211;
+  --color-sidebar: #171614;
   --color-danger: #f87171;
   --color-warn: #fbbf24;
   --color-good: #4ade80;
@@ -49,7 +52,7 @@
   --color-band-new: #cbd5e1;
   --color-band-new-bg: #1e293b;
 
-  --shadow-card: 0 0 0 1px rgb(255 255 255 / 0.05), 0 12px 30px -18px rgb(0 0 0 / 0.6);
+  --shadow-card: none;
   --shadow-raised: 0 18px 40px -12px rgb(0 0 0 / 0.6);
 }
 
@@ -76,11 +79,11 @@ body {
   margin-top: -5px;
   border-radius: 9999px;
   background-color: var(--color-dot);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%230b1d3a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 2.5 8 6l-3.5 3.5'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%23161513' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 2.5 8 6l-3.5 3.5'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: center;
   background-size: 0 0;
-  box-shadow: 0 0 10px rgb(47 224 208 / 0.7);
+  box-shadow: none;
   transition:
     width 0.45s var(--ease-out-soft),
     height 0.45s var(--ease-out-soft),

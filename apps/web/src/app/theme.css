@@ -1,27 +1,29 @@
-/* Design tokens (Halden-led redesign). Source: docs/design/tokens.md. Light by default; dark overrides live in
-   globals.css under [data-theme="dark"]. Primary buttons are navy ink with a cyan dot; periwinkle is the highlight. */
+/* Design tokens (warm redesign v3). Source: docs/design/tokens.md. Light by default; dark overrides live in
+   globals.css under [data-theme="dark"]. Primary buttons are ink; coral is the one accent. */
 @theme {
   --color-*: initial;
   --color-on-accent: #ffffff;
-  --color-accent: #3b5bdb; /* links, focus, small accent text (5.6:1 on white) */
-  --color-accent-hover: #2f4bc0;
-  --color-accent-soft: #eef2ff;
-  --color-accent-200: #d2daff; /* periwinkle rim */
-  --color-highlight: #5b7cf0; /* large display highlight only (e.g. "today") */
-  --color-dot: #2fe0d0; /* glowing button dot */
-  --color-glow: #8fd5f1; /* sky-cyan glow core */
-  --color-panel: #0e1f3d; /* dark split / closing section */
-  --color-ink: #0b1d3a;
-  --color-ink-soft: #1d2f4f;
-  --color-ink-muted: #56637d;
-  --color-ink-faint: #94a0b8;
-  --color-line: #e3e8f2;
-  --color-subtle: #f2f5fb;
-  --color-surface: #ffffff;
-  --color-canvas: #f8faff;
+  --color-accent: #c2410c; /* links, focus, small accent text (5.2:1 on white) */
+  --color-accent-hover: #9a3412;
+  --color-accent-soft: #fdf0e8;
+  --color-accent-200: #f6d3bf;
+  --color-hot: #f26b3a; /* coral fills: landing CTA, scanner, highlights (dark text on it) */
+  --color-highlight: #c2410c;
+  --color-dot: #f26b3a;
+  --color-glow: #f8c9a8;
+  --color-panel: #1c1b19; /* dark split / closing section */
+  --color-ink: #161513;
+  --color-ink-soft: #2e2c28;
+  --color-ink-muted: #6b6860;
+  --color-ink-faint: #a29e94;
+  --color-line: #e6e1d7;
+  --color-subtle: #f1ede5;
+  --color-surface: #fffdf9;
+  --color-canvas: #f7f4ee;
+  --color-sidebar: #f0ece4;
   --color-danger: #b91c1c;
-  --color-warn: #d97706;
-  --color-good: #16a34a;
+  --color-warn: #b45309;
+  --color-good: #15803d;
   --color-white: #ffffff;
 
   --color-status-pending: #475569;
@@ -47,6 +49,7 @@
   --color-band-new-bg: #f1f5f9;
 
   --font-sans: var(--font-inter-tight), "Inter Tight", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-instrument-serif), "Instrument Serif", Georgia, serif;
   --font-mono: var(--font-mono-jb), "JetBrains Mono", ui-monospace, monospace;
 
   --text-xs: 0.75rem;
@@ -73,8 +76,8 @@
   --radius-2xl: 20px;
   --radius-full: 9999px;
 
-  --shadow-card: 0 1px 0 rgb(11 29 58 / 0.04), 0 10px 30px -18px rgb(11 29 58 / 0.25);
-  --shadow-raised: 0 18px 40px -16px rgb(11 29 58 / 0.3);
+  --shadow-card: 0 1px 2px rgb(22 21 19 / 0.04);
+  --shadow-raised: 0 24px 48px -20px rgb(22 21 19 / 0.28);
 
   --ease-out-soft: cubic-bezier(0.22, 0.7, 0.2, 1);
 }
