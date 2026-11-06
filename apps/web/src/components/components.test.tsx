@@ -13,10 +13,12 @@ import { Stepper } from "./Stepper";
 import { InvoiceCard } from "./InvoiceCard";
 import { PolicyPanel } from "./PolicyPanel";
 import { ScoreBadge } from "./ScoreBadge";
+import { CreditScoreCard } from "./CreditScoreCard";
 import { StatusBadge } from "./StatusBadge";
 import { Toast } from "./Toast";
 import { TxLink } from "./TxLink";
 import { copy } from "@/lib/copy";
+import { computeCreditReport } from "@agentinvoice/shared";
 
 afterEach(cleanup);
 
@@ -31,6 +33,29 @@ describe("components render", () => {
     render(<ScoreBadge band="New" value={null} />);
     expect(screen.getByText("A · 86")).toBeTruthy();
     expect(screen.getByText("New")).toBeTruthy();
+  });
+
+  it("ScoreBadge supports score prop", () => {
+    render(<ScoreBadge band="A" score={782} />);
+    render(<ScoreBadge band="New" score={null} />);
+    expect(screen.getByText("782 · A")).toBeTruthy();
+    expect(screen.getByText("— · New")).toBeTruthy();
+  });
+
+  it("CreditScoreCard renders gauge, score, factors, and proof links", () => {
+    const report = computeCreditReport({
+      vault: ensAgentFixture.vault,
+      invoices: invoiceFixtures,
+      now: 1_794_500_000,
+    });
+    render(<CreditScoreCard report={report} />);
+    expect(screen.getByRole("region", { name: "Buyer credit score" })).toBeTruthy();
+    expect(screen.getByText("Payment history")).toBeTruthy();
+    expect(screen.getByText("Defaults & recency")).toBeTruthy();
+    expect(screen.getByText("Exposure vs limit")).toBeTruthy();
+    expect(screen.getByText("History length")).toBeTruthy();
+    expect(screen.getByText("Track record size")).toBeTruthy();
+    expect(screen.getByText(copy.creditScore.howItWorks.title)).toBeTruthy();
   });
 
   it("InvoiceCard, PolicyPanel, TxLink, EmptyState, Toast", () => {

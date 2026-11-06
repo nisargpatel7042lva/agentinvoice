@@ -1,7 +1,7 @@
-import { cache } from "react";
 import { EnsReadError, ensAgentFixture, readAgentFromEns, scoreFromInvoices, type Address, type EnsAgent, type BuyerScore } from "@agentinvoice/shared";
 import type { EnsState } from "@/components/EnsPanel";
-import { api, isMock } from "./api";
+import { isMock } from "./api";
+import { loadAllInvoices, loadEverLateIds, readDailyLimit } from "./credit";
 
 /** Mock: the fixture agent is the only known name. Real: live ENS read; any failure is "unreachable", never a guess. */
 export async function loadEnsByName(name: string): Promise<EnsState> {
@@ -32,12 +32,14 @@ export function toState(agent: EnsAgent, now = Date.now() / 1000): EnsState {
   return { kind: "present", agent };
 }
 
-// One backend read per request, shared by every score on the page.
-const allInvoices = cache(() => api.listInvoices().catch(() => null));
-
-/** Demo: fixture scores. Real: computed from on-chain invoice history (same rules as the paid score API). */
+/** Buyer score loader backed by invoices, audit events, and credit report. */
 export async function loadScore(vault: string): Promise<BuyerScore | null> {
-  if (isMock) return api.getScoreMock(vault).catch(() => null);
-  const invoices = await allInvoices();
-  return invoices ? scoreFromInvoices(vault as Address, invoices) : null;
+  const invoices = await loadAllInvoices();
+  if (!invoices) return null;
+  const addr = vault.toLowerCase() as Address;
+  const [everLateIds, dailyLimit] = await Promise.all([loadEverLateIds(), readDailyLimit(addr)]);
+  return scoreFromInvoices(addr, invoices, Math.floor(Date.now() / 1000), {
+    everLateIds,
+    dailyLimit,
+  });
 }

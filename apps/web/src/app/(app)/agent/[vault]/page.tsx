@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { payPolicyFixture, type Address } from "@agentinvoice/shared";
 import { Legend, RepaymentChart } from "@/components/charts";
+import { CreditScoreCard } from "@/components/CreditScoreCard";
 import { EnsPanel, PermissionsPanel } from "@/components/EnsPanel";
 import { NetworkGraph } from "@/components/NetworkGraph";
 import { egoGraph } from "@/lib/graph";
@@ -14,7 +15,8 @@ import { Term } from "@/components/Term";
 import { TxLink } from "@/components/TxLink";
 import { Progress, StatCard, Table, TableBox, Td, Th } from "@/components/ui";
 import { api, isMock } from "@/lib/api";
-import { loadEnsByVault, loadScore } from "@/lib/agents";
+import { loadEnsByVault } from "@/lib/agents";
+import { loadCreditReport } from "@/lib/credit";
 import { copy } from "@/lib/copy";
 import { formatAmount, formatDate, shortHex } from "@/lib/format";
 import { repaymentsByWeek } from "@/lib/stats";
@@ -26,17 +28,22 @@ const MOCK_SPENT_TODAY = "1200000000";
 
 export default async function AgentPage({ params }: { params: Promise<{ vault: string }> }) {
   const { vault } = await params;
-  const [ens, score, invoices, network] = await Promise.all([loadEnsByVault(vault), loadScore(vault), api.listInvoices().catch(() => []), loadNetwork()]);
+  const [ens, creditReport, invoices, network] = await Promise.all([
+    loadEnsByVault(vault),
+    loadCreditReport(vault),
+    api.listInvoices().catch(() => []),
+    loadNetwork(),
+  ]);
   const ego = egoGraph(network, vault);
   const agent = "agent" in ens ? ens.agent : undefined;
   // ENS name when published; in demo mode fall back to the sample directory.
   const displayName = agent?.name ?? (isMock ? partyOf(vault)?.name : undefined);
   const mine = invoices.filter((i) => i.buyerVault.toLowerCase() === vault.toLowerCase());
   const weekly = repaymentsByWeek(mine);
-  const settled = score ? score.paid + score.late + score.defaulted : 0;
+  const settled = creditReport?.counts.settled ?? 0;
   const spent = isMock ? MOCK_SPENT_TODAY : null;
   const spentPct = spent && agent ? (Number(spent) / Number(agent.limit)) * 100 : null;
-  const summary = !score || settled === 0 ? "No payment history yet." : `Paid on time ${score.onTimeRate}% of the time across ${settled} invoices.`;
+  const summary = creditReport?.summary ?? (settled === 0 ? "No payment history yet." : `${settled} settled invoices.`);
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-5">
@@ -47,7 +54,11 @@ export default async function AgentPage({ params }: { params: Promise<{ vault: s
         <div className="min-w-60 flex-1">
           <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="text-[28px] leading-9 font-semibold tracking-tight">{displayName ?? shortHex(vault)}</h1>
-            {score && <Term explain="score"><ScoreBadge band={score.band} value={score.band === "New" ? null : score.onTimeRate} /></Term>}
+            {creditReport && (
+              <Term explain="score">
+                <ScoreBadge band={creditReport.band} score={creditReport.score} />
+              </Term>
+            )}
           </div>
           <p className="mt-1 text-[15px] text-ink-soft">{summary}</p>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-sm text-ink-muted">
@@ -56,8 +67,19 @@ export default async function AgentPage({ params }: { params: Promise<{ vault: s
         </div>
       </section>
 
+      {/* Credit score breakdown card */}
+      {creditReport && <CreditScoreCard report={creditReport} />}
+
       <section className="grid gap-4 sm:grid-cols-2">
-        <StatCard label="Paid on time" value={score && settled ? `${score.onTimeRate}%` : "—"} sub={score ? `${score.paid} on time · ${score.late} late · ${score.defaulted} defaulted` : copy.scoreHelp.New} />
+        <StatCard
+          label="Repayment track record"
+          value={creditReport?.score !== null && creditReport?.score !== undefined ? `${creditReport.score}` : "—"}
+          sub={
+            creditReport
+              ? `${creditReport.counts.onTime} on time · ${creditReport.counts.paidLate} paid late · ${creditReport.counts.defaulted} defaulted`
+              : copy.scoreHelp.New
+          }
+        />
         <StatCard label="Spent today" value={spent ? formatAmount(spent) : "—"} sub={agent ? `Limit ${formatAmount(agent.limit)} a day, set by the sponsor` : undefined}>
           {spentPct != null && <Progress value={spentPct} label="Share of daily limit spent today" />}
         </StatCard>

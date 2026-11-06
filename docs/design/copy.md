@@ -148,3 +148,21 @@ Principle: each screen leads with **one action**; everything else sits in a clos
 | `glossary.ens` | A public name like buyer.eth. It shows who the agent is and its limits, and anyone can check it. |
 | `glossary.agent` | Software that buys and pays invoices on someone's behalf, within limits set by its sponsor. |
 | `sections.*` | Who's involved · Buyer's track record · Where the money is · Activity · Who can change these values |
+
+## Credit score (added 2026-11-06)
+| Key | Text |
+| --- | --- |
+| `creditScore.title` | Credit score |
+| `creditScore.scale` | 300–900 |
+| `creditScore.minScoreFilter` | Minimum score |
+| `creditScore.filterAny` | Any score |
+| `creditScore.filter650` | 650+ (Good) |
+| `creditScore.filter750` | 750+ (Excellent) |
+| `creditScore.noScore` | — |
+| `creditScore.newChip` | New |
+| `creditScore.asOf` | As of {date} |
+| `creditScore.points` | +{pts} pts |
+| `creditScore.factors.*` | Payment history · Defaults & recency · Exposure vs limit · History length · Track record size |
+| `creditScore.howItWorks.title` | How this score works |
+| `creditScore.howItWorks.description` | The credit score ranges from 300 to 900 and is computed deterministically from on-chain invoice history. It is tamper-proof: every input is verified from smart contract events on Hedera, with zero off-chain opinion. |
+
