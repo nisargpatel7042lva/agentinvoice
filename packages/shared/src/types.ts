@@ -54,14 +54,26 @@ export interface ApprovalStart {
   authorizationUrl: string;
 }
 
+export const SCORE_BANDS = ["A", "B", "C", "New"] as const;
+export type ScoreBand = (typeof SCORE_BANDS)[number];
+
+export interface BuyerScore {
+  vault: Address;
+  band: ScoreBand;
+  onTimeRate: number; // 0 to 100
+  paid: number;
+  late: number;
+  defaulted: number;
+  openExposure: Amount;
+  evidence: string[]; // transaction IDs / mirror hashes
+  asOf: number; // unix seconds
+}
+
 export interface Score {
   agent: Address;
   value: number;
   updatedAt: number;
 }
-
-export const SCORE_BANDS = ["A", "B", "C", "New"] as const;
-export type ScoreBand = (typeof SCORE_BANDS)[number];
 
 /** Response of the paid score API (bought through payAndGet). */
 export interface ScoreResult {
@@ -72,6 +84,7 @@ export interface ScoreResult {
   late: number;
   updatedAt: number;
 }
+
 
 export interface AuditEvent {
   topicId: string; // HCS topic, e.g. 0.0.12345

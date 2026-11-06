@@ -10,7 +10,7 @@
     "@types/better-sqlite3": "^9.6.0"
   },
   "dependencies": {
-    "@agentinvoice/shared": "workspace:*",
+    "@agentinvoice/shared": "*",
     "@fastify/rate-limit": "^11.2.2",
     "@hashgraph/sdk": "^2.81.0",
     "@worldcoin/agentkit": "^0.2.1",
