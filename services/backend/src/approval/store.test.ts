@@ -54,7 +54,7 @@ describe("approval store", () => {
     make({ id: "c", now: NOW + 1000 });
     decide(db, "b", "approve", { now: NOW + 1 });
 
-    expect(sweepExpired(db, NOW + TTL)).toBe(2);
+    expect(sweepExpired(db, NOW + TTL).sort()).toEqual(["a", "b"]);
     expect(getApproval(db, "a", NOW + TTL)?.state).toBe("expired");
     expect(getApproval(db, "b", NOW + TTL)?.state).toBe("expired");
     expect(getApproval(db, "c", NOW + TTL)?.state).toBe("pending");

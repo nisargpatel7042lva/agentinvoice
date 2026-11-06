@@ -43,12 +43,12 @@ ENSv2 namespaces (Prompt 2 + v2-S2)
 - [ ] Gate 2: a real invoice shows in `/api/invoices` within 10s with a HashScan link, score returns sensible bands
 
 HCS audit log (v2-S3, Phase 2 or 3; notes in `docs/notes/hcs.md`)
-- [ ] 2.7 `scripts/hcs-create-topic.ts`: topic with submit key, prints topic id and HashScan link, id in env
-- [ ] 2.8 `src/audit/publish.ts`: `publishAudit(event)` typed events with payload hash, no personal data
-- [ ] 2.9 Retries capped at 3; a failure is logged and never blocks the main action
-- [ ] 2.10 `GET /api/audit` reads topic back via mirror node, newest first
-- [ ] 2.11 Hook into indexer, approval service and Mann's `payAndGet` `onAudit` callback
-- [ ] 2.12 Tests: event shape, retry cap, failed publish does not throw
+- [ ] 2.7 (script written, NOT run: needs a funded Hedera testnet account HEDERA_ACCOUNT_ID/HEDERA_PRIVATE_KEY) `scripts/hcs-create-topic.ts`: topic with submit key, prints topic id and HashScan link, id in env
+- [x] 2.8 `src/audit/publish.ts`: `publishAudit(event)` typed events with payload hash, no personal data
+- [x] 2.9 Retries capped at 3; a failure is logged and never blocks the main action
+- [x] 2.10 `GET /api/audit` reads topic back via mirror node, newest first
+- [x] 2.11 (indexer status changes and approval events hooked; Mann's payAndGet onAudit is not wired: no endpoint for it in spec v2) Hook into indexer, approval service and Mann's `payAndGet` `onAudit` callback
+- [x] 2.12 Tests: event shape, retry cap, failed publish does not throw
 
 ## Phase 3: approval service and ENS publisher (hours 16 to 26) - branch `phase_3_approval_ens_sidd`
 

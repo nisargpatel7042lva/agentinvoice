@@ -86,10 +86,10 @@ export function decide(db: Database.Database, id: string, event: "approve" | "re
   persist(db, id, row.state, event, opts.now, opts.subjectHash);
 }
 
-export function sweepExpired(db: Database.Database, now: number): number {
+export function sweepExpired(db: Database.Database, now: number): string[] {
   const rows = db.prepare("SELECT * FROM approvals WHERE state IN ('pending','approved') AND expires_at <= ?").all(now) as Row[];
   for (const r of rows) persist(db, r.id, r.state, "expire", now);
-  return rows.length;
+  return rows.map((r) => r.id);
 }
 
 // Adapter for handleCallback: the step-up state lives on the approval row.

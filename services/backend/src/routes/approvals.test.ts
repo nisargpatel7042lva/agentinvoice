@@ -20,6 +20,7 @@ beforeAll(async () => {
 let clock = NOW;
 let tokenOverrides: { nonce?: string; authTime?: number } = {};
 let app: ReturnType<typeof buildApp>;
+let audits: { type: string; invoiceId: string | null; data: Record<string, unknown> }[] = [];
 
 // A fake World token endpoint: signs an ID token carrying the nonce from the authorization request.
 function world(): WorldOptions {
@@ -54,7 +55,8 @@ let currentNonce = "";
 beforeEach(() => {
   clock = NOW;
   tokenOverrides = {};
-  app = buildApp({ dbPath: ":memory:", world: world() });
+  audits = [];
+  app = buildApp({ dbPath: ":memory:", world: world(), onAudit: (e) => void audits.push(e) });
   app.db
     .prepare(
       `INSERT INTO invoices (id, supplier, buyer_vault, face_amount, price, due_date, status, evidence_hash, source, updated_at)
@@ -158,6 +160,30 @@ describe("GET /api/world/callback", () => {
     const res = await callback({ code: "c", state: "nope", iss: WORLD_ISSUER });
     expect(resultOf(res)).toBe("error");
     expect(new URL(String(res.headers.location)).searchParams.get("code")).toBe("unknown_state");
+  });
+});
+
+describe("audit events", () => {
+  it("records started and approved, with ids only", async () => {
+    const { id } = await start();
+    await callback({ code: "c", state: id, iss: WORLD_ISSUER });
+
+    expect(audits.map((a) => a.type)).toEqual(["approval.started", "approval.approved"]);
+    expect(audits[1]).toMatchObject({ invoiceId: "7", data: { approvalId: id } });
+    expect(JSON.stringify(audits)).not.toMatch(/sub-1|secret|nonce/);
+  });
+
+  it("records a rejection with its reason and an expiry once", async () => {
+    const a = await start();
+    await callback({ error: "access_denied", state: a.id });
+    expect(audits.at(-1)).toMatchObject({ type: "approval.rejected", data: { approvalId: a.id, reason: "user_cancelled" } });
+
+    audits = [];
+    const b = await start();
+    audits = [];
+    clock = NOW + 601;
+    await callback({ code: "c", state: b.id, iss: WORLD_ISSUER });
+    expect(audits.filter((x) => x.type === "approval.expired")).toHaveLength(1);
   });
 });
 

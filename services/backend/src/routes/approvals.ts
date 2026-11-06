@@ -79,6 +79,7 @@ export function approvalRoutes(app: FastifyInstance, world: WorldOptions | undef
       now: now(),
       ttlSeconds: world.ttlSeconds ?? 600,
     });
+    app.audit({ type: "approval.started", invoiceId: invoice.id, data: { approvalId, amount: invoice.face_amount } });
     return reply.code(201).send(ApprovalStartSchema.parse({ approvalId, authorizationUrl: start.url }));
   });
 
@@ -117,15 +118,21 @@ export function approvalRoutes(app: FastifyInstance, world: WorldOptions | undef
       if (!state || current?.state !== "pending") return redirect(current?.state ?? "error", "approval_not_pending");
       const subjectHash = createHash("sha256").update(`${verified.issuer}:${verified.subject}`).digest("hex");
       decide(app.db, state, "approve", { now: now(), subjectHash });
+      app.audit({ type: "approval.approved", invoiceId: current.invoiceId, data: { approvalId: state } });
       return redirect("approved");
     } catch (err) {
       if (!(err instanceof StepUpError)) throw err;
       // Never log tokens, codes or the client secret: only the error code.
       req.log.info({ code: err.code }, "world step-up refused");
-      if (state && REJECTING.has(err.code) && getApproval(app.db, state, now())?.state === "pending") {
+      const before = state ? getApproval(app.db, state, now()) : undefined;
+      if (state && before && REJECTING.has(err.code) && before.state === "pending") {
         decide(app.db, state, "reject", { now: now() });
+        app.audit({ type: "approval.rejected", invoiceId: before.invoiceId, data: { approvalId: state, reason: err.code } });
       }
       const after = state ? getApproval(app.db, state, now()) : undefined;
+      if (after?.state === "expired" && err.code === "approval_expired") {
+        app.audit({ type: "approval.expired", invoiceId: after.invoiceId, data: { approvalId: after.id } });
+      }
       return redirect(after?.state ?? "error", err.code);
     }
   });

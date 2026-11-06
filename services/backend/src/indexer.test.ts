@@ -69,6 +69,26 @@ beforeEach(() => {
 const count = (table: string) => (db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n;
 const sleep = async () => {};
 
+describe("indexer onChange", () => {
+  it("reports first sight and a later status change", async () => {
+    const { reader, state } = fakeReader({ logs: [log(95, 0, 1)] });
+    const seen: unknown[] = [];
+    const ix = createIndexer({ db, reader, startBlock: 90n, now: () => 1, sleep, onChange: (c) => void seen.push(c) });
+    await ix.pollOnce();
+
+    state.head = 110;
+    state.invoices[1] = invoice({ status: 2, holder: HOLDER });
+    state.logs.push(log(105, 0, 1, "0xfunded"));
+    await ix.pollOnce();
+    await ix.pollOnce(); // no new events: no new change
+
+    expect(seen).toEqual([
+      [{ invoiceId: "1", from: null, to: "Open" }],
+      [{ invoiceId: "1", from: "Open", to: "Funded" }],
+    ]);
+  });
+});
+
 describe("indexer", () => {
   it("stores events and the invoice they refer to as chain rows", async () => {
     const { reader } = fakeReader({ logs: [log(95, 0, 1)] });

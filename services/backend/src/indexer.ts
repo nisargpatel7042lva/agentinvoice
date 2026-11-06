@@ -1,4 +1,5 @@
 import type Database from "better-sqlite3";
+import type { Status } from "@agentinvoice/shared";
 import { keccak256, toHex, zeroAddress, type Address, type Hex } from "viem";
 
 // Indexes InvoiceMarket events into SQLite and keeps each referenced invoice in sync with the chain.
@@ -32,6 +33,12 @@ export interface ChainReader {
   getInvoice(id: bigint): Promise<ChainInvoice>;
 }
 
+export interface InvoiceChange {
+  invoiceId: string;
+  from: Status | null; // null the first time the invoice is seen
+  to: Status;
+}
+
 const STATUS_NAMES = ["Pending", "Open", "Funded", "Paid", "Late", "Defaulted"] as const;
 
 const topic0 = (signature: string) => keccak256(toHex(signature));
@@ -47,7 +54,7 @@ export interface IndexerOptions {
   now?: () => number; // unix seconds
   sleep?: (ms: number) => Promise<void>;
   onError?: (err: unknown) => void;
-  onChange?: (invoiceIds: string[]) => void; // called after invoices were refreshed from new events
+  onChange?: (changes: InvoiceChange[]) => void; // called after invoices were refreshed from new events
 }
 
 export function getLastSyncedAt(db: Database.Database): number | null {
@@ -91,7 +98,8 @@ export function createIndexer(opts: IndexerOptions) {
      WHERE invoices.source = 'chain'`,
   );
 
-  async function refreshInvoice(id: string) {
+  async function refreshInvoice(id: string): Promise<InvoiceChange> {
+    const before = db.prepare("SELECT status FROM invoices WHERE id = ?").get(id) as { status: Status } | undefined;
     const inv = await withRetry(() => reader.getInvoice(BigInt(id)));
     const status = STATUS_NAMES[inv.status];
     if (!status) throw new Error(`invoice ${id} has unknown status index ${inv.status}`);
@@ -108,6 +116,7 @@ export function createIndexer(opts: IndexerOptions) {
       evidenceHash: inv.evidenceHash,
       updatedAt: now(),
     });
+    return { invoiceId: id, from: before?.status ?? null, to: status };
   }
 
   async function indexRange(from: bigint, to: bigint) {
@@ -128,8 +137,9 @@ export function createIndexer(opts: IndexerOptions) {
         if (res.changes > 0 && invoiceId !== null) touched.add(invoiceId); // only new events cause a refresh
       }
     })();
-    for (const id of touched) await refreshInvoice(id);
-    if (touched.size > 0) opts.onChange?.([...touched]);
+    const changes: InvoiceChange[] = [];
+    for (const id of touched) changes.push(await refreshInvoice(id));
+    if (changes.length > 0) opts.onChange?.(changes);
   }
 
   // One poll: read from (last indexed block - reorgDepth + 1) to the head, in chunks. Progress is saved only
