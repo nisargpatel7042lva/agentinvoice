@@ -250,9 +250,35 @@ describe("buyer flow", () => {
     const model = reviewModel("accept", "delivery matches the evidence");
     const pay = vi.fn(async () => hash);
     const wired = deps([newer, older], { now: () => funded.dueDate, model, pay });
-    await createBuyerAgent(wired).tick();
+    const agent = createBuyerAgent(wired);
+    await agent.tick();
+    expect(pay).toHaveBeenCalledTimes(1);
     expect(pay).toHaveBeenNthCalledWith(1, 9n);
+    await agent.tick();
     expect(pay).toHaveBeenNthCalledWith(2, 1n);
+  });
+
+  it("pays the next invoice on the following pass after a dispute", async () => {
+    const funded = invoiceFixtures.find((invoice) => invoice.status === "Funded")!;
+    const older = { ...funded, id: "9", dueDate: funded.dueDate };
+    const newer = { ...funded, id: "1", dueDate: funded.dueDate + DUE_WITHIN_SECONDS };
+    const pay = vi.fn(async () => hash);
+    const model = {
+      complete: vi.fn(async (request: { user: string }) => {
+        const disputed = request.user.includes("id: 9");
+        return JSON.stringify({
+          action: disputed ? "dispute" : "accept",
+          reason: disputed ? "delivery does not match" : "delivery matches the evidence",
+        });
+      }),
+    };
+    const wired = deps([newer, older], { now: () => funded.dueDate, model, pay });
+    const agent = createBuyerAgent(wired);
+    await agent.tick();
+    expect(pay).not.toHaveBeenCalled();
+    await agent.tick();
+    expect(pay).toHaveBeenCalledTimes(1);
+    expect(pay).toHaveBeenNthCalledWith(1, 1n);
   });
 
   it("does not pay the same invoice twice in one run", async () => {

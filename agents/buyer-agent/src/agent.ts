@@ -25,6 +25,8 @@ export function createBuyerAgent(deps: BuyerDeps) {
   const log = deps.log ?? console.log;
   const failures = new Map<string, number>();
   const paid = new Set<string>();
+  const accepted = new Set<string>();
+  const settled = new Set<string>();
   const reviews = new Map<string, InvoiceReview>();
   let stopped = false;
 
@@ -57,7 +59,8 @@ export function createBuyerAgent(deps: BuyerDeps) {
       if (stopped) break;
       try {
         const invoice = await deps.api.getInvoice(item.id);
-        if (!ours(invoice)) continue;
+        const seen = `${invoice.id}:${invoice.evidenceHash.toLowerCase()}`;
+        if (!ours(invoice) || paid.has(invoice.id) || accepted.has(invoice.id) || settled.has(seen)) continue;
         const [supplier, threshold, dailyLimit, spentToday, balance] = await Promise.all([
           deps.readSupplier(invoice.supplier),
           deps.readThreshold(),
@@ -87,31 +90,33 @@ export function createBuyerAgent(deps: BuyerDeps) {
           continue;
         }
         if (decision.action === "pay") {
-          if (paid.has(invoice.id)) {
-            log(`${decisionLine(invoice.id, { action: "skip", reason: "already paid in this run" })} face=${face}`);
-            continue;
-          }
           const review = await reviewed(invoice);
           if (review.action === "dispute") {
             log(`invoice=${invoice.id} action=dispute reason="${review.reason}" face=${face}`);
-            continue;
+            settled.add(seen);
+            return;
           }
           if (review.action !== "accept") {
             log(`invoice=${invoice.id} action=escalate reason="sponsor approval is needed" face=${face}`);
-            continue;
+            settled.add(seen);
+            return;
           }
         }
         if (deps.dryRun) {
           log(`${decisionLine(invoice.id, decision)} dry-run face=${face}`);
-          continue;
+          settled.add(seen);
+          return;
         }
         const hash = decision.action === "accept" ? await deps.accept(BigInt(invoice.id)) : await deps.pay(BigInt(invoice.id));
         if (decision.action === "pay") paid.add(invoice.id);
+        else accepted.add(invoice.id);
         log(`${decisionLine(invoice.id, decision)} tx=${hash} face=${face}`);
+        return;
       } catch (error) {
         const n = (failures.get(item.id) ?? 0) + 1;
         failures.set(item.id, n);
         log(`invoice=${item.id} action=error failed (${n}/${MAX_RETRIES}): ${(error as Error).message}`);
+        return;
       }
     }
   }
