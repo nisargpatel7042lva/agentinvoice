@@ -1,128 +1,79 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { payAndGet, resetSpentTodayForTesting } from "./payAndGet";
+import { encodePaymentRequiredHeader, encodePaymentResponseHeader } from "@x402/core/http";
+import { payAndGet, getSpentToday, resetSpentTodayForTesting } from "./payAndGet";
 
-describe("payAndGet spending controls (v2-M4)", () => {
-  beforeEach(() => {
-    resetSpentTodayForTesting();
-    vi.restoreAllMocks();
+const URL_ = "http://score.test/score?vault=0x2222222222222222222222222222222222222222";
+const PAY_TO = "0.0.5005";
+
+// A real x402 v2 challenge, as @x402/express sends it (PAYMENT-REQUIRED header).
+function challenge(amount: string, over: Record<string, unknown> = {}) {
+  const pr = {
+    x402Version: 2,
+    error: "Payment required",
+    resource: { url: URL_, description: "score", mimeType: "application/json" },
+    accepts: [{ scheme: "exact", network: "hedera:testnet", asset: "0.0.0", amount, payTo: PAY_TO, maxTimeoutSeconds: 60, extra: { feePayer: "0.0.7162784" }, ...over }],
+  };
+  return new Response(JSON.stringify({}), { status: 402, headers: { "PAYMENT-REQUIRED": encodePaymentRequiredHeader(pr as never) } });
+}
+
+function settled(body: unknown) {
+  const receipt = { success: true, transaction: "0.0.9001@1793952000.000000001", network: "hedera:testnet", payer: "0.0.9001" };
+  return new Response(JSON.stringify(body), { status: 200, headers: { "PAYMENT-RESPONSE": encodePaymentResponseHeader(receipt as never) } });
+}
+
+const signPayment = vi.fn(async () => ({ "PAYMENT-SIGNATURE": "signed-by-test" }));
+
+beforeEach(() => {
+  resetSpentTodayForTesting();
+  signPayment.mockClear();
+});
+
+describe("payAndGet: real x402 flow with spending controls", () => {
+  it("refuses a host outside the policy without sending anything", async () => {
+    const f = vi.fn();
+    const r = await payAndGet(URL_, { fetch: f, policy: { allowedHosts: ["other.test"] }, signPayment });
+    expect(r).toEqual({ ok: false, reason: "Host score.test not allowed by policy" });
+    expect(f).not.toHaveBeenCalled();
   });
 
-  it("refuses request if host is not in allowedHosts policy", async () => {
-    const onAudit = vi.fn();
-    const result = await payAndGet("http://evil.com/score", {
-      policy: {
-        allowedHosts: ["localhost", "api.agentinvoice.xyz"],
-      },
-      onAudit,
-    });
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.reason).toContain("not allowed by policy");
-    }
-    expect(onAudit).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "x402.refusal" })
-    );
+  it("refuses above the per-call cap before signing", async () => {
+    const f = vi.fn(async () => challenge("20000000"));
+    const r = await payAndGet(URL_, { fetch: f, policy: { perCallCap: "10000000" }, signPayment });
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.reason).toMatch(/exceeds per-call cap/);
+    expect(signPayment).not.toHaveBeenCalled();
   });
 
-  it("refuses request if requested amount exceeds perCallCap", async () => {
-    // Mock 402 response demanding 5 HBAR
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      status: 402,
-      ok: false,
-      headers: new Headers({ "x402-payment-required": "true" }),
-      json: async () => ({
-        amount: "5000000000000000000", // 5 HBAR
-        payTo: "0x1111111111111111111111111111111111111111",
-      }),
-    } as unknown as Response);
-
-    const onAudit = vi.fn();
-    const result = await payAndGet("http://localhost:3000/score", {
-      policy: {
-        perCallCap: "2000000000000000000", // 2 HBAR cap
-      },
-      onAudit,
-    });
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.reason).toContain("exceeds per-call cap");
-    }
-    expect(onAudit).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "x402.refusal" })
-    );
+  it("refuses a recipient that is not allowed, a non-HBAR asset, or another network", async () => {
+    const run = (res: Response, policy = {}) => payAndGet(URL_, { fetch: vi.fn(async () => res), policy, signPayment });
+    expect(await run(challenge("1000"), { allowedPayTo: ["0.0.1"] })).toMatchObject({ ok: false, reason: `Recipient ${PAY_TO} not allowed` });
+    expect(await run(challenge("1000", { asset: "0.0.123" }))).toMatchObject({ ok: false, reason: "Asset 0.0.123 is not native HBAR" });
+    expect(await run(challenge("1000", { network: "hedera:mainnet" }))).toMatchObject({ ok: false });
+    expect(signPayment).not.toHaveBeenCalled();
   });
 
-  it("refuses request if daily budget is exhausted", async () => {
-    // Mock 402 response demanding 8 HBAR
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      status: 402,
-      ok: false,
-      headers: new Headers({ "x402-payment-required": "true" }),
-      json: async () => ({
-        amount: "8000000000000000000", // 8 HBAR
-        payTo: "0x1111111111111111111111111111111111111111",
-      }),
-    } as unknown as Response);
-
-    const result = await payAndGet("http://localhost:3000/score", {
-      policy: {
-        dailyBudget: "5000000000000000000", // 5 HBAR budget
-      },
+  it("signs, retries with the payment header, returns data and the settlement tx, and tracks the daily budget", async () => {
+    const calls: RequestInit[] = [];
+    const f = vi.fn(async (_u: string, init?: RequestInit) => {
+      calls.push(init ?? {});
+      return init?.headers ? settled({ band: "A" }) : challenge("5000000");
     });
+    const audit = vi.fn();
+    const r = await payAndGet<{ band: string }>(URL_, { fetch: f as never, policy: { dailyBudget: "8000000" }, signPayment, onAudit: audit });
+    expect(r).toEqual({ ok: true, data: { band: "A" }, txId: "0.0.9001@1793952000.000000001", amount: "5000000" });
+    expect(calls[1].headers).toEqual({ "PAYMENT-SIGNATURE": "signed-by-test" });
+    expect(getSpentToday()).toBe(5_000_000n);
+    expect(audit).toHaveBeenCalledWith(expect.objectContaining({ type: "x402.payment", amount: "5000000" }));
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.reason).toContain("Daily budget exhausted");
-    }
+    const second = await payAndGet(URL_, { fetch: f as never, policy: { dailyBudget: "8000000" }, signPayment });
+    expect(second.ok).toBe(false);
+    expect(!second.ok && second.reason).toMatch(/Daily budget exhausted/);
   });
 
-
-  it("pays and returns data when within budget and limits", async () => {
-    // 1st request -> 402
-    // 2nd request -> 200 with score
-    global.fetch = vi
-      .fn()
-      .mockResolvedValueOnce({
-        status: 402,
-        ok: false,
-        headers: new Headers({ "x402-payment-required": "true" }),
-        json: async () => ({
-          amount: "1000000000000000000", // 1 HBAR
-          payTo: "0x1111111111111111111111111111111111111111",
-        }),
-      } as unknown as Response)
-      .mockResolvedValueOnce({
-        status: 200,
-        ok: true,
-        json: async () => ({
-          vault: "0x1111111111111111111111111111111111111111",
-          band: "A",
-          onTimeRate: 100,
-        }),
-      } as unknown as Response);
-
-    const onAudit = vi.fn();
-    const result = await payAndGet("http://localhost:3000/score", {
-      policy: {
-        perCallCap: "2000000000000000000",
-        dailyBudget: "10000000000000000000",
-      },
-      onAudit,
-    });
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.data).toEqual({
-        vault: "0x1111111111111111111111111111111111111111",
-        band: "A",
-        onTimeRate: 100,
-      });
-      expect(result.txId).toBeDefined();
-    }
-    expect(onAudit).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "x402.payment" })
-    );
+  it("refuses to pay with no payer configured, and passes free responses through", async () => {
+    const noPayer = await payAndGet(URL_, { fetch: vi.fn(async () => challenge("1000")) });
+    expect(noPayer).toMatchObject({ ok: false, reason: expect.stringMatching(/No payer configured/) });
+    const free = await payAndGet(URL_, { fetch: vi.fn(async () => new Response(JSON.stringify({ hi: 1 }), { status: 200 })) });
+    expect(free).toEqual({ ok: true, data: { hi: 1 } });
   });
 });

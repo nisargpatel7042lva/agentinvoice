@@ -1,16 +1,20 @@
-import { payAndGet } from "@agentinvoice/shared";
+import { payAndGet } from "@agentinvoice/shared/payAndGet";
 
 async function main() {
   const paidApiUrl = process.env.PAID_API_URL || "http://localhost:4020/score";
-  const targetVault = (process.env.TARGET_VAULT || "0x1234567890123456789012345678901234567890") as `0x${string}`;
+  // Default: the deployed BuyerVault from addresses.json. Payer: HEDERA_ACCOUNT_ID + HEDERA_PRIVATE_KEY (ECDSA).
+  const { contracts } = await import("@agentinvoice/shared");
+  const targetVault = (process.env.TARGET_VAULT || contracts.buyerVault) as `0x${string}`;
 
   const queryUrl = `${paidApiUrl}?vault=${targetVault}`;
   console.log(`[score-live] Fetching x402 credit score from: ${queryUrl}`);
 
   const result = await payAndGet(queryUrl, {
+    accountId: process.env.HEDERA_ACCOUNT_ID,
+    privateKey: process.env.HEDERA_PRIVATE_KEY,
     policy: {
-      perCallCap: "5000000000000000000", // 5 HBAR
-      dailyBudget: "50000000000000000000", // 50 HBAR
+      perCallCap: "50000000", // 0.5 HBAR, in tinybars
+      dailyBudget: "500000000", // 5 HBAR, in tinybars
     },
     onAudit: (evt) => {
       console.log(`[score-live audit] ${evt.type}: ${JSON.stringify(evt)}`);
