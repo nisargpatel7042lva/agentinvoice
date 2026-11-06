@@ -1,5 +1,5 @@
 # Invoice Agent backend (Sidd's Fastify + SQLite service). Build from the repo root:
-#   fly deploy --config services/backend/fly.toml
+#   bash deploy/aws/deploy.sh   (see deploy/aws/README.md)
 # Runs under Node (better-sqlite3 crashes Bun 1.3.x); Bun is only used to install the workspace.
 FROM node:22-bookworm-slim
 
