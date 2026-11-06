@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import Link from "next/link";
+import Script from "next/script";
 import type { ReactNode } from "react";
 import { NavLinks } from "@/components/NavLinks";
 import { ThemeToggle, themeInitScript } from "@/components/ThemeToggle";
-import { isMock } from "@/lib/api";
+import { ToastHost } from "@/components/ToastHost";
+import { Providers } from "@/components/Providers";
+import { WalletButton } from "@/components/WalletButton";
+import { isMock } from "@/lib/env";
 import { copy } from "@/lib/copy";
 import "./globals.css";
 
@@ -21,9 +25,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     // data-theme is set before paint by themeInitScript, so React must not complain that it differs.
     <html lang="en" className={`${inter.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <Script id="theme-init" strategy="beforeInteractive">{themeInitScript}</Script>
       </head>
-      <body className="min-h-screen bg-canvas font-sans text-ink antialiased">
+      <body className="min-h-screen bg-canvas font-sans text-ink antialiased" suppressHydrationWarning>
+        <Providers>
         <div className="border-b border-line bg-subtle px-4 py-1.5 text-center text-xs text-ink-muted">
           {copy.banner.testnet}
           {isMock ? ` ${copy.banner.mock}` : ""}
@@ -41,11 +46,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 Hedera testnet
               </span>
               <ThemeToggle />
-              <span className="flex h-9 items-center rounded-lg bg-ink px-3.5 text-sm font-medium text-canvas">{copy.wallet.connect}</span>
+              <WalletButton />
             </div>
           </nav>
         </header>
         <main className="mx-auto max-w-[1240px] px-4 pt-8 pb-16 md:px-6">{children}</main>
+        <ToastHost />
+        </Providers>
       </body>
     </html>
   );

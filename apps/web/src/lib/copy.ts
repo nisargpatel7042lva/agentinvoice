@@ -137,6 +137,7 @@ export const copy = {
   error: {
     generic: "Something went wrong. Nothing was charged. Please try again.",
     notFound: "We could not find this invoice.",
+    ensNotFound: "We could not find this ENS name. Check the spelling.",
     backendDown: "Our server is not responding. Chain data is still live.",
   },
 } as const;

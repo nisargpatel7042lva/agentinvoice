@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, ChevronLeft } from "lucide-react";
 import { formatUnits } from "@agentinvoice/shared";
-import { Card, buttonVariants } from "@/components/ui";
+import { Card } from "@/components/ui";
 import { Legend } from "@/components/charts";
 import { EmptyState } from "@/components/EmptyState";
 import { ScoreBadge } from "@/components/ScoreBadge";
@@ -10,7 +10,9 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Stepper } from "@/components/Stepper";
 import { Term } from "@/components/Term";
 import { TxLink } from "@/components/TxLink";
-import { api } from "@/lib/api";
+import { FundButton } from "@/components/FundButton";
+import { DemoControls } from "@/components/InvoiceActions";
+import { api, isMock } from "@/lib/api";
 import { loadEnsByVault, loadScore } from "@/lib/agents";
 import { cn } from "@/lib/cn";
 import { copy } from "@/lib/copy";
@@ -87,10 +89,10 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           )}
         </div>
 
-        {inv.status === "Open" ? (
-          <button type="button" disabled className={cn(buttonVariants({ size: "lg" }), "mt-4 w-full")}>{copy.wallet.connectToFund}</button>
-        ) : null}
+        {inv.status === "Open" && <FundButton id={inv.id} price={inv.price} priceLabel={formatAmount(inv.price)} />}
       </Card>
+
+      {isMock && <DemoControls id={inv.id} status={inv.status} />}
 
       <Card className="px-6 py-5">
         <Stepper status={inv.status} notes={notes} />
