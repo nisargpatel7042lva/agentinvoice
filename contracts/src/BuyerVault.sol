@@ -4,6 +4,9 @@ pragma solidity ^0.8.24;
 import {IBuyerVault} from "./interfaces/IBuyerVault.sol";
 import {IInvoiceMarket, Invoice, Status} from "./interfaces/IInvoiceMarket.sol";
 
+// UNITS: every amount in this contract (limits, face amounts, balances, msg.value) is in tinybars, because inside the Hedera EVM
+// msg.value, address.balance and call{value} are tinybars (1 HBAR = 1e8). Never scale by 1e10 here. Clients convert to the 18-decimal
+// JSON-RPC wire format at the edge (packages/shared units.ts tinybarToWeibar). See docs/notes/contracts-review.md.
 contract BuyerVault is IBuyerVault {
     error Unauthorized();
     error VaultFrozen();
@@ -19,6 +22,7 @@ contract BuyerVault is IBuyerVault {
     error InvalidAmount();
     error ZeroAddress();
     error TransferFailed();
+    error MarketNotAllowed();
 
     bytes32 private immutable DOMAIN_SEPARATOR;
     bytes32 public constant LARGE_PAYMENT_TYPEHASH =
@@ -39,6 +43,10 @@ contract BuyerVault is IBuyerVault {
     mapping(address => uint256) public override supplierLimit;
     mapping(address => mapping(uint256 => bool)) public acceptedInvoices;
     mapping(uint256 => bool) public usedNonces;
+    // The only InvoiceMarket contracts this vault will call. Without it the agent could point the vault at any contract.
+    mapping(address => bool) public allowedMarket;
+
+    event MarketAllowed(address indexed market, bool allowed);
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert Unauthorized();
@@ -124,7 +132,14 @@ contract BuyerVault is IBuyerVault {
         emit SupplierRemoved(supplier);
     }
 
+    function allowMarket(address market, bool allowed) external onlyOwner {
+        if (market == address(0)) revert ZeroAddress();
+        allowedMarket[market] = allowed;
+        emit MarketAllowed(market, allowed);
+    }
+
     function accept(address market, uint256 id) external override onlyAgent whenNotFrozen {
+        if (!allowedMarket[market]) revert MarketNotAllowed();
         Invoice memory inv = IInvoiceMarket(market).getInvoice(id);
         if (inv.buyerVault != address(this)) revert InvoiceNotForThisVault();
         if (!allowedSupplier[inv.supplier]) revert SupplierNotAllowed();
@@ -141,6 +156,7 @@ contract BuyerVault is IBuyerVault {
         uint256 id,
         bytes memory approval
     ) public override onlyAgent whenNotFrozen {
+        if (!allowedMarket[market]) revert MarketNotAllowed();
         if (!acceptedInvoices[market][id]) revert InvoiceNotAccepted();
 
         Invoice memory inv = IInvoiceMarket(market).getInvoice(id);
@@ -194,6 +210,9 @@ contract BuyerVault is IBuyerVault {
             v := byte(0, mload(add(sig, 96)))
         }
         if (v < 27) v += 27;
+        // reject malleable signatures: v must be 27 or 28 and s in the lower half of the curve order
+        if (v != 27 && v != 28) revert InvalidApproval();
+        if (uint256(s) > 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) revert InvalidApproval();
 
         address recovered = ecrecover(digest, v, r, s);
         if (recovered == address(0) || recovered != verifier) revert InvalidApproval();

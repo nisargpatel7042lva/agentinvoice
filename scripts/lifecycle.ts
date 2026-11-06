@@ -1,122 +1,126 @@
-import {
-  createPublicClient,
-  createWalletClient,
-  defineChain,
-  http,
-  parseEther,
-  formatEther,
-  keccak256,
-  toHex,
-} from "viem";
+// Runs one real invoice through the deployed contracts on Hedera testnet and prints every transaction.
+//
+//   happy path:  bunx tsx --env-file=.env scripts/lifecycle.ts
+//   default path: bunx tsx --env-file=.env scripts/lifecycle.ts --default   (waits for the due date and the grace period)
+//
+// The operator (DEPLOYER_PRIVATE_KEY) plays supplier, investor and the vault's agent, and must be the vault's owner so it can set it up.
+// Addresses come from packages/shared/src/addresses.json (written by scripts/deploy-contracts.ts) or MARKET_ADDRESS / VAULT_ADDRESS.
+// Env: FACE_HBAR (default 1), DISCOUNT_BPS (500), DUE_IN_SECONDS (180), HEDERA_RPC_URL, DEPLOY_TARGET=local for anvil.
+//
+// UNITS: amounts in the contracts are tinybars (1 HBAR = 1e8). Over Hedera's JSON-RPC a value is weibars: tinybars * 1e10.
+import { createPublicClient, createWalletClient, defineChain, formatEther, http, keccak256, toHex, type Abi, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import invoiceMarketArtifact from "../packages/shared/src/abi/InvoiceMarket.json" with { type: "json" };
-import buyerVaultArtifact from "../packages/shared/src/abi/BuyerVault.json" with { type: "json" };
+import { parseUnits, tinybarToWeibar } from "../packages/shared/src/units.js";
+import buyerVaultAbi from "../packages/shared/src/abi/BuyerVault.json" with { type: "json" };
+import invoiceMarketAbi from "../packages/shared/src/abi/InvoiceMarket.json" with { type: "json" };
 import addresses from "../packages/shared/src/addresses.json" with { type: "json" };
 
-const RPC_URL = process.env.HEDERA_RPC_URL || "https://testnet.hashio.io/api";
 const isDefaultMode = process.argv.includes("--default") || process.argv.includes("--mode=default");
+const target = process.env.DEPLOY_TARGET ?? "hedera";
+const rpcUrl = process.env.HEDERA_RPC_URL || "https://testnet.hashio.io/api";
+const wire = (tinybar: bigint) => (target === "hedera" ? tinybarToWeibar(tinybar) : tinybar);
+const link = (hash: Hex) => (target === "hedera" ? `https://hashscan.io/testnet/transaction/${hash}` : hash);
 
-const hederaTestnetChain = defineChain({
-  id: 296,
+const chain = defineChain({
+  id: Number(process.env.EXPECTED_CHAIN_ID ?? 296),
   name: "Hedera Testnet",
   nativeCurrency: { name: "HBAR", symbol: "HBAR", decimals: 18 },
-  rpcUrls: { default: { http: [RPC_URL] } },
-  blockExplorers: { default: { name: "HashScan", url: "https://hashscan.io/testnet" } },
+  rpcUrls: { default: { http: [rpcUrl] } },
 });
 
+const STATUS = ["Pending", "Open", "Funded", "Paid", "Late", "Defaulted"] as const;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 async function main() {
-  console.log(`=== AgentInvoice On-Chain Lifecycle Script (Mode: ${isDefaultMode ? "DEFAULT" : "REPAY / HAPPY PATH"}) ===`);
+  console.log(`=== AgentInvoice lifecycle (${isDefaultMode ? "DEFAULT path" : "HAPPY path"}, ${target}) ===`);
+  const key = process.env.DEPLOYER_PRIVATE_KEY;
+  if (!key || !/^0x[0-9a-fA-F]{64}$/.test(key)) throw new Error("Missing or invalid env: DEPLOYER_PRIVATE_KEY");
+  const account = privateKeyToAccount(key as Hex);
+  const market = (process.env.MARKET_ADDRESS || addresses.invoiceMarket) as Address;
+  const vault = (process.env.VAULT_ADDRESS || addresses.buyerVault) as Address;
+  if (/^0x0+$/.test(market) || /^0x0+$/.test(vault)) throw new Error("No deployed addresses: run scripts/deploy-contracts.ts first (or set MARKET_ADDRESS and VAULT_ADDRESS)");
 
-  const privateKey = (process.env.DEPLOYER_KEY || process.env.PRIVATE_KEY) as `0x${string}`;
-  if (!privateKey) {
-    console.warn("No PRIVATE_KEY or DEPLOYER_KEY specified in environment. Running in simulation mode.");
-    console.log("Scenario E1 / E3 logic verified against contracts.");
-    return;
+  const client = createPublicClient({ chain, transport: http(rpcUrl) });
+  const wallet = createWalletClient({ account, chain, transport: http(rpcUrl) });
+  const gasPrice = await client.getGasPrice();
+  const txFee = { type: "legacy" as const, gasPrice };
+  const mAbi = invoiceMarketAbi as Abi;
+  const vAbi = buyerVaultAbi as Abi;
+
+  const faceTiny = parseUnits(process.env.FACE_HBAR ?? "1"); // tinybars
+  const priceTiny = faceTiny - (faceTiny * BigInt(process.env.DISCOUNT_BPS ?? 500)) / 10_000n;
+  const dueIn = Number(process.env.DUE_IN_SECONDS ?? 180);
+  console.log(`operator ${account.address}\nmarket   ${market}\nvault    ${vault}`);
+  console.log(`face ${faceTiny} tinybar, price ${priceTiny} tinybar, due in ${dueIn}s`);
+
+  const read = <T>(address: Address, abi: Abi, functionName: string, fnArgs: unknown[] = []) => client.readContract({ address, abi, functionName, args: fnArgs }) as Promise<T>;
+  const send = async (label: string, address: Address, abi: Abi, functionName: string, fnArgs: unknown[], tinybarValue = 0n) => {
+    // Hedera's gas estimate can be too low when a contract sends HBAR out (claim ran out of gas on testnet): use twice the estimate, at least 100,000.
+    const value = wire(tinybarValue);
+    const estimate = await client.estimateContractGas({ account, address, abi, functionName, args: fnArgs, value });
+    const hash = await wallet.writeContract({ address, abi, functionName, args: fnArgs, value, gas: estimate * 2n > 100_000n ? estimate * 2n : 100_000n, ...txFee });
+    const receipt = await client.waitForTransactionReceipt({ hash, timeout: 180_000 });
+    if (receipt.status !== "success") throw new Error(`${label} reverted: ${link(hash)}`);
+    console.log(`  ${label}: ${link(hash)}`);
+  };
+  const statusOf = async (id: bigint) => STATUS[((await read<{ status: number }>(market, mAbi, "getInvoice", [id])).status) as number];
+
+  console.log("\n[Setup] the operator must own the vault, and the vault must trust this market and this supplier");
+  const owner = await read<Address>(vault, vAbi, "owner");
+  if (owner.toLowerCase() !== account.address.toLowerCase()) throw new Error(`The operator is not the vault owner (${owner}); use the owner key.`);
+  if (!(await read<boolean>(vault, vAbi, "allowedMarket", [market]))) await send("vault.allowMarket", vault, vAbi, "allowMarket", [market, true]);
+  // the supplier must be allowed AND its per-invoice limit must cover this invoice (an earlier run may have set a smaller limit)
+  const supplierAllowed = await read<boolean>(vault, vAbi, "allowedSupplier", [account.address]);
+  if (!supplierAllowed || (await read<bigint>(vault, vAbi, "supplierLimit", [account.address])) < faceTiny) {
+    await send("vault.allowSupplier", vault, vAbi, "allowSupplier", [account.address, faceTiny * 10n]);
   }
+  const vaultBalanceWire = await client.getBalance({ address: vault }); // JSON-RPC reports weibar
+  const neededWire = wire(faceTiny);
+  if (vaultBalanceWire < neededWire) await send("vault.deposit", vault, vAbi, "deposit", [], (neededWire - vaultBalanceWire) / wire(1n) + 1n);
 
-  const account = privateKeyToAccount(privateKey);
-  const client = createPublicClient({ chain: hederaTestnetChain, transport: http(RPC_URL) });
-  const wallet = createWalletClient({ chain: hederaTestnetChain, account, transport: http(RPC_URL) });
+  const dueDate = BigInt(Math.floor(Date.now() / 1000) + dueIn);
+  const evidence = keccak256(toHex(`evidence-${Date.now()}`));
+  const invoiceId = (await client.simulateContract({ account, address: market, abi: mAbi, functionName: "createInvoice", args: [vault, faceTiny, priceTiny, dueDate, evidence] })).result as bigint;
 
-
-  console.log(`Operator account: ${account.address}`);
-  const marketAddress = (process.env.MARKET_ADDRESS || addresses.invoiceMarket) as `0x${string}`;
-  const vaultAddress = (process.env.VAULT_ADDRESS || addresses.buyerVault) as `0x${string}`;
-
-  console.log(`Market address: ${marketAddress}`);
-  console.log(`Vault address:  ${vaultAddress}`);
-
-  const faceAmount = parseEther("100");
-  const price = parseEther("95");
-  const dueInSeconds = 180; // 3 minutes
-  const dueDate = BigInt(Math.floor(Date.now() / 1000) + dueInSeconds);
-  const evidenceHash = keccak256(toHex(`evidence-${Date.now()}`));
-
-  console.log("\n[Step 1] Creating invoice (Supplier -> Pending)...");
-  const createTx = await wallet.writeContract({
-    address: marketAddress,
-    abi: invoiceMarketArtifact,
-    functionName: "createInvoice",
-    args: [vaultAddress, faceAmount, price, dueDate, evidenceHash],
-  });
-  console.log(`Invoice created tx: https://hashscan.io/testnet/transaction/${createTx}`);
-
-  // Fetch invoice ID from market
-  const invoiceId = 1n; // demo standard ID
-
-  console.log("\n[Step 2] BuyerVault accepting invoice (Pending -> Open)...");
-  const acceptTx = await wallet.writeContract({
-    address: vaultAddress,
-    abi: buyerVaultArtifact,
-    functionName: "accept",
-    args: [marketAddress, invoiceId],
-  });
-  console.log(`Invoice accepted tx: https://hashscan.io/testnet/transaction/${acceptTx}`);
-
-  console.log("\n[Step 3] Investor funding/buying invoice (Open -> Funded)...");
-  const buyTx = await wallet.writeContract({
-    address: marketAddress,
-    abi: invoiceMarketArtifact,
-    functionName: "buy",
-    args: [invoiceId],
-    value: price,
-  });
-  console.log(`Invoice funded tx: https://hashscan.io/testnet/transaction/${buyTx}`);
+  console.log(`\n[1] create invoice #${invoiceId} (supplier -> Pending)`);
+  await send("market.createInvoice", market, mAbi, "createInvoice", [vault, faceTiny, priceTiny, dueDate, evidence]);
+  console.log("[2] the vault accepts it (Pending -> Open)");
+  await send("vault.accept", vault, vAbi, "accept", [market, invoiceId]);
+  console.log("[3] the investor funds it with the tinybar price (Open -> Funded); the supplier is paid at once");
+  await send(`market.fund (${priceTiny} tinybar)`, market, mAbi, "fund", [invoiceId], priceTiny);
+  console.log(`    status: ${await statusOf(invoiceId)}`);
 
   if (isDefaultMode) {
-    console.log("\n[Step 4 - Default Path] Simulating missed payment. Waiting for due date...");
-    console.log(`Invoice due at ${new Date(Number(dueDate) * 1000).toISOString()}`);
-    console.log("Calling markLate after dueDate...");
-    // In live network, markLate called when block.timestamp > dueDate
-    console.log("Calling markDefaulted after dueDate + gracePeriod...");
-    console.log("[Default lifecycle complete]");
+    const grace = await read<bigint>(market, mAbi, "gracePeriod");
+    console.log(`\n[4] DEFAULT path: nobody repays. Waiting for the due date, then the ${grace}s grace period.`);
+    if (grace > 600n) console.log(`    NOTE: the grace period is long (${grace}s). Redeploy with GRACE_PERIOD_SECONDS=60 for a demo.`);
+    // The contract compares against the chain's block timestamp (consensus time), which can trail this machine's clock by seconds,
+    // so wait on the latest block, not on Date.now().
+    const chainTime = async () => (await client.getBlock({ blockTag: "latest" })).timestamp;
+    const waitUntilAfter = async (t: bigint) => {
+      while ((await chainTime()) <= t) await sleep(2000);
+    };
+    await waitUntilAfter(dueDate);
+    await send("market.markLate", market, mAbi, "markLate", [invoiceId]);
+    console.log(`    status: ${await statusOf(invoiceId)}`);
+    await waitUntilAfter(dueDate + grace);
+    await send("market.markDefaulted", market, mAbi, "markDefaulted", [invoiceId]);
+    console.log(`    status: ${await statusOf(invoiceId)} (the investor takes the loss)`);
+    console.log("\n=== Default lifecycle completed ===");
     return;
   }
 
-  console.log("\n[Step 4] BuyerVault paying invoice at maturity (Funded -> Paid)...");
-  const payTx = await wallet.writeContract({
-    address: vaultAddress,
-    abi: buyerVaultArtifact,
-    functionName: "payInvoice",
-    args: [marketAddress, invoiceId],
-  });
-  console.log(`Invoice paid tx: https://hashscan.io/testnet/transaction/${payTx}`);
+  console.log("\n[4] the vault repays the face amount (Funded -> Paid)");
+  await send("vault.payInvoice", vault, vAbi, "payInvoice", [market, invoiceId]);
+  console.log(`    status: ${await statusOf(invoiceId)}`);
+  console.log("[5] the investor claims the repayment");
+  await send("market.claim", market, mAbi, "claim", []);
 
-  console.log("\n[Step 5] Investor claiming repayment from market...");
-  const claimTx = await wallet.writeContract({
-    address: marketAddress,
-    abi: invoiceMarketArtifact,
-    functionName: "claim",
-    args: [],
-  });
-  console.log(`Investor claimed tx: https://hashscan.io/testnet/transaction/${claimTx}`);
-
-  const finalBalance = await client.getBalance({ address: account.address });
-  console.log(`\nFinal operator balance: ${formatEther(finalBalance)} HBAR`);
-  console.log("=== Lifecycle run completed successfully ===");
+  console.log(`\nFinal operator balance: ${formatEther(await client.getBalance({ address: account.address }))} HBAR`);
+  console.log("=== Happy path completed ===");
 }
 
 main().catch((err) => {
-  console.error("Lifecycle failed:", err);
+  console.error(`\nLifecycle failed: ${(err as { shortMessage?: string }).shortMessage ?? (err as Error).message}`);
   process.exit(1);
 });
