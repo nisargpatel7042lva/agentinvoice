@@ -24,15 +24,19 @@
     "node": ">=20"
   },
   "devDependencies": {
+    "@agentinvoice/shared": "workspace:*",
     "@eslint/js": "^10.0.1",
     "@hashgraph/sdk": "^2.81.0",
+    "@testing-library/dom": "^10.4.2",
     "@types/node": "^26.6.6",
     "@worldcoin/agentkit": "^0.2.1",
     "eslint": "^10.14.0",
+    "jsdom": "^31.0.0",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.1",
     "viem": "^2.57.16",
+    "vite": "^8.3.6",
     "vitest": "^5.1.0"
   },
   "type": "module",

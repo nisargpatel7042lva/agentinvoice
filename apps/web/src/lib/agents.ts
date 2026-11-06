@@ -1,4 +1,4 @@
-import { ensAgentFixture, readAgentFromEns, type EnsAgent, type ScoreResult } from "@agentinvoice/shared";
+import { ensAgentFixture, readAgentFromEns, type EnsAgent, type BuyerScore } from "@agentinvoice/shared";
 import type { EnsState } from "@/components/EnsPanel";
 import { api, isMock } from "./api";
 
@@ -23,7 +23,7 @@ export function toState(agent: EnsAgent, now = Date.now() / 1000): EnsState {
   return { kind: "present", agent };
 }
 
-export async function loadScore(vault: string): Promise<ScoreResult | null> {
+export async function loadScore(vault: string): Promise<BuyerScore | null> {
   if (!isMock) return null; // real scores are paid (payAndGet) and fetched by agents, not the public UI
   return api.getScoreMock(vault).catch(() => null);
 }

@@ -27,7 +27,7 @@ export default async function AgentPage({ params }: { params: Promise<{ vault: s
     <div className="grid gap-6">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-semibold">{agent?.name ?? vault}</h1>
-        {score && <ScoreBadge band={score.band} value={score.value} />}
+        {score && <ScoreBadge band={score.band} value={score.band === "New" ? null : score.onTimeRate} />}
         <span className="text-sm text-ink-muted">
           <TxLink address={vault as Address} />
         </span>

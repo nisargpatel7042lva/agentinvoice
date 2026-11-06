@@ -5,3 +5,5 @@ export * from "./schemas";
 export * from "./fixtures";
 export * from "./ens";
 export * from "./api";
+export * from "./payAndGet";
+
