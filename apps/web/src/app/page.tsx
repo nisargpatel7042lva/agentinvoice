@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { FaceByStatusChart } from "@/components/charts";
 import { EmptyState } from "@/components/EmptyState";
+import { RoleGuide } from "@/components/RoleGuide";
 import { HowItWorks } from "@/components/HowItWorks";
 import { Section } from "@/components/Section";
 import { MarketTable, type MarketRow } from "@/components/MarketTable";
@@ -63,7 +64,11 @@ export default async function MarketplacePage() {
 
       <HowItWorks />
 
-      <MarketTable rows={rows} />
+      <RoleGuide />
+
+      <div id="market" className="scroll-mt-20">
+        <MarketTable rows={rows} />
+      </div>
 
       <Section title={copy.market.overview} hint={copy.market.overviewHint}>
       <div className="flex flex-col gap-4">
