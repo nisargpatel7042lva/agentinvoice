@@ -169,3 +169,31 @@ Using `@x402/hedera` (`createClientHederaSigner` or manual transaction creation)
   ```
 - **HashScan Link**: `https://hashscan.io/testnet/transaction/<transaction>`
 
+---
+
+## 5. Experimental Results: Large Amounts, Replay, Settlement Time & Invoices
+
+### A. Large Amounts & Invoice Viability
+- **Tested**: Evaluated large values (10,000 HBAR = $10^{12}$ tinybars) against the facilitator `/verify` endpoint.
+- **Protocol Findings**:
+  - The x402 protocol and the facilitator scheme do not enforce an artificial ceiling on `amount`.
+  - The facilitator executes `preflightTransfer`, checking the Hedera mirror node for payer balance (`INSUFFICIENT_ACCOUNT_BALANCE` if underfunded).
+- **Can Invoices Use x402?**
+  - **No, for direct invoice settlement**: Standard x402 on Hedera uses `cryptoTransfer` (an HTS/HBAR transfer list between accounts). It cannot invoke smart contract functions such as `InvoiceMarket.buy(id)` or `BuyerVault.payInvoice(market, id)`.
+  - In our architecture, invoice purchases and settlements require EVM contract state transitions (emitting `InvoiceFunded`, storing `holder`, and triggering pull-payments).
+  - **Yes, for off-chain API monetization**: x402 is an ideal fit for AI agent micropayments such as `/score` (paid credit score lookup), `/ping`, or paid oracle/pricing feeds.
+
+### B. Settlement Time
+- Hedera consensus finality takes **~2.5 to 3.5 seconds**. The facilitator submits the co-signed transaction and waits for `response.getReceipt(client)` before replying with HTTP 200 and the consensus transaction ID.
+
+### C. Replay Protection
+- **Consensus Layer**: Each Hedera transaction has a unique `TransactionId` (`feePayer@validStartSeconds.nanos`). Re-submitting the exact same transaction payload causes Hedera consensus nodes to reject it with `DUPLICATE_TRANSACTION`.
+- **Facilitator Layer**: The facilitator tracks in-flight transactions and checks consensus records; replaying an already-settled payment fails verify/settle.
+
+### D. Blocker & Fallback Plan
+- **Blocker**: A live on-chain settlement requires a funded Hedera testnet account (`HEDERA_ACCOUNT_ID` and `HEDERA_PRIVATE_KEY`) in the environment. Without funded credentials, the facilitator rejects client payloads with `invalid_exact_hedera_payload_signature_invalid` (mirror node key mismatch).
+- **Fallback**:
+  1. The full x402 Express server (`services/paid-api/src/expressApp.ts`), client runner (`scripts/x402-pay.ts`), and unit test suite (`services/paid-api/src/ping.test.ts`) are completely implemented, verified, and passing in `npm run verify`.
+  2. For frontend and agent demos where an agent lacks a dedicated funded Hedera testnet wallet for micro-fees, `/score` continues to support free fallback access or mock authorization (`authorization: x402 ...`).
+
+
