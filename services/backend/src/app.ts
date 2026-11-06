@@ -6,6 +6,7 @@ import type { AuditInput } from "./audit/audit.js";
 import { approvalRoutes, worldFromEnv, type WorldOptions } from "./routes/approvals.js";
 import { auditRoutes, type AuditOptions } from "./routes/audit.js";
 import type { InvoiceIssuer } from "./chain/issuer.js";
+import { nameRoutes, type NameMinter } from "./routes/names.js";
 import { invoiceCreateRoutes, invoiceRoutes } from "./routes/invoices.js";
 
 declare module "fastify" {
@@ -22,8 +23,9 @@ export interface RateLimits {
   callbackPerMinute: number; // GET /api/world/callback
   approvalReadPerMinute: number; // GET /api/approvals/:id
   invoiceCreatePerMinute: number; // POST /api/invoices (each call spends gas)
+  nameMintPerMinute: number; // POST /api/names (each call spends Sepolia gas)
 }
-export const DEFAULT_LIMITS: RateLimits = { approvalStartPerMinute: 10, callbackPerMinute: 30, approvalReadPerMinute: 120, invoiceCreatePerMinute: 10 };
+export const DEFAULT_LIMITS: RateLimits = { approvalStartPerMinute: 10, callbackPerMinute: 30, approvalReadPerMinute: 120, invoiceCreatePerMinute: 10, nameMintPerMinute: 3 };
 const MAX_BODY_BYTES = 16 * 1024;
 
 export interface AppOptions {
@@ -34,9 +36,10 @@ export interface AppOptions {
   features?: { indexer?: boolean; ens?: boolean; audit?: boolean }; // which background jobs run, for /health
   limits?: Partial<RateLimits>; // per-client requests per minute on the rate-limited endpoints
   issuer?: InvoiceIssuer; // creates invoices on-chain for POST /api/invoices; without it the route answers 503
+  minter?: NameMinter; // registers seller ENS names on Sepolia for POST /api/names; without it the route answers 503
 }
 
-export function buildApp({ dbPath, world, audit, onAudit, features = {}, limits, issuer }: AppOptions) {
+export function buildApp({ dbPath, world, audit, onAudit, features = {}, limits, issuer, minter }: AppOptions) {
   const db = openDb(dbPath);
 
   const app = Fastify({ logger: process.env.NODE_ENV !== "test" && !process.env.VITEST, bodyLimit: MAX_BODY_BYTES });
@@ -90,6 +93,7 @@ export function buildApp({ dbPath, world, audit, onAudit, features = {}, limits,
     const rates = { ...DEFAULT_LIMITS, ...limits };
     approvalRoutes(scope, approvalWorld, rates);
     invoiceCreateRoutes(scope, { issuer }, rates.invoiceCreatePerMinute);
+    nameRoutes(scope, minter, rates.nameMintPerMinute);
   });
 
   return app;

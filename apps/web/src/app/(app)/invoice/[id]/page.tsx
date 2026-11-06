@@ -9,6 +9,7 @@ import { Section } from "@/components/Section";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Stepper } from "@/components/Stepper";
 import { Term } from "@/components/Term";
+import { ProofCard } from "@/components/ProofCard";
 import { TxLink } from "@/components/TxLink";
 import { FundButton } from "@/components/FundButton";
 import { DemoControls } from "@/components/InvoiceActions";
@@ -100,6 +101,8 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       </Card>
 
       {isMock ? <DemoControls id={inv.id} status={inv.status} /> : <ChainActions id={inv.id} status={inv.status} dueDate={inv.dueDate} buyerVault={inv.buyerVault} />}
+
+      <ProofCard inv={inv} />
 
       <Card className="px-6 py-5">
         <Stepper status={inv.status} notes={notes} />

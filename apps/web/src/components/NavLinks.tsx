@@ -8,6 +8,7 @@ import { copy } from "@/lib/copy";
 const links = [
   { href: "/market", label: copy.nav.market, match: (p: string) => p.startsWith("/market") || p.startsWith("/invoice") },
   { href: "/network", label: "Network", match: (p: string) => p.startsWith("/network") || p.startsWith("/agent") },
+  { href: "/profile", label: "Profile", match: (p: string) => p.startsWith("/profile") },
   { href: "/supplier", label: copy.nav.supplier, match: (p: string) => p.startsWith("/supplier") },
 ];
 

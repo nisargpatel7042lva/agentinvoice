@@ -63,6 +63,28 @@ const MIGRATIONS: string[] = [
   ALTER TABLE approvals ADD COLUMN subject_hash TEXT;
   CREATE INDEX approvals_invoice ON approvals (invoice_id);
   `,
+  // Seller ENS names minted through the website: one per wallet.
+  `
+  CREATE TABLE seller_names (
+    owner      TEXT PRIMARY KEY,
+    name       TEXT NOT NULL UNIQUE,
+    tx_hash    TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  `,
+  // Bond units issued per funded invoice (Hedera Tokenize). state: issuing (tx in flight), issued, redeemed, frozen.
+  `
+  CREATE TABLE bond_issuances (
+    invoice_id TEXT PRIMARY KEY,
+    bond       TEXT NOT NULL,
+    holder     TEXT NOT NULL,
+    units      TEXT NOT NULL,
+    state      TEXT NOT NULL CHECK (state IN ('issuing','issued','redeemed','frozen')),
+    issue_tx   TEXT,
+    close_tx   TEXT,
+    updated_at INTEGER NOT NULL
+  );
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
