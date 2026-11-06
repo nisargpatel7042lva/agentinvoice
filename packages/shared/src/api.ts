@@ -6,7 +6,7 @@ import {
   HealthSchema,
   InvoiceListSchema,
   InvoiceSchema,
-  ScoreResultSchema,
+  BuyerScoreSchema,
 } from "./schemas";
 import {
   approvalFixture,
@@ -91,7 +91,7 @@ export function createApiClient(opts: ApiClientOptions = {}) {
     /** Mock only. Real scores are paid: agents call the score API through payAndGet. */
     getScoreMock: (vault: string) => {
       const s = scoreFixtures.find((x) => x.vault.toLowerCase() === vault.toLowerCase());
-      return s ? Promise.resolve(ScoreResultSchema.parse(s)) : notFound(`score ${vault}`);
+      return s ? Promise.resolve(BuyerScoreSchema.parse(s)) : notFound(`score ${vault}`);
     },
   };
 }
