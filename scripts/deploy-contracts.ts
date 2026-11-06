@@ -155,8 +155,13 @@ async function smokeTest(market: Address, vault: Address, marketAbi: Abi, vaultA
   const price = 1_900n;
   const deposit = 10_000n;
   const wire = (tinybar: bigint) => tinybar * WIRE_SCALE;
-  const call = (address: Address, abi: Abi, functionName: string, fnArgs: unknown[], tinybarValue = 0n) =>
-    wallet.writeContract({ address, abi, functionName, args: fnArgs, value: wire(tinybarValue), ...txFee });
+  // Hedera's gas estimate can come out too low for calls that send HBAR out of a contract (claim ran out of gas at 39,237 on
+  // testnet), so every call gets a margin: twice the estimate, and never under 100,000.
+  const call = async (address: Address, abi: Abi, functionName: string, fnArgs: unknown[], tinybarValue = 0n) => {
+    const value = wire(tinybarValue);
+    const estimate = await client.estimateContractGas({ account, address, abi, functionName, args: fnArgs, value });
+    return wallet.writeContract({ address, abi, functionName, args: fnArgs, value, gas: estimate * 2n > 100_000n ? estimate * 2n : 100_000n, ...txFee });
+  };
   const status = async (id: bigint) => ((await client.readContract({ address: market, abi: marketAbi, functionName: "getInvoice", args: [id] })) as { status: number }).status;
 
   await send("vault.deposit", await call(vault, vaultAbi, "deposit", [], deposit));

@@ -38,12 +38,32 @@ Scope: `contracts/src` (InvoiceMarket, BuyerVault) from Mann's branches as merge
 - Mutation checks: breaking the market check, the high-s check, the expiry check, the repayment credit, and the Defaulted-to-Paid rule each made
   the matching test fail.
 
+## Deployed and verified on Hedera testnet (chain 296, 2026-11-06)
+
+- InvoiceMarket `0xb41048c7369d33d4e396ccb2e95e974b95a06d8b` (grace period 60 s, for a demo that shows a default; it is immutable) and
+  BuyerVault `0xbc792de2be972434a996f222da426b590e858056`, owner and agent = the deployer account 0.0.11326618, verifier = the sponsor
+  address. Addresses are in `packages/shared/src/addresses.json`. Source verification on Sourcify has NOT been done.
+- **Units confirmed live:** `fund` succeeded with a value of 1,900 tinybar sent as 1,900e10 weibar, and the vault's repayment worked, so
+  `msg.value` inside the contract is tinybars. Mann's 1e10 scaling (`df94448`) must not be merged.
+- **Gas (new finding):** viem's gas estimate for `claim()` was 39,237 and the transaction died with `INSUFFICIENT_GAS`: Hedera's estimate misses the
+  cost of sending HBAR out of a contract. Every script and service that sends a transaction to these contracts now uses twice the estimate, at
+  least 100,000 (`deploy-contracts.ts`, `lifecycle.ts`, `lifecycle-approval.ts`, and the backend issuer). **Rishita's agents and anything else that
+  calls `claim`, `fund` or `payInvoice` with viem's default estimate needs the same margin.**
+- **Time (new finding):** the contract compares `block.timestamp`, which trails the local clock by seconds on Hedera. `markLate` reverted when the
+  script waited on `Date.now()`; it now waits on the latest block's timestamp.
+- Happy path (create, accept, fund, repay, claim), default path (real `markLate` then `markDefaulted`) and the large-payment approval
+  all ran on testnet: a 60 HBAR repayment was refused without an approval, accepted with the verifier's EIP-712 `LargePayment`, the nonce was
+  consumed, and a replay was refused. The backend can sign the same message with the same format (`signTypedData`, domain
+  `BuyerVault` v1, chain 296, verifying contract = the vault); that signing is not built into the backend yet.
+- The real backend (indexer, `GET /api/invoices`, `POST /api/invoices` through the issuer) ran against these contracts on the real Hashio RPC:
+  all six invoices came back with the right status and holder, and the backend created invoice #7 on-chain.
+- Left on-chain by the test runs: invoices #2 (Pending), #4 (Funded, abandoned after a script bug), and the rest in their end states.
+
 ## Not done
 
 - **slither / echidna / a fork test:** not installed (the ethskills checklist asks for slither with no high or medium finding). Fork tests are not
   useful here: the contracts integrate no external protocol.
-- **Live Hedera:** nothing is deployed. The units behavior, gas costs, and the JSON-RPC relay quirks are unverified until the first deploy.
-- **markLate and markDefaulted** are tested locally with time warps and by the default-path lifecycle on a local chain, not on Hedera.
+- **Hashio rate limits and getLogs range:** the indexer read 2,500 blocks in chunks of 1,000 without error; the real limit is still unknown.
 - **Bond issuer / ATS (route T1b):** `IBondIssuer` is a hook only; the backend issuer service that calls the ATS SDK does not exist yet.
 - **Ownership:** the deploy script makes the deployer the owner unless `OWNER_ADDRESS` is set. ethskills says production ownership should go to the
   intended multisig or timelock; for a testnet demo the team should decide who owns the vault.
@@ -51,8 +71,8 @@ Scope: `contracts/src` (InvoiceMarket, BuyerVault) from Mann's branches as merge
 ## Deployment runbook (Hedera testnet, chain id 296)
 
 1. `cd contracts && forge test` (56 tests must pass), then `forge build`.
-2. A funded deployer: an ECDSA key in `.env` as `DEPLOYER_PRIVATE_KEY`, funded with testnet HBAR from the Hedera portal faucet
-   (portal.hedera.com, needs a login; fund the key's EVM address). 10 HBAR or more is plenty.
+2. A funded deployer: an ECDSA key (the raw 64-hex key, not ED25519) in `.env` as `DEPLOYER_PRIVATE_KEY`, funded with testnet HBAR from the Hedera
+   portal faucet (portal.hedera.com, needs a login). 10 HBAR or more is plenty. A key pasted into chat is exposed: use testnet-only keys.
 3. `VERIFIER_ADDRESS` (defaults to `SPONSOR_ADDRESS`): the address whose signatures approve large payments. The backend must sign `LargePayment`
    with the matching key. Optional: `OWNER_ADDRESS`, `AGENT_ADDRESS`, `GRACE_PERIOD_SECONDS` (use 60 for a demo that shows a default),
    `DAILY_LIMIT_HBAR` (500), `APPROVAL_THRESHOLD_HBAR` (50).

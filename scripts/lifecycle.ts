@@ -55,7 +55,10 @@ async function main() {
 
   const read = <T>(address: Address, abi: Abi, functionName: string, fnArgs: unknown[] = []) => client.readContract({ address, abi, functionName, args: fnArgs }) as Promise<T>;
   const send = async (label: string, address: Address, abi: Abi, functionName: string, fnArgs: unknown[], tinybarValue = 0n) => {
-    const hash = await wallet.writeContract({ address, abi, functionName, args: fnArgs, value: wire(tinybarValue), ...txFee });
+    // Hedera's gas estimate can be too low when a contract sends HBAR out (claim ran out of gas on testnet): use twice the estimate, at least 100,000.
+    const value = wire(tinybarValue);
+    const estimate = await client.estimateContractGas({ account, address, abi, functionName, args: fnArgs, value });
+    const hash = await wallet.writeContract({ address, abi, functionName, args: fnArgs, value, gas: estimate * 2n > 100_000n ? estimate * 2n : 100_000n, ...txFee });
     const receipt = await client.waitForTransactionReceipt({ hash, timeout: 180_000 });
     if (receipt.status !== "success") throw new Error(`${label} reverted: ${link(hash)}`);
     console.log(`  ${label}: ${link(hash)}`);
@@ -66,7 +69,11 @@ async function main() {
   const owner = await read<Address>(vault, vAbi, "owner");
   if (owner.toLowerCase() !== account.address.toLowerCase()) throw new Error(`The operator is not the vault owner (${owner}); use the owner key.`);
   if (!(await read<boolean>(vault, vAbi, "allowedMarket", [market]))) await send("vault.allowMarket", vault, vAbi, "allowMarket", [market, true]);
-  if (!(await read<boolean>(vault, vAbi, "allowedSupplier", [account.address]))) await send("vault.allowSupplier", vault, vAbi, "allowSupplier", [account.address, faceTiny * 10n]);
+  // the supplier must be allowed AND its per-invoice limit must cover this invoice (an earlier run may have set a smaller limit)
+  const supplierAllowed = await read<boolean>(vault, vAbi, "allowedSupplier", [account.address]);
+  if (!supplierAllowed || (await read<bigint>(vault, vAbi, "supplierLimit", [account.address])) < faceTiny) {
+    await send("vault.allowSupplier", vault, vAbi, "allowSupplier", [account.address, faceTiny * 10n]);
+  }
   const vaultBalanceWire = await client.getBalance({ address: vault }); // JSON-RPC reports weibar
   const neededWire = wire(faceTiny);
   if (vaultBalanceWire < neededWire) await send("vault.deposit", vault, vAbi, "deposit", [], (neededWire - vaultBalanceWire) / wire(1n) + 1n);
@@ -87,11 +94,16 @@ async function main() {
     const grace = await read<bigint>(market, mAbi, "gracePeriod");
     console.log(`\n[4] DEFAULT path: nobody repays. Waiting for the due date, then the ${grace}s grace period.`);
     if (grace > 600n) console.log(`    NOTE: the grace period is long (${grace}s). Redeploy with GRACE_PERIOD_SECONDS=60 for a demo.`);
-    while (BigInt(Math.floor(Date.now() / 1000)) <= dueDate) await sleep(2000);
+    // The contract compares against the chain's block timestamp (consensus time), which can trail this machine's clock by seconds,
+    // so wait on the latest block, not on Date.now().
+    const chainTime = async () => (await client.getBlock({ blockTag: "latest" })).timestamp;
+    const waitUntilAfter = async (t: bigint) => {
+      while ((await chainTime()) <= t) await sleep(2000);
+    };
+    await waitUntilAfter(dueDate);
     await send("market.markLate", market, mAbi, "markLate", [invoiceId]);
     console.log(`    status: ${await statusOf(invoiceId)}`);
-    const lateAt = BigInt(Math.floor(Date.now() / 1000));
-    while (BigInt(Math.floor(Date.now() / 1000)) <= dueDate + grace + (lateAt > dueDate + grace ? 0n : 1n)) await sleep(2000);
+    await waitUntilAfter(dueDate + grace);
     await send("market.markDefaulted", market, mAbi, "markDefaulted", [invoiceId]);
     console.log(`    status: ${await statusOf(invoiceId)} (the investor takes the loss)`);
     console.log("\n=== Default lifecycle completed ===");
