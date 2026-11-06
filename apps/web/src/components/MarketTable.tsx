@@ -1,0 +1,140 @@
+"use client";
+
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { Search } from "lucide-react";
+import type { Invoice, ScoreBand } from "@agentinvoice/shared";
+import { buttonVariants, Table, TableBox, Td, Th } from "@/components/ui";
+import { ScoreBadge } from "@/components/ScoreBadge";
+import { StatusBadge } from "@/components/StatusBadge";
+import { cn } from "@/lib/cn";
+import { copy } from "@/lib/copy";
+import { discountPct, formatAmount, formatDate, shortHex } from "@/lib/format";
+
+export interface MarketRow {
+  invoice: Invoice;
+  buyerName?: string;
+  sponsorName?: string;
+  band?: ScoreBand;
+  score?: number | null;
+}
+
+const FILTERS = ["All", "Open", "Funded", "Paid", "Late", "Defaulted"] as const;
+
+export function MarketTable({ rows }: { rows: MarketRow[] }) {
+  const [filter, setFilter] = useState<(typeof FILTERS)[number]>("All");
+  const [q, setQ] = useState("");
+  const shown = useMemo(
+    () =>
+      rows.filter(
+        (r) =>
+          (filter === "All" || r.invoice.status === filter) &&
+          (!q || (r.buyerName ?? r.invoice.buyerVault).toLowerCase().includes(q.toLowerCase())),
+      ),
+    [rows, filter, q],
+  );
+  const c = copy.market.col;
+
+  return (
+    <section className="overflow-hidden rounded-xl border border-line bg-surface">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3.5">
+        <div role="tablist" aria-label="Filter by status" className="flex flex-wrap gap-0.5 rounded-lg bg-subtle p-[3px]">
+          {FILTERS.map((f) => (
+            <button
+              key={f}
+              type="button"
+              role="tab"
+              aria-selected={filter === f}
+              onClick={() => setFilter(f)}
+              className={cn("h-[30px] rounded-md px-3 text-[13px] font-medium", filter === f ? "bg-surface text-ink shadow-card" : "text-ink-muted hover:text-ink")}
+            >
+              {f === "All" ? copy.market.filterAll : f}
+            </button>
+          ))}
+        </div>
+        <label className="flex h-9 min-w-[220px] items-center gap-2 rounded-lg border border-line px-3 text-sm text-ink-muted">
+          <Search aria-hidden="true" className="size-4" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search buyer ENS name" aria-label="Search buyer ENS name" className="w-full bg-transparent text-ink outline-none" />
+        </label>
+      </div>
+
+      {shown.length === 0 ? (
+        <p className="px-6 py-12 text-center text-sm text-ink-muted">{copy.empty.market}</p>
+      ) : (
+        <>
+          <TableBox className="hidden md:block">
+            <Table className="min-w-[880px]">
+              <thead>
+                <tr>
+                  <Th>{c.invoice}</Th>
+                  <Th>{c.buyer}</Th>
+                  <Th className="text-right">{c.face}</Th>
+                  <Th className="text-right">{c.price}</Th>
+                  <Th className="text-right">{copy.invoice.discount}</Th>
+                  <Th>{c.due}</Th>
+                  <Th>{c.score}</Th>
+                  <Th>{c.status}</Th>
+                  <Th><span className="sr-only">Action</span></Th>
+                </tr>
+              </thead>
+              <tbody>
+                {shown.map(({ invoice: inv, buyerName, band, score }) => (
+                  <tr key={inv.id} className="hover:bg-canvas">
+                    <Td className="font-mono text-[13px]">#{inv.id}</Td>
+                    <Td>
+                      <Link href={`/agent/${inv.buyerVault}`} className="flex items-center gap-2.5">
+                        <span aria-hidden="true" className="flex size-7 items-center justify-center rounded-full bg-subtle text-[11px] font-semibold text-ink-soft">
+                          {(buyerName ?? inv.buyerVault.slice(2)).slice(0, 2).toUpperCase()}
+                        </span>
+                        <span>
+                          <span className="block font-medium text-ink">{buyerName ?? shortHex(inv.buyerVault)}</span>
+                          {buyerName && <span className="block font-mono text-xs text-ink-muted">{shortHex(inv.buyerVault)}</span>}
+                        </span>
+                      </Link>
+                    </Td>
+                    <Td className="text-right text-ink-muted">{formatAmount(inv.faceAmount)}</Td>
+                    <Td className="text-right font-semibold">{formatAmount(inv.price)}</Td>
+                    <Td className="text-right">{discountPct(inv)}</Td>
+                    <Td className="text-ink-soft">{formatDate(inv.dueDate)}</Td>
+                    <Td>{band && <ScoreBadge band={band} value={score} />}</Td>
+                    <Td><StatusBadge status={inv.status} /></Td>
+                    <Td className="text-right">
+                      <Link href={`/invoice/${inv.id}`} className={buttonVariants({ variant: inv.status === "Open" ? "outline-accent" : "ghost", size: "sm" })}>
+                        {inv.status === "Open" ? "Fund" : "View"}
+                      </Link>
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </TableBox>
+
+          <ul className="divide-y divide-subtle md:hidden">
+            {shown.map(({ invoice: inv, buyerName, band, score }) => (
+              <li key={inv.id}>
+                <Link href={`/invoice/${inv.id}`} className="block px-4 py-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-[13px] text-ink-muted">#{inv.id}</span>
+                    <StatusBadge status={inv.status} />
+                  </div>
+                  <div className="mt-1 truncate font-medium text-ink">{buyerName ?? shortHex(inv.buyerVault)}</div>
+                  <div className="mt-2 flex items-end justify-between gap-2">
+                    <div>
+                      <div className="text-lg font-semibold">{formatAmount(inv.price)}</div>
+                      <div className="text-xs text-ink-muted">{copy.invoice.face} {formatAmount(inv.faceAmount)} · {discountPct(inv)} · {formatDate(inv.dueDate)}</div>
+                    </div>
+                    {band && <ScoreBadge band={band} value={score} />}
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      <div className="flex flex-wrap justify-between gap-2 border-t border-line px-4 py-3 text-[13px] text-ink-muted">
+        <span>Showing {shown.length} of {rows.length} invoices</span>
+      </div>
+    </section>
+  );
+}
