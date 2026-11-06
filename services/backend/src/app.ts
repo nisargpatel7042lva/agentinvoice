@@ -5,7 +5,8 @@ import { getMeta, openDb, SCHEMA_VERSION } from "./db.js";
 import type { AuditInput } from "./audit/audit.js";
 import { approvalRoutes, worldFromEnv, type WorldOptions } from "./routes/approvals.js";
 import { auditRoutes, type AuditOptions } from "./routes/audit.js";
-import { invoiceRoutes } from "./routes/invoices.js";
+import type { InvoiceIssuer } from "./chain/issuer.js";
+import { invoiceCreateRoutes, invoiceRoutes } from "./routes/invoices.js";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -16,12 +17,13 @@ declare module "fastify" {
 }
 
 // Requests per minute per client IP. Behind a proxy or tunnel every client shares the proxy's IP unless trustProxy is configured.
-export interface ApprovalLimits {
+export interface RateLimits {
   approvalStartPerMinute: number; // POST /api/approvals
   callbackPerMinute: number; // GET /api/world/callback
   approvalReadPerMinute: number; // GET /api/approvals/:id
+  invoiceCreatePerMinute: number; // POST /api/invoices (each call spends gas)
 }
-export const DEFAULT_LIMITS: ApprovalLimits = { approvalStartPerMinute: 10, callbackPerMinute: 30, approvalReadPerMinute: 120 };
+export const DEFAULT_LIMITS: RateLimits = { approvalStartPerMinute: 10, callbackPerMinute: 30, approvalReadPerMinute: 120, invoiceCreatePerMinute: 10 };
 const MAX_BODY_BYTES = 16 * 1024;
 
 export interface AppOptions {
@@ -30,10 +32,11 @@ export interface AppOptions {
   audit?: AuditOptions; // undefined = read HCS_TOPIC_ID from env
   onAudit?: (event: AuditInput) => void; // the HCS publisher; default is a no-op
   features?: { indexer?: boolean; ens?: boolean; audit?: boolean }; // which background jobs run, for /health
-  limits?: Partial<ApprovalLimits>; // per-client requests per minute on the approval endpoints
+  limits?: Partial<RateLimits>; // per-client requests per minute on the rate-limited endpoints
+  issuer?: InvoiceIssuer; // creates invoices on-chain for POST /api/invoices; without it the route answers 503
 }
 
-export function buildApp({ dbPath, world, audit, onAudit, features = {}, limits }: AppOptions) {
+export function buildApp({ dbPath, world, audit, onAudit, features = {}, limits, issuer }: AppOptions) {
   const db = openDb(dbPath);
 
   const app = Fastify({ logger: process.env.NODE_ENV !== "test" && !process.env.VITEST, bodyLimit: MAX_BODY_BYTES });
@@ -80,11 +83,13 @@ export function buildApp({ dbPath, world, audit, onAudit, features = {}, limits 
   invoiceRoutes(app);
   auditRoutes(app, audit ?? { topicId: process.env.HCS_TOPIC_ID || undefined });
   // Rate limiting is opt-in per route (global: false), so only the approval endpoints are limited. The plugin must finish
-  // loading before the routes are added, so they are registered inside this scope.
+  // loading before the routes are added, so they are registered inside this scope. POST /api/invoices spends gas, so it is limited too.
   const approvalWorld = world === null ? undefined : (world ?? worldFromEnv());
   void app.register(async (scope) => {
     await scope.register(rateLimit, { global: false });
-    approvalRoutes(scope, approvalWorld, { ...DEFAULT_LIMITS, ...limits });
+    const rates = { ...DEFAULT_LIMITS, ...limits };
+    approvalRoutes(scope, approvalWorld, rates);
+    invoiceCreateRoutes(scope, { issuer }, rates.invoiceCreatePerMinute);
   });
 
   return app;
