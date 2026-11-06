@@ -5,7 +5,6 @@ export const copy = {
   banner: {
     testnet: "Testnet prototype. Not financial advice.",
     cached: "Some values on this page are cached from our server and may be a few minutes old.",
-    mock: "Showing sample data (mock mode).",
   },
   onboarding: {
     title: "New here? Start with your role",
@@ -36,7 +35,7 @@ export const copy = {
     permissions: "Who can change these values",
     details: "Show details",
   },
-  nav: { brand: "Invoice Agent", market: "Marketplace", supplier: "Create invoice", backMarket: "Back to marketplace" },
+  nav: { brand: "Invoice Agent", market: "Marketplace", supplier: "Create invoice", treasury: "USDC treasury", backMarket: "Back to marketplace" },
   wallet: { connect: "Connect wallet", connectToFund: "Connect a wallet to fund this invoice" },
   money: { where: "Where the money is" },
   sponsor: { accountable: "Sponsor (accountable for this buyer)" },

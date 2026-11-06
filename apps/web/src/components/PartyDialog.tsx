@@ -6,7 +6,6 @@ import { ArrowUpRight, BadgeCheck, Copy, X } from "lucide-react";
 import { hederaTestnet } from "@invoiceagent/shared";
 import type { GraphLink, GraphNode, Health } from "@/lib/graph";
 import { toast } from "@/components/ToastHost";
-import { isMock } from "@/lib/env";
 import { formatHbar, shortHex } from "@/lib/format";
 
 export const ROLE_LABEL = { buyer: "Buyer agent", supplier: "Supplier", investor: "Investor", sponsor: "Sponsor" } as const;
@@ -112,11 +111,6 @@ export function PartyDialog({ node, links, nameOf, onClose }: { node: GraphNode;
             <VerifyLink href={etherscan(node.id)} title="Address on Sepolia Etherscan" sub={node.id} />
             {node.role === "buyer" && <VerifyLink href={hashscan(node.id)} title="Buyer vault on Hedera (HashScan)" sub={node.id} />}
           </div>
-          {isMock && (
-            <p className="mt-3 rounded-lg bg-accent-soft px-3 py-2 text-[12.5px] text-accent">
-              Demo data: sample names may not be registered on ENS yet, so the ENS app can show them as available.
-            </p>
-          )}
 
           <h3 className="mt-6 text-sm font-semibold">Connections ({links.length})</h3>
           <ul className="mt-2 divide-y divide-line text-[13px]">

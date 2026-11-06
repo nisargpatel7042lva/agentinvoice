@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FilePlus2, LayoutList, UserRound, Waypoints, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, FilePlus2, LayoutList, UserRound, Waypoints, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { copy } from "@/lib/copy";
 
@@ -10,6 +10,7 @@ import { copy } from "@/lib/copy";
 const links: { href: string; label: string; hint: string; icon: LucideIcon; tile: string; glow: string; match: (p: string) => boolean }[] = [
   { href: "/market", label: copy.nav.market, hint: "Fund invoices", icon: LayoutList, tile: "#f9cba9", glow: "rgb(249 150 84 / 0.22)", match: (p) => p.startsWith("/market") || p.startsWith("/invoice") },
   { href: "/supplier", label: copy.nav.supplier, hint: "Get paid today", icon: FilePlus2, tile: "#f4e3a1", glow: "rgb(246 222 104 / 0.22)", match: (p) => p.startsWith("/supplier") },
+  { href: "/treasury", label: copy.nav.treasury, hint: "HBAR → USDC", icon: ArrowLeftRight, tile: "#cfe4f5", glow: "rgb(120 170 220 / 0.22)", match: (p) => p.startsWith("/treasury") },
   { href: "/network", label: "Network", hint: "Who owes whom", icon: Waypoints, tile: "#ecd0e0", glow: "rgb(222 150 200 / 0.22)", match: (p) => p.startsWith("/network") || p.startsWith("/agent") || p.startsWith("/approval") },
   { href: "/profile", label: "Profile", hint: "Your wallet", icon: UserRound, tile: "#d6e6cc", glow: "rgb(150 206 150 / 0.22)", match: (p) => p.startsWith("/profile") },
 ];

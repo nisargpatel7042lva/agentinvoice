@@ -1,5 +1,4 @@
-import { EnsReadError, ensAgentFixture, readAgentFromEns, type Address, type EnsAgent } from "@invoiceagent/shared";
-import { isMock } from "./env";
+import { EnsReadError, readAgentFromEns, type Address, type EnsAgent } from "@invoiceagent/shared";
 
 /** What the create form learns about the buyer the supplier typed. Never a guess: a failed read is "unreachable". */
 export type BuyerLookup =
@@ -14,7 +13,6 @@ export async function lookupBuyer(input: string): Promise<BuyerLookup> {
   const v = input.trim();
   if (!v) return { kind: "notfound" };
   if (isAddress(v)) return { kind: "ok", vault: v as Address };
-  if (isMock) return v.toLowerCase() === ensAgentFixture.name.toLowerCase() ? { kind: "ok", vault: ensAgentFixture.vault, name: ensAgentFixture.name, agent: ensAgentFixture } : { kind: "notfound" };
   if (!v.includes(".")) return { kind: "notfound" };
   try {
     const agent = await readAgentFromEns(v.toLowerCase());

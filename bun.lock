@@ -83,8 +83,10 @@
       "name": "@invoiceagent/shared",
       "version": "0.0.0",
       "dependencies": {
+        "@hashgraph/sdk": "^2.81.0",
         "@x402/core": "^2.30.0",
         "@x402/hedera": "^2.30.0",
+        "viem": "^2.57.16",
         "zod": "^4.6.7",
       },
     },
