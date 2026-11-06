@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ChevronLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { formatUnits } from "@agentinvoice/shared";
 import { Card } from "@/components/ui";
 import { Legend } from "@/components/charts";
@@ -51,7 +51,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const pct = (n: number) => (settled ? (n / settled) * 100 : 0);
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <Link href="/market" className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
         <ChevronLeft aria-hidden="true" className="size-4" />
         {copy.nav.backMarket}
@@ -59,54 +59,48 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
 
       <div>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-[28px] leading-9 font-semibold tracking-tight">{copy.invoice.title(inv.id)}</h1>
+          <h1 className="text-[30px] leading-9 font-semibold tracking-[-0.025em]">{copy.invoice.title(inv.id)}</h1>
           <StatusBadge status={inv.status} />
         </div>
-        <p className="mt-1 text-sm text-ink-muted">{copy.statusHelp[inv.status]}</p>
+        <p className="mt-1.5 text-[15px] text-ink-muted">{copy.statusHelp[inv.status]}</p>
       </div>
 
-      <Card className="p-6">
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
-          <div>
-            <div className="text-[13px] text-ink-muted">{copy.deal.youPay}</div>
-            <div className="mt-1 text-[28px] leading-9 font-semibold">{formatAmount(inv.price)}</div>
-          </div>
-          <ArrowRight aria-hidden="true" className="size-5 text-ink-faint" />
-          <div>
-            <div className="text-[13px] text-ink-muted">{copy.deal.youGet} {copy.deal.on(formatDate(inv.dueDate))}</div>
-            <div className="mt-1 text-[28px] leading-9 font-semibold">{formatAmount(inv.faceAmount)}</div>
-          </div>
-          <div className="ml-auto rounded-lg bg-status-paid-bg px-3 py-2 text-right">
-            <div className="text-xs text-status-paid">{copy.deal.return}</div>
-            <div className="text-lg font-semibold text-status-paid">+{formatUnits(ret)} HBAR · {retPct}%</div>
-          </div>
-        </div>
-
-        <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-subtle pt-4 text-sm text-ink-soft">
-          Buyer
-          <Link href={`/agent/${inv.buyerVault}`} className="font-medium text-accent">{buyer}</Link>
-          {creditReport && (
-            <Link
-              href={`/agent/${inv.buyerVault}`}
-              className="inline-flex items-center gap-1.5 hover:opacity-80 transition-opacity"
-              title="View buyer credit score profile"
-            >
-              <span className="text-xs text-ink-muted">Credit score</span>
-              <ScoreBadge band={creditReport.band} score={creditReport.score} />
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
+        {/* Summary: what you pay, what you get, and the one action. Sticky on desktop, first on phones. */}
+        <aside aria-label="Deal summary" className="flex flex-col gap-4 lg:sticky lg:top-24 lg:col-start-2 lg:row-start-1">
+          <Card className="p-5">
+            <dl className="m-0">
+              <div className="flex items-baseline justify-between gap-4 pb-3">
+                <dt className="text-sm text-ink-muted">{copy.deal.youPay}</dt>
+                <dd className="text-2xl font-semibold tracking-[-0.02em]">{formatAmount(inv.price)}</dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-4 border-t border-line py-3">
+                <dt className="text-sm text-ink-muted">{copy.deal.youGet} {copy.deal.on(formatDate(inv.dueDate))}</dt>
+                <dd className="text-lg font-semibold">{formatAmount(inv.faceAmount)}</dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-4 border-t border-line pt-3">
+                <dt className="text-sm text-ink-muted">{copy.deal.return}</dt>
+                <dd className="font-semibold text-status-paid">+{formatUnits(ret)} HBAR · {retPct}%</dd>
+              </div>
+            </dl>
+            {inv.status === "Open" && <FundButton id={inv.id} price={inv.price} priceLabel={formatAmount(inv.price)} />}
+            <Link href={`/agent/${inv.buyerVault}`} className="mt-4 flex items-center justify-between gap-3 rounded-lg bg-subtle px-3 py-2.5 text-sm hover:bg-line/60" title="View the buyer's credit profile">
+              <span className="min-w-0">
+                <span className="block text-xs text-ink-muted">Buyer</span>
+                <span className="block truncate font-medium text-ink">{buyer}</span>
+              </span>
+              {creditReport && <ScoreBadge band={creditReport.band} score={creditReport.score} />}
             </Link>
-          )}
-        </div>
+          </Card>
+          {isMock ? <DemoControls id={inv.id} status={inv.status} /> : <ChainActions id={inv.id} status={inv.status} dueDate={inv.dueDate} buyerVault={inv.buyerVault} />}
+        </aside>
 
-        {inv.status === "Open" && <FundButton id={inv.id} price={inv.price} priceLabel={formatAmount(inv.price)} />}
-      </Card>
-
-      {isMock ? <DemoControls id={inv.id} status={inv.status} /> : <ChainActions id={inv.id} status={inv.status} dueDate={inv.dueDate} buyerVault={inv.buyerVault} />}
-
-      <ProofCard inv={inv} />
-
+        <div className="flex min-w-0 flex-col gap-5 lg:col-start-1 lg:row-start-1">
       <Card className="px-6 py-5">
         <Stepper status={inv.status} notes={notes} />
       </Card>
+
+      <ProofCard inv={inv} />
 
       <Section title={copy.sections.people} hint={`Supplier, ${buyer}, sponsor and holder`}>
         <dl className="m-0">
@@ -178,6 +172,8 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           </ol>
         )}
       </Section>
+        </div>
+      </div>
     </div>
   );
 }

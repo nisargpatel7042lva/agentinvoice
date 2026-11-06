@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   title: "AgentInvoice: get paid today for invoices due next month",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function HomePage() {
   return <Landing />;
 }

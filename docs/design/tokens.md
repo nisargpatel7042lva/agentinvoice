@@ -88,3 +88,11 @@ Max content width is 1120px. The top nav is 56px tall. The testnet banner is 32p
 - **App:** lives under `/market`, `/invoice`, `/agent`, `/network`, `/supplier` and `/approval`, with the same floating pill nav and a soft top glow.
 - **Imagery:** code-only for now; the Higgsfield account had 0 credits. The dark split has an image slot (`components/landing/Landing.tsx`) for a generated photo later.
 - **Motion:** respects `prefers-reduced-motion`: reveals show final text, with no drift, rise or zoom.
+
+## Redesign v3 (warm, familiar)
+
+- Canvas #f7f4ee, surface #fffdf9, ink #161513, line #e6e1d7. Night: canvas #131211, surface #1b1a18.
+- One accent: coral `--color-hot` #f26b3a for fills (dark text on it); `--color-accent` #c2410c for links and small text.
+- Serif italic (Instrument Serif, `font-serif`) for one phrase per headline only.
+- App shell: left sidebar (Marketplace, Create invoice, Network, Profile), wallet top right. One solid ink primary button per screen: in the page header or the sticky summary.
+- Buttons are 10px-radius rectangles, not pills. Cards are flat (border, no shadow).

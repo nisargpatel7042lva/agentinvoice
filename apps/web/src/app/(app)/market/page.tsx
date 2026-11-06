@@ -2,11 +2,12 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { FaceByStatusChart } from "@/components/charts";
 import { EmptyState } from "@/components/EmptyState";
-import { RoleGuide } from "@/components/RoleGuide";
+import { PageHeader } from "@/components/PageHeader";
 import { HowItWorks } from "@/components/HowItWorks";
 import { Section } from "@/components/Section";
 import { MarketTable, type MarketRow } from "@/components/MarketTable";
-import { buttonVariants, Card, CardContent, CardHeader, CardTitle, Progress, StatCard } from "@/components/ui";
+import { buttonVariants } from "@/components/ui";
+import { cn } from "@/lib/cn";
 import { api } from "@/lib/api";
 import { loadEnsByVault } from "@/lib/agents";
 import { loadCreditReport } from "@/lib/credit";
@@ -40,63 +41,44 @@ export default async function MarketplacePage() {
   });
   const s = marketStats(invoices);
 
+  const kpis = [
+    { label: "Ready to fund", value: `${s.openCount}`, sub: `${formatAmount(s.openFace.toString())} face value` },
+    { label: "Average discount", value: s.avgDiscountPct == null ? "—" : `${s.avgDiscountPct.toFixed(1)}%`, sub: "Across open invoices" },
+    { label: "Funded so far", value: formatAmount(s.fundedVolume.toString()), sub: `${s.fundedCount} invoices` },
+    { label: "Repaid on time", value: s.onTimePct == null ? "—" : `${Math.round(s.onTimePct)}%`, sub: `Of ${s.settledCount} settled` },
+  ];
+
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-[28px] leading-9 font-semibold tracking-tight">{copy.market.title}</h1>
-          <p className="mt-1.5 text-[15px] text-ink-muted">{copy.market.subtitle}</p>
-          <ul aria-label="Market summary" className="mt-3 flex flex-wrap gap-2 text-[13px]">
-            <li className="rounded-full border border-line bg-surface px-3 py-1 text-ink-soft">
-              <span className="font-semibold text-ink">{s.openCount}</span> ready to fund
-            </li>
-            {s.avgDiscountPct != null && (
-              <li className="rounded-full border border-line bg-surface px-3 py-1 text-ink-soft">
-                Average discount <span className="font-semibold text-ink">{s.avgDiscountPct.toFixed(1)}%</span>
-              </li>
-            )}
-            {s.onTimePct != null && (
-              <li className="rounded-full border border-line bg-surface px-3 py-1 text-ink-soft">
-                <span className="font-semibold text-status-paid">{Math.round(s.onTimePct)}%</span> repaid on time
-              </li>
-            )}
-          </ul>
-        </div>
-        <Link href="/supplier" className={buttonVariants({ variant: "outline" })}>
-          <Plus aria-hidden="true" />
-          I&apos;m a supplier
-        </Link>
-      </div>
+      <PageHeader
+        title={copy.market.title}
+        sub={copy.market.subtitle}
+        action={
+          <Link href="/supplier" className={buttonVariants({ variant: "outline" })}>
+            <Plus aria-hidden="true" />
+            {copy.nav.supplier}
+          </Link>
+        }
+      />
+
+      <dl aria-label="Market summary" className="grid grid-cols-2 overflow-hidden rounded-xl border border-line bg-surface md:grid-cols-4">
+        {kpis.map((k, i) => (
+          <div key={k.label} className={cn("px-5 py-4", i % 2 === 1 && "border-l border-line", i >= 2 && "border-t border-line md:border-t-0", i === 2 && "md:border-l")}>
+            <dt className="text-[13px] text-ink-muted">{k.label}</dt>
+            <dd className="mt-1 text-2xl font-semibold tracking-[-0.02em] text-ink">{k.value}</dd>
+            <dd className="mt-0.5 text-xs text-ink-muted">{k.sub}</dd>
+          </div>
+        ))}
+      </dl>
 
       <HowItWorks />
 
-      <RoleGuide />
-
-      <div id="market" className="scroll-mt-20">
+      <div id="market" className="scroll-mt-24">
         <MarketTable rows={rows} />
       </div>
 
       <Section title={copy.market.overview} hint={copy.market.overviewHint}>
-      <div className="flex flex-col gap-4">
-      <section className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
-        <StatCard label="Open for funding" value={`${s.openCount} ${s.openCount === 1 ? "invoice" : "invoices"}`} sub={`${formatAmount(s.openFace.toString())} face value`} />
-        <StatCard label="Average discount" value={s.avgDiscountPct == null ? "—" : `${s.avgDiscountPct.toFixed(1)}%`} sub="Across open invoices" />
-        <StatCard label="Funded so far" value={formatAmount(s.fundedVolume.toString())} sub={`${s.fundedCount} invoices funded by investors`} />
-        <StatCard label="Repaid on time" value={s.onTimePct == null ? "—" : `${Math.round(s.onTimePct)}%`} sub={`Of ${s.settledCount} settled invoices`}>
-          {s.onTimePct != null && <Progress value={s.onTimePct} label="Share of settled invoices repaid on time" barClassName="bg-status-paid" />}
-        </StatCard>
-      </section>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Invoice value by status</CardTitle>
-          <span className="text-xs text-ink-muted">From on-chain invoices</span>
-        </CardHeader>
-        <CardContent>
-          <FaceByStatusChart data={faceByStatus(invoices)} />
-        </CardContent>
-      </Card>
-      </div>
+        <FaceByStatusChart data={faceByStatus(invoices)} />
       </Section>
     </div>
   );
