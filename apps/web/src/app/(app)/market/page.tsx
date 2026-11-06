@@ -7,7 +7,7 @@ import { HowItWorks } from "@/components/HowItWorks";
 import { Section } from "@/components/Section";
 import { MarketTable, type MarketRow } from "@/components/MarketTable";
 import { buttonVariants } from "@/components/ui";
-import { cn } from "@/lib/cn";
+import { SummaryStrip } from "@/components/SummaryStrip";
 import { api } from "@/lib/api";
 import { loadEnsByVault } from "@/lib/agents";
 import { loadCreditReport } from "@/lib/credit";
@@ -61,15 +61,7 @@ export default async function MarketplacePage() {
         }
       />
 
-      <dl aria-label="Market summary" className="grid grid-cols-2 overflow-hidden rounded-xl border border-line bg-surface md:grid-cols-4">
-        {kpis.map((k, i) => (
-          <div key={k.label} className={cn("px-5 py-4", i % 2 === 1 && "border-l border-line", i >= 2 && "border-t border-line md:border-t-0", i === 2 && "md:border-l")}>
-            <dt className="text-[13px] text-ink-muted">{k.label}</dt>
-            <dd className="mt-1 text-2xl font-semibold tracking-[-0.02em] text-ink">{k.value}</dd>
-            <dd className="mt-0.5 text-xs text-ink-muted">{k.sub}</dd>
-          </div>
-        ))}
-      </dl>
+      <SummaryStrip label="Market summary" items={kpis} />
 
       <HowItWorks />
 
