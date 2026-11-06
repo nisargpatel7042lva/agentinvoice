@@ -200,6 +200,31 @@ describe("buyer flow", () => {
     expect(wired.accept).toHaveBeenCalledWith(1n);
   });
 
+  it("reviews an invoice once until its evidence hash changes", async () => {
+    const funded = { ...invoiceFixtures.find((invoice) => invoice.status === "Funded")! };
+    const model = reviewModel("dispute", "delivery does not match");
+    const wired = deps([funded], { now: () => funded.dueDate, model });
+    const agent = createBuyerAgent(wired);
+    await agent.tick();
+    await agent.tick();
+    expect(model.complete).toHaveBeenCalledTimes(1);
+    expect(wired.pay).not.toHaveBeenCalled();
+    funded.evidenceHash = `0x${"ee".repeat(32)}` as Hash32;
+    await agent.tick();
+    expect(model.complete).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not call the model again after a failed review", async () => {
+    const funded = invoiceFixtures.find((invoice) => invoice.status === "Funded")!;
+    const model = { complete: vi.fn(async () => { throw new Error("model down"); }) };
+    const wired = deps([funded], { now: () => funded.dueDate, model });
+    const agent = createBuyerAgent(wired);
+    await agent.tick();
+    await agent.tick();
+    expect(model.complete).toHaveBeenCalledTimes(1);
+    expect(wired.pay).not.toHaveBeenCalled();
+  });
+
   it("does not pay the same invoice twice in one run", async () => {
     const funded = invoiceFixtures.find((invoice) => invoice.status === "Funded")!;
     const model = reviewModel("accept", "delivery matches the evidence");

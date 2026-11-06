@@ -1,6 +1,6 @@
 import { formatUnits, type Address, type ApiClient, type Hash32, type Invoice } from "@agentinvoice/shared";
 import { decide, decisionLine } from "./decide.js";
-import { reviewInvoice, type InvoiceModel } from "./review.js";
+import { reviewInvoice, type InvoiceModel, type InvoiceReview } from "./review.js";
 
 export const MAX_RETRIES = 3;
 
@@ -25,7 +25,19 @@ export function createBuyerAgent(deps: BuyerDeps) {
   const log = deps.log ?? console.log;
   const failures = new Map<string, number>();
   const paid = new Set<string>();
+  const reviews = new Map<string, InvoiceReview>();
   let stopped = false;
+
+  async function reviewed(invoice: Invoice): Promise<InvoiceReview> {
+    const key = `${invoice.id}:${invoice.evidenceHash.toLowerCase()}`;
+    const cached = reviews.get(key);
+    if (cached) return cached;
+    const review = deps.model
+      ? await reviewInvoice(invoice, invoice.description, invoice.evidenceHash, deps.model)
+      : { action: "escalate" as const, reason: "model is not configured" };
+    reviews.set(key, review);
+    return review;
+  }
 
   const ours = (invoice: Invoice) => invoice.buyerVault.toLowerCase() === deps.vaultAddress.toLowerCase();
 
@@ -76,9 +88,7 @@ export function createBuyerAgent(deps: BuyerDeps) {
             log(`${decisionLine(invoice.id, { action: "skip", reason: "already paid in this run" })} face=${face}`);
             continue;
           }
-          const review = deps.model
-            ? await reviewInvoice(invoice, invoice.description, invoice.evidenceHash, deps.model)
-            : { action: "escalate" as const, reason: "model is not configured" };
+          const review = await reviewed(invoice);
           if (review.action === "dispute") {
             log(`invoice=${invoice.id} action=dispute reason="${review.reason}" face=${face}`);
             continue;

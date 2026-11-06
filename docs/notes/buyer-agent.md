@@ -26,5 +26,6 @@
 ## Review rule
 
 - One model call returns JSON. Zod must accept `accept`, `dispute`, or `escalate` plus a non-empty reason.
+- The agent caches that result by invoice id and `evidenceHash`. The same pair is not sent to the model again, including after a failed call. A new `evidenceHash` is a new review. A description change with the same hash keeps the cached review.
 - Invalid, malformed, uncertain, or failed calls return `escalate` and never `accept`.
 - Prompts and logs must not include private keys or API keys.
