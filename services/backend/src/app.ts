@@ -1,5 +1,12 @@
+import type Database from "better-sqlite3";
 import Fastify from "fastify";
 import { openDb } from "./db.js";
+
+declare module "fastify" {
+  interface FastifyInstance {
+    db: Database.Database;
+  }
+}
 
 export interface AppOptions {
   dbPath: string;
@@ -8,7 +15,8 @@ export interface AppOptions {
 export function buildApp({ dbPath }: AppOptions) {
   const db = openDb(dbPath);
 
-  const app = Fastify();
+  const app = Fastify({ logger: process.env.NODE_ENV !== "test" && !process.env.VITEST });
+  app.decorate("db", db);
   app.addHook("onClose", async () => {
     db.close();
   });

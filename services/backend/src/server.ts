@@ -1,7 +1,25 @@
+import { hederaReader } from "./chain/reader.js";
 import { buildApp } from "./app.js";
+import { createIndexer } from "./indexer.js";
 
 const dbPath = process.env.DB_PATH ?? "agentinvoice.db";
 const port = Number(process.env.PORT ?? 3001);
 
 const app = buildApp({ dbPath });
+
+// The indexer only runs once the InvoiceMarket address is known (set after Mann deploys).
+const market = process.env.INVOICE_MARKET_ADDRESS;
+if (market) {
+  const indexer = createIndexer({
+    db: app.db,
+    reader: hederaReader(market as `0x${string}`, process.env.HEDERA_RPC_URL || undefined),
+    startBlock: process.env.INDEXER_START_BLOCK ? BigInt(process.env.INDEXER_START_BLOCK) : undefined,
+    onError: (err) => app.log.error({ err }, "indexer poll failed"),
+  });
+  indexer.start(5000);
+  app.addHook("onClose", async () => indexer.stop());
+} else {
+  app.log.warn("INVOICE_MARKET_ADDRESS not set: indexer disabled");
+}
+
 await app.listen({ port, host: "0.0.0.0" });
