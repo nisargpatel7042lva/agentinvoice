@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
-import type { Invoice, ScoreBand } from "@agentinvoice/shared";
+import { ArrowRight, Search } from "lucide-react";
+import type { Invoice, ScoreBand } from "@invoiceagent/shared";
 import { buttonVariants, Table, TableBox, Td, Th } from "@/components/ui";
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -20,6 +20,9 @@ export interface MarketRow {
   score?: number | null;
 }
 
+// Initial tiles in the landing hues, so buyers are easy to tell apart.
+const TILE = ["bg-[#f9cba9]", "bg-[#f4ebc6]", "bg-[#dfe9d4]", "bg-[#ecd6e2]"];
+
 // Open first: that is what a new visitor can act on. Everything else is one click away.
 const FILTERS = ["Open", "All", "Funded", "Paid", "Late", "Defaulted"] as const;
 
@@ -31,15 +34,17 @@ function returnPct(inv: Invoice): string {
 
 export function MarketTable({ rows }: { rows: MarketRow[] }) {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("Open");
+  const [minScore, setMinScore] = useState<number>(0);
   const [q, setQ] = useState("");
   const shown = useMemo(
     () =>
       rows.filter(
         (r) =>
           (filter === "All" || r.invoice.status === filter) &&
+          (!minScore || (r.score != null && r.score >= minScore)) &&
           (!q || (r.buyerName ?? r.invoice.buyerVault).toLowerCase().includes(q.toLowerCase())),
       ),
-    [rows, filter, q],
+    [rows, filter, minScore, q],
   );
   const showStatus = filter !== "Open";
 
@@ -60,10 +65,22 @@ export function MarketTable({ rows }: { rows: MarketRow[] }) {
             </button>
           ))}
         </div>
-        <label className="flex h-9 min-w-[220px] items-center gap-2 rounded-lg border border-line px-3 text-sm text-ink-muted">
-          <Search aria-hidden="true" className="size-4" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by buyer name" aria-label="Search by buyer name" className="w-full bg-transparent text-ink outline-none" />
-        </label>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <select
+            value={minScore}
+            onChange={(e) => setMinScore(Number(e.target.value))}
+            aria-label={copy.creditScore.minScoreFilter}
+            className="h-9 rounded-lg border border-line bg-surface px-2.5 text-xs text-ink font-medium outline-none"
+          >
+            <option value={0}>{copy.creditScore.filterAny}</option>
+            <option value={650}>{copy.creditScore.filter650}</option>
+            <option value={750}>{copy.creditScore.filter750}</option>
+          </select>
+          <label className="flex h-9 min-w-[200px] items-center gap-2 rounded-lg border border-line px-3 text-sm text-ink-muted">
+            <Search aria-hidden="true" className="size-4" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by buyer name" aria-label="Search by buyer name" className="w-full bg-transparent text-ink outline-none" />
+          </label>
+        </div>
       </div>
 
       {shown.length === 0 ? (
@@ -86,24 +103,25 @@ export function MarketTable({ rows }: { rows: MarketRow[] }) {
               </thead>
               <tbody>
                 {shown.map(({ invoice: inv, buyerName, band, score }) => (
-                  <tr key={inv.id} className="hover:bg-canvas">
+                  <tr key={inv.id} className="group transition-colors hover:bg-accent-soft/40">
                     <Td>
                       <Link href={`/agent/${inv.buyerVault}`} className="flex items-center gap-2.5">
-                        <span aria-hidden="true" className="flex size-7 items-center justify-center rounded-full bg-subtle text-[11px] font-semibold text-ink-soft">
+                        <span aria-hidden="true" className={cn("flex size-8 items-center justify-center rounded-lg text-[11px] font-semibold text-[#161513]", TILE[(buyerName ?? inv.buyerVault).charCodeAt(2) % TILE.length])}>
                           {(buyerName ?? inv.buyerVault.slice(2)).slice(0, 2).toUpperCase()}
                         </span>
                         <span className="font-medium text-ink">{buyerName ?? shortHex(inv.buyerVault)}</span>
                       </Link>
                     </Td>
-                    <Td>{band && <ScoreBadge band={band} value={score} />}</Td>
+                    <Td>{band && <ScoreBadge band={band} score={score} />}</Td>
                     <Td className="text-right font-semibold">{formatAmount(inv.price)}</Td>
                     <Td className="text-right">{formatAmount(inv.faceAmount)}</Td>
-                    <Td className="text-right font-medium text-status-paid">{returnPct(inv)}</Td>
+                    <Td className="text-right"><span className="rounded-full bg-accent-soft px-2 py-0.5 text-[13px] font-semibold text-accent">{returnPct(inv)}</span></Td>
                     <Td className="text-ink-soft">{formatDate(inv.dueDate)}</Td>
                     {showStatus && <Td><StatusBadge status={inv.status} /></Td>}
                     <Td className="text-right">
-                      <Link href={`/invoice/${inv.id}`} className={buttonVariants({ variant: inv.status === "Open" ? "outline-accent" : "ghost", size: "sm" })}>
+                      <Link href={`/invoice/${inv.id}`} className={buttonVariants({ variant: inv.status === "Open" ? "default" : "ghost", size: "sm" })}>
                         {inv.status === "Open" ? "Fund" : "View"}
+                        <ArrowRight aria-hidden="true" className="transition-transform group-hover:translate-x-0.5" />
                       </Link>
                     </Td>
                   </tr>
@@ -118,7 +136,7 @@ export function MarketTable({ rows }: { rows: MarketRow[] }) {
                 <Link href={`/invoice/${inv.id}`} className="block px-4 py-4">
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate font-medium text-ink">{buyerName ?? shortHex(inv.buyerVault)}</span>
-                    {showStatus ? <StatusBadge status={inv.status} /> : band && <ScoreBadge band={band} value={score} />}
+                    {showStatus ? <StatusBadge status={inv.status} /> : band && <ScoreBadge band={band} score={score} />}
                   </div>
                   <p className="mt-1.5 text-sm text-ink-soft">
                     Pay <span className="font-semibold text-ink">{formatAmount(inv.price)}</span>, get{" "}

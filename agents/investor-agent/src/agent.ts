@@ -1,4 +1,4 @@
-import { tinybarToWeibar, type ApiClient, type Hash32, type Invoice, type BuyerScore } from "@agentinvoice/shared";
+import { tinybarToWeibar, type ApiClient, type Hash32, type Invoice, type BuyerScore } from "@invoiceagent/shared";
 import { decide, discountBps, type Decision, type Rules } from "./decide.js";
 
 /** Buys an invoice on-chain. Implemented with viem in main.ts; faked in tests. `value` is msg.value in weibar. */
@@ -12,6 +12,8 @@ export interface AgentDeps {
   dryRun?: boolean;
   log?: (line: string) => void;
   txUrl?: (hash: Hash32) => string;
+  /** Optional HBAR→USDC treasury pass (SaucerSwap) after each invoice loop. */
+  treasurySwap?: () => Promise<void>;
 }
 
 export const MAX_RETRIES = 3;
@@ -27,7 +29,8 @@ export function createInvestorAgent(deps: AgentDeps) {
   let stopped = false;
 
   function line(inv: Invoice, score: BuyerScore | null, d: Decision, outcome: string) {
-    log(`invoice=${inv.id} band=${score?.band ?? "?"} discount=${discountBps(inv)}bps ${outcome} reason="${d.reason}"`);
+    const scoreStr = score?.creditScore != null ? String(score.creditScore) : (score?.band === "New" ? "new" : "?");
+    log(`invoice=${inv.id} score=${scoreStr} band=${score?.band ?? "?"} discount=${discountBps(inv)}bps ${outcome} reason="${d.reason}"`);
   }
 
   /** One pass: at most one buy. Returns the bought invoice id, if any. */
@@ -60,6 +63,9 @@ export function createInvestorAgent(deps: AgentDeps) {
         failures.set(inv.id, n);
         line(inv, score, d, `buy failed (${n}/${MAX_RETRIES}): ${(err as Error).message}`);
       }
+    }
+    if (deps.treasurySwap) {
+      await deps.treasurySwap().catch((e) => log(`saucerswap error: ${(e as Error).message}`));
     }
     return bought;
   }

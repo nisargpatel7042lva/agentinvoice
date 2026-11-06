@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, Copy, ExternalLink, LogOut, TriangleAlert, Wallet } from "lucide-react";
 import { useAccount, useBalance, useConnect, useDisconnect, useSwitchChain } from "wagmi";
 import { formatUnits } from "viem";
@@ -21,11 +22,15 @@ export function WalletButton() {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const menu = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
     if (!open) return;
-    const close = (e: MouseEvent) => menu.current && !menu.current.contains(e.target as Node) && setOpen(false);
+    const close = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!menu.current?.contains(t) && !panel.current?.contains(t)) setOpen(false);
+    };
     const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     document.addEventListener("mousedown", close);
     document.addEventListener("keydown", esc);
@@ -41,10 +46,10 @@ export function WalletButton() {
   }
 
   if (!isConnected || !address) {
-    // Prefer a discovered wallet (EIP-6963) over the generic "Injected" fallback.
-    const wallets = connectors.filter((c) => c.id !== "injected");
-    const target = wallets[0] ?? connectors[0];
-    const noWallet = typeof window !== "undefined" && !("ethereum" in window) && wallets.length === 0;
+    // Every wallet found through EIP-6963 is offered; the generic "Injected" entry is only a fallback.
+    const discovered = connectors.filter((c) => c.id !== "injected");
+    const wallets = discovered.length > 0 ? discovered : connectors;
+    const noWallet = typeof window !== "undefined" && !("ethereum" in window) && discovered.length === 0;
     if (noWallet) {
       return (
         <a href="https://metamask.io/download/" target="_blank" rel="noreferrer" className={buttonVariants({ variant: "dark", size: "sm", className: "h-9" })}>
@@ -54,21 +59,35 @@ export function WalletButton() {
       );
     }
     return (
-      <Button
-        variant="dark"
-        size="sm"
-        className="h-9"
-        disabled={isPending || isConnecting}
-        onClick={() =>
-          connect(
-            { connector: target, chainId: hederaTestnet.id },
-            { onError: (e) => toast("error", e.message.includes("rejected") ? "You cancelled in your wallet." : `Could not connect: ${e.message.split("\n")[0]}`) },
-          )
-        }
-      >
-        <Wallet aria-hidden="true" />
-        {isPending || isConnecting ? "Check your wallet…" : copy.wallet.connect}
-      </Button>
+      <div ref={menu} className="relative">
+        <Button variant="dark" size="sm" className="h-9" aria-haspopup="menu" aria-expanded={open} disabled={isPending || isConnecting} onClick={() => setOpen((o) => !o)}>
+          <Wallet aria-hidden="true" />
+          {isPending || isConnecting ? "Check your wallet…" : copy.wallet.connect}
+        </Button>
+        {open && (
+          <Floating anchor={menu} panel={panel}>
+            <div className="px-3 py-2 text-xs text-ink-muted">Choose a wallet</div>
+            {wallets.map((c) => (
+              <button
+                key={c.uid}
+                role="menuitem"
+                type="button"
+                className={item}
+                onClick={() => {
+                  setOpen(false);
+                  connect(
+                    { connector: c, chainId: hederaTestnet.id },
+                    { onError: (e) => toast("error", e.message.includes("rejected") ? "You cancelled in your wallet." : `Could not connect: ${e.message.split("\n")[0]}`) },
+                  );
+                }}
+              >
+                {c.icon ? <img src={c.icon} alt="" className="size-5 rounded" /> : <Wallet aria-hidden="true" className="size-4" />}
+                {c.id === "injected" ? "Browser wallet" : c.name}
+              </button>
+            ))}
+          </Floating>
+        )}
+      </div>
     );
   }
 
@@ -95,7 +114,7 @@ export function WalletButton() {
         <ChevronDown aria-hidden="true" className="text-ink-muted" />
       </Button>
       {open && (
-        <div role="menu" className="absolute right-0 z-30 mt-2 w-64 rounded-xl border border-line bg-surface p-2 shadow-raised">
+        <Floating anchor={menu} panel={panel}>
           <div className="px-3 py-2">
             <div className="text-xs text-ink-muted">Connected on Hedera testnet</div>
             <div className="mt-0.5 truncate font-mono text-sm">{address}</div>
@@ -111,10 +130,43 @@ export function WalletButton() {
           <button role="menuitem" type="button" onClick={() => { disconnect(); setOpen(false); }} className={cn(item, "text-danger")}>
             <LogOut aria-hidden="true" className="size-4" /> Disconnect
           </button>
-        </div>
+        </Floating>
       )}
     </div>
   );
 }
 
 const item = "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-ink-soft hover:bg-subtle hover:text-ink";
+
+/**
+ * The dropdown panel, drawn on document.body so no parent with overflow:hidden (like a page banner) can clip it.
+ * It sits under the button, right-aligned, and follows it on scroll and resize.
+ */
+function Floating({ anchor, panel, children }: { anchor: React.RefObject<HTMLDivElement | null>; panel: React.RefObject<HTMLDivElement | null>; children: ReactNode }) {
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
+  useLayoutEffect(() => {
+    const place = () => {
+      const r = anchor.current?.getBoundingClientRect();
+      if (r) setPos({ top: r.bottom + 8, right: Math.max(8, window.innerWidth - r.right) });
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [anchor]);
+  if (!pos) return null;
+  return createPortal(
+    <div
+      ref={panel}
+      role="menu"
+      style={{ position: "fixed", top: pos.top, right: pos.right }}
+      className="z-[70] w-64 max-w-[calc(100vw-16px)] rounded-xl border border-line bg-surface p-2 text-ink shadow-raised"
+    >
+      {children}
+    </div>,
+    document.body,
+  );
+}

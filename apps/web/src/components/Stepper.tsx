@@ -1,4 +1,4 @@
-import type { Status } from "@agentinvoice/shared";
+import type { Status } from "@invoiceagent/shared";
 import { cn } from "@/lib/cn";
 
 const MAIN = ["Pending", "Open", "Funded", "Paid"] as const;

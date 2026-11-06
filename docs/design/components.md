@@ -1,6 +1,6 @@
 # Components
 
-Code: `apps/web/src/components/`. Types come from `@agentinvoice/shared`. Every component is shown on `/_components`. Copy comes only from `copy.ts`.
+Code: `apps/web/src/components/`. Types come from `@invoiceagent/shared`. Every component is shown on `/_components`. Copy comes only from `copy.ts`.
 
 | Component | Props | Notes |
 | --- | --- | --- |

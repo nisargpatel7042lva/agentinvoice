@@ -1,4 +1,4 @@
-import { hederaTestnet } from "@agentinvoice/shared";
+import { hederaTestnet } from "@invoiceagent/shared";
 import { createPublicClient, defineChain, http, parseAbi, type Address } from "viem";
 import type { ChainInvoice, ChainReader } from "../indexer.js";
 

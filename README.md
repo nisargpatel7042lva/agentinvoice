@@ -1,4 +1,4 @@
-# agentinvoice
+# Invoice Agent
 
 ## Setup
 
@@ -68,7 +68,7 @@ The on-chain money rails and financial settlements run on **Hedera Testnet (Chai
 
 ## Layout
 
-- `packages/*` shared libraries (`@agentinvoice/shared`)
+- `packages/*` shared libraries (`@invoiceagent/shared`)
 - `services/*`, `agents/*`, `apps/*` workspaces
 - `contracts/` Foundry project (owner: Mann)
 

@@ -1,7 +1,7 @@
 # Wireframes
 
 All copy comes from `copy.md` (keys shown as `{key}`). Every screen has the testnet banner and the top nav:
-`[AgentInvoice]  Marketplace · Create invoice · (Connect wallet)`
+`[Invoice Agent]  Marketplace · Create invoice · (Connect wallet)`
 
 Rule on every screen: show **who is accountable** (the sponsor's ENS name) and **where the money is** (the contract or vault address as a TxLink).
 

@@ -1,4 +1,4 @@
-import type { AuditEvent, Status } from "@agentinvoice/shared";
+import type { AuditEvent, Status } from "@invoiceagent/shared";
 import { createHash } from "node:crypto";
 
 // Every important event goes to a Hedera Consensus Service topic so anyone can audit what the agents did.
@@ -132,7 +132,7 @@ export async function readAuditEvents(
         data: parsed.data && typeof parsed.data === "object" ? parsed.data : {},
       });
     } catch {
-      // not an AgentInvoice message
+      // not an Invoice Agent message
     }
   }
   return events;

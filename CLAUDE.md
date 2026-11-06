@@ -1,4 +1,4 @@
-# agentinvoice
+# Invoice Agent
 
 ## Master prompt
 

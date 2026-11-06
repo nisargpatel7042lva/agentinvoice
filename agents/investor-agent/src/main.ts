@@ -1,13 +1,14 @@
 // Entry point: bun run --cwd agents/investor-agent start
 // Env: BACKEND_URL, SCORE_API_URL, MARKET_ADDRESS, INVESTOR_PRIVATE_KEY, HEDERA_TESTNET_RPC_URL,
 //      MIN_BAND, MIN_DISCOUNT_BPS, MAX_PRICE, MAX_OPEN_EXPOSURE, DRY_RUN=1, INVESTOR_AGENT_POLL_INTERVAL_MS
-import * as shared from "@agentinvoice/shared";
-import { payAndGet } from "@agentinvoice/shared/payAndGet";
+import * as shared from "@invoiceagent/shared";
+import { payAndGet } from "@invoiceagent/shared/payAndGet";
 import { createPublicClient, createWalletClient, http, parseAbi, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { createInvestorAgent } from "./agent.js";
 import { rulesFromEnv } from "./decide.js";
 import { createScoreReader, type PayAndGet } from "./score.js";
+import { loadInvestorSwapConfig, maybeSwapExcessHbarToUsdc, swapRulesFromEnv } from "./swap.js";
 
 // Spec v2 name is fund(id). Mann's notes call it buy(id); change here if the contract ships as buy.
 const MARKET_ABI = parseAbi(["function fund(uint256 id) payable"]);
@@ -48,6 +49,9 @@ async function main() {
   const wallet = account ? createWalletClient({ account, chain, transport: http() }) : undefined;
   const reader = createPublicClient({ chain, transport: http() });
 
+  const swapConfig = loadInvestorSwapConfig();
+  const swapRules = swapRulesFromEnv();
+
   const agent = createInvestorAgent({
     api: shared.createApiClient({ baseUrl: need("BACKEND_URL") }),
     getScore: createScoreReader(scoreApi, payScore),
@@ -61,10 +65,13 @@ async function main() {
       if (receipt.status !== "success") throw new Error(`tx reverted ${hash}`);
       return hash;
     },
+    treasurySwap: swapConfig
+      ? () => maybeSwapExcessHbarToUsdc(swapConfig, swapRules).then(() => undefined)
+      : undefined,
   });
 
   process.on("SIGINT", () => { console.log("stopping after this loop"); agent.stop(); });
-  console.log(`investor agent started dryRun=${dryRun}`);
+  console.log(`investor agent started dryRun=${dryRun} saucerswap=${swapRules.enabled && swapConfig ? "on" : "off"}`);
   await agent.run(Number(process.env.INVESTOR_AGENT_POLL_INTERVAL_MS ?? 20_000));
 }
 

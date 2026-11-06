@@ -1,7 +1,7 @@
 import { defineChain } from "viem";
 import { createConfig, http } from "wagmi";
 import { injected } from "wagmi/connectors";
-import { hederaTestnet as hedera } from "@agentinvoice/shared";
+import { hederaTestnet as hedera } from "@invoiceagent/shared";
 
 /** Hedera testnet as an EVM chain (chain id 296). The RPC can be overridden for a private relay. */
 export const hederaTestnet = defineChain({

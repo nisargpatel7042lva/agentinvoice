@@ -1,7 +1,7 @@
 // Turns invoices into a network: who owes whom, who funded whom, who vouches for which agent.
 // Pure and data-driven: every node and link comes from invoices (plus the name directory), nothing invented.
-import { formatUnits, type Invoice, type ScoreBand } from "@agentinvoice/shared";
-import type { Role } from "./directory";
+import { formatUnits, type Invoice, type ScoreBand } from "@invoiceagent/shared";
+export type Role = "buyer" | "supplier" | "investor" | "sponsor";
 import { shortHex } from "./format";
 
 export type Health = "good" | "late" | "default" | "open";

@@ -12,7 +12,7 @@ describe("GET /health", () => {
   });
 
   it("returns ok and creates the SQLite file", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "agentinvoice-"));
+    const dir = mkdtempSync(join(tmpdir(), "invoiceagent-"));
     dirs.push(dir);
     const dbPath = join(dir, "test.db");
 

@@ -1,6 +1,6 @@
 import { createPublicClient, createWalletClient, http, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { hederaTestnet } from "@agentinvoice/shared";
+import { hederaTestnet } from "@invoiceagent/shared";
 import type { ChainInvoice } from "../indexer.js";
 import { hedera, hederaReader, marketAbi } from "./reader.js";
 

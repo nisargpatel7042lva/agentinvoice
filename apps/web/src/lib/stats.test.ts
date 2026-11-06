@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { invoiceFixtures } from "@agentinvoice/shared";
+import { invoiceFixtures } from "@invoiceagent/shared";
 import { faceByStatus, marketStats, repaymentsByWeek } from "./stats";
 
 describe("marketStats", () => {

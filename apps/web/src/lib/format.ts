@@ -1,9 +1,16 @@
-import { formatUnits, type Amount, type Invoice } from "@agentinvoice/shared";
+import { formatUnits, SAUCERSWAP_TESTNET_USDC, type Amount, type Invoice } from "@invoiceagent/shared";
 
 export function formatAmount(amount: Amount, decimals = 8): string {
   const [whole, frac] = formatUnits(amount, decimals).split(".");
   const grouped = Number(whole).toLocaleString("en-US");
   return `${grouped}${frac ? `.${frac.slice(0, 2)}` : ""} HBAR`;
+}
+
+/** Format SaucerSwap testnet USDC base units (6 decimals). Label makes the token identity explicit. */
+export function formatUsdc(amount: Amount | bigint | string, decimals = SAUCERSWAP_TESTNET_USDC.decimals): string {
+  const [whole, frac] = formatUnits(amount, decimals).split(".");
+  const grouped = Number(whole).toLocaleString("en-US");
+  return `${grouped}${frac ? `.${frac.slice(0, 2)}` : ""} USDC`;
 }
 
 export function shortHex(value: string): string {

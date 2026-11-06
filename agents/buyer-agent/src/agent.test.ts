@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { invoiceFixtures, type Address, type Hash32, type Invoice } from "@agentinvoice/shared";
+import { invoiceFixtures, type Address, type Hash32, type Invoice } from "@invoiceagent/shared";
 import { createBuyerAgent, MAX_RETRIES } from "./agent.js";
 import { loadConfig } from "./config.js";
 import { log } from "./logger.js";
@@ -109,5 +109,16 @@ describe("buyer flow", () => {
     expect(wired.accept).toHaveBeenCalledTimes(MAX_RETRIES);
     await agent.tick();
     expect(wired.accept).toHaveBeenCalledTimes(MAX_RETRIES);
+  });
+
+  it("handles HederaAgentAccount in partner demo mode", async () => {
+    const lines: string[] = [];
+    const wired = deps([invoiceFixtures[0]], {
+      log: (line) => lines.push(line),
+      accept: vi.fn(async () => `0x${"aa".repeat(32)}` as Hash32),
+    });
+    await createBuyerAgent(wired).tick();
+    expect(wired.accept).toHaveBeenCalled();
+    expect(lines.some((line) => line.includes("action=accept"))).toBe(true);
   });
 });

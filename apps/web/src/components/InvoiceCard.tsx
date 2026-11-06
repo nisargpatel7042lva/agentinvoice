@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Invoice, ScoreBand } from "@agentinvoice/shared";
+import type { Invoice, ScoreBand } from "@invoiceagent/shared";
 import { copy } from "@/lib/copy";
 import { discountPct, formatAmount, formatDate } from "@/lib/format";
 import { ScoreBadge } from "./ScoreBadge";
@@ -10,10 +10,11 @@ interface Props {
   buyerName?: string;
   sponsorName?: string;
   band?: ScoreBand;
+  score?: number | null;
   href?: string;
 }
 
-export function InvoiceCard({ invoice, buyerName, sponsorName, band, href }: Props) {
+export function InvoiceCard({ invoice, buyerName, sponsorName, band, score, href }: Props) {
   const body = (
     <div className="rounded-lg border border-line bg-surface p-4 shadow-card">
       <div className="flex items-center justify-between">
@@ -31,7 +32,7 @@ export function InvoiceCard({ invoice, buyerName, sponsorName, band, href }: Pro
             {copy.invoice.face} {formatAmount(invoice.faceAmount)} · {discountPct(invoice)} · {formatDate(invoice.dueDate)}
           </div>
         </div>
-        {band && <ScoreBadge band={band} />}
+        {band && <ScoreBadge band={band} score={score} />}
       </div>
     </div>
   );

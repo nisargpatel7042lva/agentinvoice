@@ -1,4 +1,4 @@
-import { AuditListSchema } from "@agentinvoice/shared";
+import { AuditListSchema } from "@invoiceagent/shared";
 import type { FastifyInstance } from "fastify";
 import { readAuditEvents } from "../audit/audit.js";
 

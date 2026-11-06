@@ -8,11 +8,11 @@ Fill in the [brackets] and send it from your own account. Don't paste private ke
 
 ---
 
-**Subject:** Early access request: AgentInvoice (agent-to-agent invoice settlement on Hedera)
+**Subject:** Early access request: Invoice Agent (agent-to-agent invoice settlement on Hedera)
 
 Hi Hedera AI Studio team,
 
-We're [TEAM NAME], building **AgentInvoice** at [HACKATHON NAME]. It's an invoice marketplace where AI buyer agents accept and pay invoices, investors fund them at a discount, and a World ID–verified human sponsor is accountable for each agent through its ENS name.
+We're [TEAM NAME], building **Invoice Agent** at [HACKATHON NAME]. It's an invoice marketplace where AI buyer agents accept and pay invoices, investors fund them at a discount, and a World ID–verified human sponsor is accountable for each agent through its ENS name.
 
 Your Agent Accounts launch lists invoice settlement as a use case, and our design already follows the same model. On Hedera testnet today we run a `BuyerVault` contract that gives each buyer agent:
 - an owner-set daily cap and per-supplier limits (a recipient allowlist),

@@ -2,7 +2,7 @@ import express, { type Express } from "express";
 import { paymentMiddleware, x402ResourceServer } from "@x402/express";
 import { ExactHederaScheme } from "@x402/hedera/exact/server";
 import { HTTPFacilitatorClient, type FacilitatorClient } from "@x402/core/server";
-import { AddressSchema, createApiClient, scoreFromInvoices, type Invoice } from "@agentinvoice/shared";
+import { AddressSchema, createApiClient, scoreFromInvoices, type Address, type AuditEvent, type Invoice } from "@invoiceagent/shared";
 
 export interface PaidExpressConfig {
   /** Hedera account id that receives payments, e.g. 0.0.1234 (required: no silent default). */
@@ -15,6 +15,8 @@ export interface PaidExpressConfig {
   facilitatorClient?: FacilitatorClient;
   /** Where invoice history comes from. Default: the backend at BACKEND_URL. */
   loadInvoices?: () => Promise<Invoice[]>;
+  /** Where audit events come from (for late payment detection). Default: the backend at BACKEND_URL. */
+  loadAudit?: () => Promise<AuditEvent[]>;
 }
 
 const NETWORK = "hedera:testnet";
@@ -33,6 +35,7 @@ export function buildPaidExpressApp(config?: PaidExpressConfig): Express {
 
   const backend = createApiClient({ baseUrl: process.env.BACKEND_URL });
   const loadInvoices = config?.loadInvoices ?? (() => backend.listInvoices());
+  const loadAudit = config?.loadAudit ?? (() => backend.listAudit());
 
   const resourceServer = new x402ResourceServer(facilitatorClient).register("hedera:*", new ExactHederaScheme());
   const accepts = (amount: string) => [{ scheme: "exact", price: { amount, asset: "0.0.0" }, network: NETWORK, payTo }] as const;
@@ -75,8 +78,22 @@ export function buildPaidExpressApp(config?: PaidExpressConfig): Express {
   // Only reached after the payment is verified; the middleware settles it once we answer successfully.
   app.get("/score", async (req, res) => {
     try {
-      const invoices = await loadInvoices();
-      res.status(200).json(scoreFromInvoices(String(req.query.vault) as `0x${string}`, invoices));
+      const [invoices, auditEvents] = await Promise.all([
+        loadInvoices(),
+        loadAudit().catch(() => [] as AuditEvent[]),
+      ]);
+      const everLateIds = new Set<string>();
+      for (const ev of auditEvents) {
+        if (ev.type === "invoice.late" && ev.invoiceId) {
+          everLateIds.add(ev.invoiceId);
+        }
+      }
+      const vault = String(req.query.vault) as Address;
+      res.status(200).json(
+        scoreFromInvoices(vault, invoices, Math.floor(Date.now() / 1000), {
+          everLateIds,
+        })
+      );
     } catch {
       res.status(503).json({ error: "invoice history unavailable" });
     }

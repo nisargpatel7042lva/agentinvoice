@@ -1,4 +1,4 @@
-import type { ScoreBand } from "@agentinvoice/shared";
+import type { ScoreBand } from "@invoiceagent/shared";
 import { copy } from "@/lib/copy";
 
 const styles: Record<ScoreBand, string> = {
@@ -8,11 +8,28 @@ const styles: Record<ScoreBand, string> = {
   New: "text-band-new bg-band-new-bg",
 };
 
-export function ScoreBadge({ band, value }: { band: ScoreBand; value?: number | null }) {
+export function ScoreBadge({
+  band,
+  value,
+  score,
+}: {
+  band: ScoreBand;
+  value?: number | null;
+  score?: number | null;
+}) {
+  let label = band as string;
+  if (score !== undefined) {
+    label = score != null ? `${score} · ${band}` : `— · ${band}`;
+  } else if (value != null && band !== "New") {
+    label = `${band} · ${value}`;
+  }
+
   return (
-    <span title={copy.scoreHelp[band]} className={`inline-block rounded-sm px-2 py-0.5 text-xs font-semibold ${styles[band]}`}>
-      {band}
-      {value != null && band !== "New" ? ` · ${value}` : ""}
+    <span
+      title={copy.scoreHelp[band]}
+      className={`inline-block rounded-sm px-2 py-0.5 text-xs font-semibold ${styles[band]}`}
+    >
+      {label}
     </span>
   );
 }

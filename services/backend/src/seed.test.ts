@@ -1,4 +1,4 @@
-import { InvoiceListSchema, STATUSES } from "@agentinvoice/shared";
+import { InvoiceListSchema, STATUSES } from "@invoiceagent/shared";
 import { describe, expect, it } from "vitest";
 import { buildApp } from "./app.js";
 import { removeSeed, seedDemoInvoices } from "./seed.js";
