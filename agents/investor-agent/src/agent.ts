@@ -27,7 +27,8 @@ export function createInvestorAgent(deps: AgentDeps) {
   let stopped = false;
 
   function line(inv: Invoice, score: BuyerScore | null, d: Decision, outcome: string) {
-    log(`invoice=${inv.id} band=${score?.band ?? "?"} discount=${discountBps(inv)}bps ${outcome} reason="${d.reason}"`);
+    const scoreStr = score?.creditScore != null ? String(score.creditScore) : (score?.band === "New" ? "new" : "?");
+    log(`invoice=${inv.id} score=${scoreStr} band=${score?.band ?? "?"} discount=${discountBps(inv)}bps ${outcome} reason="${d.reason}"`);
   }
 
   /** One pass: at most one buy. Returns the bought invoice id, if any. */

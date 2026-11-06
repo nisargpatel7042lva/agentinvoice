@@ -9,4 +9,5 @@ export * from "./api";
 
 export * from "./contracts";
 export * from "./agentAccount";
+export * from "./creditScore";
 export * from "./score";
