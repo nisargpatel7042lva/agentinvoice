@@ -55,3 +55,16 @@ Only `viem` is named (`viem/ens`: `normalize`, `packetToBytes`; `getEnsText`, `g
 ## Fallback
 
 If the registry APIs block us after two attempts: plain text records on a standard Sepolia name, and say so in the README.
+
+## Task 1.9 result (2026-11-06, Sepolia)
+
+Deployed bytecode matched the docs, not the newer repo source: `UserRegistry.initialize((address,uint256)[])`, resolver `setText(bytes,string,string)`, `setAddress(bytes,uint256,bytes)`, `initialize((address,uint256)[],bytes[])`, `grantSetterRoles(bytes,address)`, `MockUSDC.mint(address,uint256)` all exist (selector probe).
+
+- Sponsor wallet (owns everything): 0x27a3c43158AC762F57B3aBe459a98e67659738EE, funded from the publisher wallet.
+- Permissioned resolver proxy: 0xc5C8C0152EF689340430aE64Dc8243aBDC2e4DC7
+- Parent name: `agentinvoicenf71.eth` (expires 2027-02-04), registered with the commit-reveal ETHRegistrar, paid in MockUSDC (mintable).
+- User registry proxy (subnames): 0x6EA8A3089761Bc14B7Aaa4caB41041f2670a342E, attached with `setSubregistry` on the .eth registry.
+- Agent subname: `buyer.agentinvoicenf71.eth`, expiry 2027-02-03 (the credit line), resolver = the proxy above, addr(60) = the sponsor address as a PLACEHOLDER until Mann deploys BuyerVault (set `DEMO_VAULT_ADDRESS` and re-run).
+- Checked on-chain: `findOwner("buyer")`, `getExpiry` and `getResolver("buyer")` return the expected owner, date and resolver.
+- UNVERIFIED: resolution through the ENS app or viem `getEnsAddress` (viem's default Sepolia Universal Resolver may be the v1 one).
+- Script: `bun scripts/ens/register.ts` (re-runnable; created addresses are saved to .env).

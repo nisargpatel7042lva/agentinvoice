@@ -25,7 +25,7 @@ World Agent Pass step-up (v2-S1, replaces old AgentKit Prompt 1; 90 min)
 
 ENSv2 namespaces (Prompt 2 + v2-S2)
 - [x] 1.8 Notes in `docs/notes/ensv2.md`: permissioned registry and resolver, roles, expiry and revocation, Sepolia addresses with sources (ask the ENS mentor)
-- [ ] 1.9 Register or reuse parent name on Sepolia; subname for the demo buyer agent with an expiry and the permissioned resolver; addr record = vault address
+- [x] 1.9 Register or reuse parent name on Sepolia; subname for the demo buyer agent with an expiry and the permissioned resolver; addr record = vault address
 - [ ] 1.10 Roles via Enhanced Access Control: sponsor wallet sets limit/threshold and revokes; ens-publisher sets only paid, late, status; script proves publisher cannot write `limit`
 - [ ] 1.11 `scripts/ens-revoke.ts`: revoke/expire subname, show resolution before and after
 - [ ] 1.12 `src/ens/read.ts`: `readAgentFromEns(name)` returns { vault, limit, threshold, sponsor, paid, late, status, expiresAt }
