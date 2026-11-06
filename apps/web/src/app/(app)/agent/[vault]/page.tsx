@@ -46,14 +46,14 @@ export default async function AgentPage({ params }: { params: Promise<{ vault: s
   const summary = creditReport?.summary ?? (settled === 0 ? "No payment history yet." : `${settled} settled invoices.`);
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <section className="flex flex-wrap items-center gap-4">
-        <span aria-hidden="true" className="flex size-14 items-center justify-center rounded-[14px] bg-accent-soft text-xl font-bold text-accent">
+        <span aria-hidden="true" className="flex size-14 items-center justify-center rounded-[14px] bg-ink text-xl font-semibold text-canvas">
           {(displayName ?? vault.slice(2)).slice(0, 2).toUpperCase()}
         </span>
         <div className="min-w-60 flex-1">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-[28px] leading-9 font-semibold tracking-tight">{displayName ?? shortHex(vault)}</h1>
+            <h1 className="text-[30px] leading-9 font-semibold tracking-[-0.025em]">{displayName ?? shortHex(vault)}</h1>
             {creditReport && (
               <Term explain="score">
                 <ScoreBadge band={creditReport.band} score={creditReport.score} />
@@ -67,10 +67,9 @@ export default async function AgentPage({ params }: { params: Promise<{ vault: s
         </div>
       </section>
 
-      {/* Credit score breakdown card */}
-      {creditReport && <CreditScoreCard report={creditReport} />}
-
-      <section className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+        <aside className="flex flex-col gap-4 lg:sticky lg:top-24 lg:col-start-2 lg:row-start-1">
+      <section aria-label="Key figures" className="flex flex-col gap-4">
         <StatCard
           label="Repayment track record"
           value={creditReport?.score !== null && creditReport?.score !== undefined ? `${creditReport.score}` : "—"}
@@ -84,6 +83,16 @@ export default async function AgentPage({ params }: { params: Promise<{ vault: s
           {spentPct != null && <Progress value={spentPct} label="Share of daily limit spent today" />}
         </StatCard>
       </section>
+      {isMock && agent && (
+        <Section open title={copy.policy.title} hint="Limits the sponsor set for this agent">
+          <PolicyPanel policy={payPolicyFixture} dailyLimit={agent.limit} threshold={agent.threshold} spentToday={spent ?? "0"} allowedSuppliers={3} />
+        </Section>
+      )}
+        </aside>
+        <div className="flex min-w-0 flex-col gap-5 lg:col-start-1 lg:row-start-1">
+      {/* Credit score breakdown card */}
+      {creditReport && <CreditScoreCard report={creditReport} />}
+
 
       <EnsPanel state={ens} vaultOnChain={vault as Address} />
 
@@ -134,11 +143,8 @@ export default async function AgentPage({ params }: { params: Promise<{ vault: s
         )}
       </Section>
 
-      {isMock && agent && (
-        <Section title={copy.policy.title} hint="Limits the sponsor set for this agent">
-          <PolicyPanel policy={payPolicyFixture} dailyLimit={agent.limit} threshold={agent.threshold} spentToday={spent ?? "0"} allowedSuppliers={3} />
-        </Section>
-      )}
+        </div>
+      </div>
     </div>
   );
 }

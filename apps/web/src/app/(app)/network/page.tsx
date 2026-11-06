@@ -1,3 +1,5 @@
+import { PageHeader } from "@/components/PageHeader";
+import { SummaryStrip } from "@/components/SummaryStrip";
 import { NetworkGraph } from "@/components/NetworkGraph";
 import { Section } from "@/components/Section";
 import { Table, TableBox, Td, Th } from "@/components/ui";
@@ -23,18 +25,19 @@ export default async function NetworkPage() {
   const sorted = [...links].sort((a, b) => b.hbar - a.hbar);
 
   return (
-    <div className="flex flex-col gap-5">
-      <div>
-        <h1 className="text-[28px] leading-9 font-semibold tracking-tight">Network</h1>
-        <p className="mt-1.5 max-w-2xl text-[15px] text-ink-muted">
-          Who owes whom, who funded whom, and which person vouches for each buyer agent. Thicker lines mean more money, and the colour shows how it went.
-        </p>
-        <ul aria-label="Network summary" className="mt-3 flex flex-wrap gap-2 text-[13px]">
-          <li className="rounded-full border border-line bg-surface px-3 py-1 text-ink-soft"><span className="font-semibold text-ink">{nodes.length}</span> parties</li>
-          <li className="rounded-full border border-line bg-surface px-3 py-1 text-ink-soft"><span className="font-semibold text-ink">{links.length}</span> connections</li>
-          <li className="rounded-full border border-line bg-surface px-3 py-1 text-ink-soft"><span className={cn("font-semibold", problems ? "text-status-late" : "text-ink")}>{problems}</span> with late or missed payments</li>
-        </ul>
-      </div>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Network"
+        sub="Who owes whom, who funded whom, and which person vouches for each buyer agent. Thicker lines mean more money; the colour shows how it went."
+      />
+      <SummaryStrip
+        label="Network summary"
+        items={[
+          { label: "Parties", value: nodes.length },
+          { label: "Connections", value: links.length },
+          { label: "Late or missed", value: problems, tone: problems ? "warn" : undefined, sub: "Invoices not paid on time" },
+        ]}
+      />
 
       {nodes.length === 0 ? (
         <p className="rounded-xl border border-dashed border-line bg-surface p-10 text-center text-sm text-ink-muted">No invoices yet, so there is nothing to connect.</p>
