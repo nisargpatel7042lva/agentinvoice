@@ -19,6 +19,8 @@ The loop: seller creates an invoice, the buyer agent accepts it, an investor fun
 
 ## 2. Click through the role flow with a wallet
 
+Backend half checked live on 2026-11-07 with a throwaway seller (role 201, change 409, name minted on Sepolia in 39 s, seller as buyer 403). The buyer half needs about 10 testnet HBAR in a throwaway wallet for the vault deploy, or a real wallet click-through.
+
 - [ ] Connect a wallet, choose seller, sign, claim an ENS name
 - [ ] Second wallet: choose buyer, deploy a vault, allow the market, register the buyer name
 - [ ] Buyer name shows on `/market` and the agent page
@@ -26,12 +28,16 @@ The loop: seller creates an invoice, the buyer agent accepts it, an investor fun
 
 ## 3. Product gaps
 
-- [ ] Seller signs `createInvoice` from their own wallet, so the seller is the on-chain supplier (today the backend wallet is) [check the contract first]
-- [ ] Profile "Invoices you created" works for a real seller wallet
-- [ ] Buyer can see the vault balance and send HBAR to it from the profile
-- [ ] ENS records (limit, threshold, paid, late, status) published for every registered buyer, not just the demo one
-- [ ] Optional "Agent wallet" field for buyers who run their own agent (default: ours)
-- [ ] Short self-hosting guide for the buyer agent and the investor agent
+- [~] Seller signs `createInvoice` from their own wallet, so the seller is the on-chain supplier (code merged on phase_13, untested with a wallet; falls back to the platform issuer when no wallet is connected). Contract check: any wallet may call `createInvoice`.
+- [~] Description attached with a supplier-signed `PUT /api/invoices/:id/description` (backend tests pass)
+- [ ] Profile "Invoices you created" works for a real seller wallet (needs the wallet test above)
+- [~] Buyer vault panel on the profile: balance, deposit, allow a seller (code on phase_13, untested with a wallet)
+- [~] Create form warns when the buyer has not allowed the seller's wallet (the agent skips unallowed suppliers)
+- [ ] Buyer allows the seller, the agent accepts the seller's invoice, the investor funds it, the agent repays (the whole loop with new wallets)
+- [ ] ENS records (limit, threshold, paid, late, status) published for every registered buyer, not just the demo one. Blocked on a design choice: records are guarded per name and key by resolver roles, so the publisher and sponsor wallets need grants on each new name, which the name's owner (the buyer) controls. Needs a Sepolia experiment
+- [~] "Agent wallet" field when a buyer deploys a vault (default: ours; code on phase_13)
+- [x] Self-hosting guide for the buyer and investor agents (`docs/SELF_HOSTING.md`)
+- [ ] Expose the paid score API (port 4020) so an outside investor agent can fetch scores
 
 ## 4. Prize tracks
 
