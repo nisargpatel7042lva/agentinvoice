@@ -24,27 +24,30 @@ struct Invoice {
 interface IInvoiceMarket {
     function createInvoice(address buyerVault, uint256 faceAmount, uint256 price, uint64 dueDate, bytes32 evidenceHash) external returns (uint256 id); // -> Pending
     function acceptInvoice(uint256 id) external;  // only invoice.buyerVault; Pending -> Open
-    function fund(uint256 id) external;           // Open -> Funded; sets holder = msg.sender; IBondIssuer.issue(holder, units)
+    function fund(uint256 id) external;           // Open -> Funded; sets holder = msg.sender; emits InvoiceFunded (bond issued off-chain, route T1b)
     function markPaid(uint256 id) external;       // only invoice.buyerVault; Funded/Late -> Paid
     function markLate(uint256 id) external;       // after dueDate; Funded -> Late
     function markDefaulted(uint256 id) external;  // Late -> Defaulted
     function getInvoice(uint256 id) external view returns (Invoice memory);
 }
 
+event InvoiceFunded(uint256 indexed id, address indexed holder, uint256 faceAmount);
+
+// Implemented by the backend issuer service under T1b (not called on-chain); on-chain only under T2.
 interface IBondIssuer {
     function issue(address holder, uint256 units) external;
 }
 ```
 
-### Bond routes (decision pending Mann's ATS spike)
+### Bond routes (decided by Mann's ATS spike, see `docs/notes/ats.md`)
 
-Draft one-line descriptions; Mann confirms or corrects after the spike. `Invoice.bond` and `IBondIssuer` stay the same for every route.
+- **T1a** (rejected): `InvoiceMarket` calls the ATS Diamond facets on-chain. Too complex and gas-heavy on Hedera EVM.
+- **T1b** (CHOSEN): `fund` records `holder = msg.sender` and emits `InvoiceFunded`. The backend issuer wallet (holding the ATS issuer role) then issues bond units to the holder with `@hashgraph/asset-tokenization-sdk` (`issue(tokenHolder, value, data)`; the holder must be on the KYC list). At maturity, `redeem(value, data)` burns the units. This trusted off-chain step is disclosed in the submission.
+- **T2** (fallback): Stablecoin Studio (custodial mint, KYC, freeze), used only if the ATS testnet fails.
 
-- **T1a**: one ATS (Asset Tokenization Studio) bond token per invoice, issued through the ATS factory.
-- **T1b**: one shared ATS bond token; each invoice issues its own units to the holder.
-- **T2**: no ATS. A plain token contract implements `IBondIssuer` directly.
+**Chosen route:** T1b, with T2 as the fallback. Repayment always goes to the stored `holder`, so moving bond units after funding never changes who gets paid; ATS freeze can also lock transfers.
 
-**Chosen route:** _pending_.
+Naming check for Mann: `ats.md` says `InvoiceMarket.buy()` and `InvoiceMarket.payInvoice()`, while this spec has `fund()` and `BuyerVault.payInvoice()`. The spec names stand unless Mann asks for a v3.
 
 ## 2. BuyerVault (contracts, owner: Mann)
 

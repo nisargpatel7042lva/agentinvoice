@@ -21,3 +21,8 @@ contracts/broadcast/
 Thumbs.db
 .vscode/
 .idea/
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal
