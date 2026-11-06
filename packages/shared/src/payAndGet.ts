@@ -1,199 +1,125 @@
-import type { Address, PayPolicy } from "./types";
+// Real x402 on Hedera: request → 402 challenge → check our spending policy → sign an HBAR transfer → retry → settled.
+// Follows Hedera's x402 guide (native-services-js/x402-payments): amounts in tinybars, asset "0.0.0", payTo is a 0.0.x
+// account id, and a facilitator (e.g. Blocky402) co-signs as fee payer and submits.
+// Import from "@agentinvoice/shared/payAndGet" (agents and scripts only): it pulls in the Hedera SDK, which the
+// website must not bundle.
+import { x402Client, x402HTTPClient } from "@x402/core/client";
+import { createClientHederaSigner, PrivateKey } from "@x402/hedera";
+import { ExactHederaScheme } from "@x402/hedera/exact/client";
+import type { PayPolicy } from "./types";
+
+type PaymentRequired = ReturnType<x402HTTPClient["getPaymentRequiredResponse"]>;
+type Requirement = PaymentRequired["accepts"][number];
 
 export interface PayAndGetOptions {
+  /** Spending rules. Amounts in tinybars; allowedPayTo are Hedera account ids (0.0.x). */
   policy?: Partial<PayPolicy>;
-  account?: Address;
-  privateKey?: `0x${string}`;
-  onAudit?: (event: {
-    type: string;
-    url: string;
-    amount?: string;
-    reason?: string;
-    txId?: string;
-  }) => Promise<void> | void;
+  /** The payer's Hedera account id (0.0.x) and its ECDSA private key (hex). */
+  accountId?: string;
+  privateKey?: string;
+  network?: string;
+  onAudit?: (event: { type: string; url: string; amount?: string; reason?: string; txId?: string }) => Promise<void> | void;
+  /** Injection points for tests. */
+  fetch?: typeof fetch;
+  signPayment?: (paymentRequired: PaymentRequired) => Promise<Record<string, string>>;
 }
 
-export type PayAndGetResult<T> =
-  | { ok: true; data: T; txId?: string }
-  | { ok: false; reason: string; status?: number };
+export type PayAndGetResult<T> = { ok: true; data: T; txId?: string; amount?: string } | { ok: false; reason: string; status?: number };
 
-interface DailySpendStore {
-  dayBucket: number;
-  spent: bigint;
-}
-
-// In-process cache for daily budget tracking across calls
-let spendStore: DailySpendStore = {
-  dayBucket: Math.floor(Date.now() / 86_400_000),
-  spent: 0n,
-};
-
+let spend = { day: Math.floor(Date.now() / 86_400_000), spent: 0n };
 export function getSpentToday(): bigint {
-  const currentDay = Math.floor(Date.now() / 86_400_000);
-  if (currentDay !== spendStore.dayBucket) {
-    spendStore = { dayBucket: currentDay, spent: 0n };
-  }
-  return spendStore.spent;
+  const day = Math.floor(Date.now() / 86_400_000);
+  if (day !== spend.day) spend = { day, spent: 0n };
+  return spend.spent;
 }
-
 export function resetSpentTodayForTesting(): void {
-  spendStore = { dayBucket: Math.floor(Date.now() / 86_400_000), spent: 0n };
+  spend = { day: Math.floor(Date.now() / 86_400_000), spent: 0n };
 }
 
-/**
- * Executes a GET request against an x402-protected endpoint, enforcing client-side
- * spending controls (perCallCap, dailyBudget, allowedHosts, allowedPayTo) before signing.
- */
-export async function payAndGet<T>(
-  url: string,
-  opts?: PayAndGetOptions
-): Promise<PayAndGetResult<T>> {
-  let parsedUrl: URL;
+function makeSigner(opts: PayAndGetOptions, network: string) {
+  if (!opts.accountId || !opts.privateKey) return null;
+  const key = PrivateKey.fromStringECDSA(opts.privateKey.replace(/^0x/, ""));
+  const signer = createClientHederaSigner(opts.accountId, key, { network: network as `${string}:${string}` });
+  const http = new x402HTTPClient(new x402Client().register("hedera:*", new ExactHederaScheme(signer)));
+  return async (pr: PaymentRequired) => http.encodePaymentSignatureHeader(await http.createPaymentPayload(pr));
+}
+
+/** Policy check on the real requirement, before anything is signed. Returns a refusal reason or null. */
+function refuse(req: Requirement, url: URL, policy: Partial<PayPolicy> | undefined, network: string): string | null {
+  if (req.network !== network) return `Network ${req.network} is not ${network}`;
+  if (req.asset !== "0.0.0") return `Asset ${req.asset} is not native HBAR`;
+  const amount = BigInt(req.amount);
+  if (policy?.allowedHosts?.length && !policy.allowedHosts.some((h) => h === url.host || h === url.hostname)) return `Host ${url.hostname} not allowed by policy`;
+  if (policy?.perCallCap && amount > BigInt(policy.perCallCap)) return `Requested payment ${amount} exceeds per-call cap ${policy.perCallCap}`;
+  if (policy?.dailyBudget && getSpentToday() + amount > BigInt(policy.dailyBudget)) return `Daily budget exhausted (${getSpentToday()} + ${amount} > ${policy.dailyBudget})`;
+  if (policy?.allowedPayTo?.length && !policy.allowedPayTo.some((a) => a.toLowerCase() === req.payTo.toLowerCase())) return `Recipient ${req.payTo} not allowed`;
+  return null;
+}
+
+export async function payAndGet<T>(url: string, opts: PayAndGetOptions = {}): Promise<PayAndGetResult<T>> {
+  const f = opts.fetch ?? fetch;
+  const network = opts.network ?? "hedera:testnet";
+  let target: URL;
   try {
-    parsedUrl = new URL(url);
+    target = new URL(url);
   } catch {
     return { ok: false, reason: `Invalid URL: ${url}` };
   }
-
-  // Check allowed hosts
-  if (opts?.policy?.allowedHosts && opts.policy.allowedHosts.length > 0) {
-    const isAllowed = opts.policy.allowedHosts.some(
-      (h) => h === parsedUrl.host || h === parsedUrl.hostname
-    );
-    if (!isAllowed) {
-      await opts?.onAudit?.({
-        type: "x402.refusal",
-        url,
-        reason: `Host ${parsedUrl.hostname} is not in allowedHosts policy`,
-      });
-      return { ok: false, reason: `Host ${parsedUrl.hostname} not allowed by policy` };
-    }
+  if (opts.policy?.allowedHosts?.length && !opts.policy.allowedHosts.some((h) => h === target.host || h === target.hostname)) {
+    const reason = `Host ${target.hostname} not allowed by policy`;
+    await opts.onAudit?.({ type: "x402.refusal", url, reason });
+    return { ok: false, reason };
   }
 
-  // First request: probe the endpoint
-  let response: Response;
+  let first: Response;
   try {
-    response = await fetch(url);
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return { ok: false, reason: `Network request failed: ${msg}` };
+    first = await f(url);
+  } catch (e) {
+    return { ok: false, reason: `Network request failed: ${(e as Error).message}` };
   }
+  if (first.ok) return { ok: true, data: (await first.json()) as T };
+  if (first.status !== 402) return { ok: false, status: first.status, reason: `HTTP ${first.status}: ${await first.text().catch(() => "")}` };
 
-  // Free endpoint response
-  if (response.status === 200) {
-    const data = (await response.json()) as T;
-    return { ok: true, data };
-  }
-
-  // Not an x402 challenge
-  if (response.status !== 402) {
-    return {
-      ok: false,
-      status: response.status,
-      reason: `HTTP ${response.status}: ${await response.text().catch(() => "")}`,
-    };
-  }
-
-  // Parse 402 Payment Requirements
-  const authHeader = response.headers.get("x402-payment-required") || response.headers.get("www-authenticate");
-  let paymentReq: { amount?: string; payTo?: Address; network?: string } = {};
-
+  // Read the 402 challenge with the official client (PAYMENT-REQUIRED header, JSON body as fallback).
+  const reader = new x402HTTPClient(new x402Client());
+  let pr: PaymentRequired;
   try {
-    const body = (await response.json()) as Record<string, unknown>;
-    paymentReq = {
-      amount: (body.amount || body.price || "1000000000000000000") as string,
-      payTo: (body.payTo || body.recipient) as Address,
-      network: (body.network || "hedera:testnet") as string,
-    };
+    pr = reader.getPaymentRequiredResponse((h) => first.headers.get(h), await first.clone().json().catch(() => undefined));
   } catch {
-    // If not json, try header
-    if (authHeader) {
-      paymentReq = { amount: "1000000000000000000" };
-    }
+    return { ok: false, status: 402, reason: "The server answered 402 without valid x402 payment requirements" };
+  }
+  const req = pr.accepts.find((a) => a.network === network) ?? pr.accepts[0];
+  if (!req) return { ok: false, status: 402, reason: "No payment option offered" };
+
+  const reason = refuse(req, target, opts.policy, network);
+  if (reason) {
+    await opts.onAudit?.({ type: "x402.refusal", url, amount: req.amount, reason });
+    return { ok: false, reason };
   }
 
-  const requestedAmount = BigInt(paymentReq.amount || "1000000000000000000");
+  const sign = opts.signPayment ?? makeSigner(opts, network);
+  if (!sign) return { ok: false, reason: "No payer configured: set the Hedera account id and private key" };
 
-  // Validate per-call cap
-  if (opts?.policy?.perCallCap) {
-    const cap = BigInt(opts.policy.perCallCap);
-    if (requestedAmount > cap) {
-      await opts?.onAudit?.({
-        type: "x402.refusal",
-        url,
-        amount: requestedAmount.toString(),
-        reason: `Requested amount ${requestedAmount} exceeds perCallCap ${cap}`,
-      });
-      return {
-        ok: false,
-        reason: `Requested payment ${requestedAmount} exceeds per-call cap ${cap}`,
-      };
-    }
+  let headers: Record<string, string>;
+  try {
+    headers = await sign({ ...pr, accepts: [req] });
+  } catch (e) {
+    return { ok: false, reason: `Could not sign the payment: ${(e as Error).message}` };
   }
 
-  // Validate daily budget
-  if (opts?.policy?.dailyBudget) {
-    const budget = BigInt(opts.policy.dailyBudget);
-    const spent = getSpentToday();
-    if (spent + requestedAmount > budget) {
-      await opts?.onAudit?.({
-        type: "x402.refusal",
-        url,
-        amount: requestedAmount.toString(),
-        reason: `Daily budget exhausted: ${spent} + ${requestedAmount} > ${budget}`,
-      });
-      return {
-        ok: false,
-        reason: `Daily budget exhausted (${spent} + ${requestedAmount} > ${budget})`,
-      };
-    }
+  const paid = await f(url, { headers });
+  if (!paid.ok) {
+    await opts.onAudit?.({ type: "x402.failed", url, amount: req.amount, reason: `HTTP ${paid.status}` });
+    return { ok: false, status: paid.status, reason: `Paid request failed with HTTP ${paid.status}` };
   }
 
-  // Validate payTo recipient
-  if (opts?.policy?.allowedPayTo && opts.policy.allowedPayTo.length > 0 && paymentReq.payTo) {
-    const isAllowed = opts.policy.allowedPayTo.some(
-      (addr) => addr.toLowerCase() === paymentReq.payTo?.toLowerCase()
-    );
-    if (!isAllowed) {
-      await opts?.onAudit?.({
-        type: "x402.refusal",
-        url,
-        reason: `Recipient ${paymentReq.payTo} is not in allowedPayTo`,
-      });
-      return { ok: false, reason: `Recipient ${paymentReq.payTo} not allowed` };
-    }
+  let txId: string | undefined;
+  try {
+    txId = reader.getPaymentSettleResponse((h) => paid.headers.get(h)).transaction || undefined;
+  } catch {
+    txId = undefined; // settled resource without a receipt header: still paid, just no tx id to show
   }
-
-  // Record payment in daily spend
-  spendStore.spent = getSpentToday() + requestedAmount;
-
-  // Simulate payment transaction ID / Hedera payment header
-  const mockTxId = `0.0.9876@${Date.now()}.000000000`;
-  const paymentReceiptHeader = `x402 tx=${mockTxId}; amount=${requestedAmount}`;
-
-  // Retry with authorization
-  const paidResponse = await fetch(url, {
-    headers: {
-      Authorization: paymentReceiptHeader,
-      "X-Payment": paymentReceiptHeader,
-    },
-  });
-
-  if (!paidResponse.ok) {
-    return {
-      ok: false,
-      status: paidResponse.status,
-      reason: `Paid request failed with HTTP ${paidResponse.status}`,
-    };
-  }
-
-  const resultData = (await paidResponse.json()) as T;
-  await opts?.onAudit?.({
-    type: "x402.payment",
-    url,
-    amount: requestedAmount.toString(),
-    txId: mockTxId,
-  });
-
-  return { ok: true, data: resultData, txId: mockTxId };
+  spend.spent = getSpentToday() + BigInt(req.amount);
+  await opts.onAudit?.({ type: "x402.payment", url, amount: req.amount, txId });
+  return { ok: true, data: (await paid.json()) as T, txId, amount: req.amount };
 }

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CircleCheck } from "lucide-react";
-import { ensAgentFixture, type Hash32 } from "@agentinvoice/shared";
+import { contracts, ensAgentFixture, type Hash32 } from "@agentinvoice/shared";
 import { createInvoice } from "@/app/actions";
 import { useAction } from "@/components/ActionButton";
 import { Button, Card } from "@/components/ui";
@@ -33,8 +33,19 @@ export function SupplierForm() {
   const [description, setDescription] = useState("");
   const [evidence, setEvidence] = useState<Hash32 | null>(null);
 
-  // Live ENS resolution (viem) lands with the ENS step; demo mode resolves the sample buyer.
-  const resolved = isMock && buyer.trim() === ensAgentFixture.name ? ensAgentFixture : null;
+  // Demo: the sample ENS buyer. Real: the configured buyer name (NEXT_PUBLIC_BUYER_ENS_NAME) maps to the deployed
+  // BuyerVault, or a 0x vault address is used as-is. Live ENS resolution replaces this when it lands.
+  const realName = process.env.NEXT_PUBLIC_BUYER_ENS_NAME || "buyer-agent.eth";
+  const typed = buyer.trim();
+  const resolved: { vault: string; status?: string; limit?: string } | null = isMock
+    ? typed === ensAgentFixture.name
+      ? ensAgentFixture
+      : null
+    : /^0x[0-9a-fA-F]{40}$/.test(typed)
+      ? { vault: typed }
+      : typed.toLowerCase() === realName.toLowerCase()
+        ? { vault: contracts.buyerVault }
+        : null;
   const ready = !!resolved && !!evidence && !!face && !!price && !!due && !!description.trim();
 
   async function fillSample() {
@@ -70,7 +81,9 @@ export function SupplierForm() {
           {resolved ? (
             <span className="mt-1.5 flex items-center gap-1.5 text-xs font-normal text-status-paid">
               <CircleCheck aria-hidden="true" className="size-3.5" />
-              {copy.supplier.resolved(shortHex(resolved.vault))} · {resolved.status} · limit {formatAmount(resolved.limit)} a day
+              {copy.supplier.resolved(shortHex(resolved.vault))}
+              {resolved.status ? ` · ${resolved.status}` : ""}
+              {resolved.limit ? ` · limit ${formatAmount(resolved.limit)} a day` : ""}
             </span>
           ) : (
             buyer.trim() && <span className="mt-1.5 block text-xs font-normal text-ink-muted">{copy.error.ensNotFound}</span>

@@ -3,9 +3,21 @@
 // mock mode changes the in-memory demo store; real mode is where each owner wires their piece.
 // See docs/notes/frontend-actions.md.
 import { revalidatePath } from "next/cache";
-import { ensAgentFixture, parseUnits, type Address, type Hash32 } from "@agentinvoice/shared";
+import { ApiError, contracts, createApiClient, ensAgentFixture, parseUnits, type Address, type Hash32 } from "@agentinvoice/shared";
 import { isMock } from "@/lib/env";
 import { MockError, mockStore } from "@/lib/mockStore";
+
+const backend = createApiClient({ baseUrl: process.env.NEXT_PUBLIC_BACKEND_URL });
+
+/** The buyer name people type. Demo: the sample ENS name. Real: NEXT_PUBLIC_BUYER_ENS_NAME maps to the deployed BuyerVault. */
+const knownBuyerName = () => (isMock ? ensAgentFixture.name : process.env.NEXT_PUBLIC_BUYER_ENS_NAME || "buyer-agent.eth");
+
+function resolveBuyer(input: string): Address | null {
+  const v = input.trim();
+  if (/^0x[0-9a-fA-F]{40}$/.test(v)) return v as Address;
+  if (v.toLowerCase() !== knownBuyerName().toLowerCase()) return null;
+  return isMock ? ensAgentFixture.vault : contracts.buyerVault;
+}
 
 export type ActionResult<T = undefined> = { ok: true; message: string; data?: T } | { ok: false; message: string };
 
@@ -44,29 +56,40 @@ export interface CreateInvoiceInput {
   evidenceHash: Hash32;
 }
 
-/** Real: POST /api/invoices (owner: Sidd's backend issues it on-chain). */
+/** Demo: in-memory store. Real: POST /api/invoices, where Sidd's backend creates it on-chain from the issuer wallet. */
 export async function createInvoice(input: CreateInvoiceInput): Promise<ActionResult<{ id: string }>> {
-  if (!isMock) return notWired("Creating invoices", "Sidd (POST /api/invoices)");
-  return run(() => {
-    if (input.buyerName.trim() !== ensAgentFixture.name) throw new MockError(`Unknown buyer "${input.buyerName}". In demo mode use ${ensAgentFixture.name}.`);
-    let face: bigint, price: bigint;
-    try {
-      face = parseUnits(input.face.trim());
-      price = parseUnits(input.price.trim());
-    } catch {
-      throw new MockError("Amounts must be numbers like 10 or 9.5.");
-    }
-    if (face <= 0n || price <= 0n || price > face) throw new MockError("The price must be above 0 and no more than the face amount.");
-    const due = Math.floor(new Date(`${input.dueDate}T12:00:00Z`).getTime() / 1000);
-    if (!Number.isFinite(due) || due * 1000 < Date.now()) throw new MockError("Pick a due date in the future.");
-    if (!input.description.trim()) throw new MockError("Add a short description.");
-    const supplier = ("0x1111111111111111111111111111111111111111") as Address;
-    const inv = mockStore.createInvoice(
-      { buyerVault: ensAgentFixture.vault, faceAmount: face.toString(), price: price.toString(), dueDate: due, description: input.description.trim(), evidenceHash: input.evidenceHash },
-      supplier,
-    );
-    return { id: inv.id };
-  }, (d) => `Invoice #${d.id} created. It is Pending until the buyer accepts it.`);
+  let face: bigint, price: bigint;
+  try {
+    face = parseUnits(input.face.trim());
+    price = parseUnits(input.price.trim());
+  } catch {
+    return { ok: false, message: "Amounts must be numbers like 10 or 9.5." };
+  }
+  if (face <= 0n || price <= 0n || price > face) return { ok: false, message: "The price must be above 0 and no more than the face amount." };
+  const due = Math.floor(new Date(`${input.dueDate}T12:00:00Z`).getTime() / 1000);
+  if (!Number.isFinite(due) || due * 1000 < Date.now()) return { ok: false, message: "Pick a due date in the future." };
+  if (!input.description.trim()) return { ok: false, message: "Add a short description." };
+  const vault = resolveBuyer(input.buyerName);
+  if (!vault) return { ok: false, message: `Unknown buyer "${input.buyerName}". Use ${knownBuyerName()} or the buyer vault's 0x address.` };
+  const body = { buyerVault: vault, faceAmount: face.toString(), price: price.toString(), dueDate: due, description: input.description.trim(), evidenceHash: input.evidenceHash };
+
+  if (isMock) {
+    return run(() => ({ id: mockStore.createInvoice(body, "0x1111111111111111111111111111111111111111").id }), (d) => `Invoice #${d.id} created. It is Pending until the buyer accepts it.`);
+  }
+  try {
+    const inv = await backend.createInvoice(body);
+    revalidatePath("/", "layout");
+    return { ok: true, message: `Invoice #${inv.id} created on Hedera testnet. It is Pending until the buyer agent accepts it.`, data: { id: inv.id } };
+  } catch (e) {
+    const status = e instanceof ApiError ? e.status : 0;
+    const message =
+      status === 503 ? "The backend has no issuer wallet configured (SUPPLIER_PRIVATE_KEY), so it cannot create invoices."
+      : status === 409 ? "An invoice with this exact document already exists. Attach a different file."
+      : status === 502 ? "The Hedera transaction failed. Check the issuer wallet has testnet HBAR."
+      : status === 400 ? "The backend rejected these details. Check the amounts and due date."
+      : "Our server is not responding. Is the backend running?";
+    return { ok: false, message };
+  }
 }
 
 // ---- buyer agent (demo controls until Rishita's buyer agent runs) ----
@@ -101,8 +124,20 @@ export async function markDefaulted(id: string): Promise<ActionResult> {
 
 // ---- sponsor ----
 /** Real: World ID step-up via POST /api/approvals and /api/world/callback (owner: Sidd). */
-export async function decideApproval(id: string, approve: boolean): Promise<ActionResult> {
-  if (!isMock) return notWired("Sponsor approval", "Sidd (World ID approvals)");
+export async function decideApproval(id: string, approve: boolean, invoiceId?: string): Promise<ActionResult<{ redirectUrl?: string }>> {
+  if (!isMock) {
+    // Real approvals happen at World ID: start a step-up for this invoice and send the sponsor there.
+    // The backend's /api/world/callback marks it approved. Rejecting = not approving; the request expires.
+    if (!approve) return { ok: true, message: "Not approved. The request expires on its own and the agent will not pay." };
+    if (!invoiceId) return { ok: false, message: "Missing invoice for this approval." };
+    try {
+      const start = await backend.startApproval(invoiceId);
+      return { ok: true, message: "Opening World ID to verify you are the sponsor…", data: { redirectUrl: start.authorizationUrl } };
+    } catch (e) {
+      const status = e instanceof ApiError ? e.status : 0;
+      return { ok: false, message: status === 503 ? "World ID approvals are not configured on the backend (WORLD_CLIENT_ID, WORLD_CLIENT_SECRET, WORLD_REDIRECT_URI)." : "Could not start the World ID approval. Is the backend running?" };
+    }
+  }
   return run(() => void mockStore.decideApproval(id, approve), approve ? "Approved. The buyer agent can now pay this invoice." : "Rejected. The buyer agent will not pay this invoice.");
 }
 

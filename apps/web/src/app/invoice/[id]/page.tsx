@@ -12,6 +12,7 @@ import { Term } from "@/components/Term";
 import { TxLink } from "@/components/TxLink";
 import { FundButton } from "@/components/FundButton";
 import { DemoControls } from "@/components/InvoiceActions";
+import { ChainActions } from "@/components/ChainActions";
 import { api, isMock } from "@/lib/api";
 import { loadEnsByVault, loadScore } from "@/lib/agents";
 import { cn } from "@/lib/cn";
@@ -92,7 +93,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         {inv.status === "Open" && <FundButton id={inv.id} price={inv.price} priceLabel={formatAmount(inv.price)} />}
       </Card>
 
-      {isMock && <DemoControls id={inv.id} status={inv.status} />}
+      {isMock ? <DemoControls id={inv.id} status={inv.status} /> : <ChainActions id={inv.id} status={inv.status} dueDate={inv.dueDate} buyerVault={inv.buyerVault} />}
 
       <Card className="px-6 py-5">
         <Stepper status={inv.status} notes={notes} />

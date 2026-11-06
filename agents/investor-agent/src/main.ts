@@ -2,6 +2,7 @@
 // Env: BACKEND_URL, SCORE_API_URL, MARKET_ADDRESS, INVESTOR_PRIVATE_KEY, HEDERA_TESTNET_RPC_URL,
 //      MIN_BAND, MIN_DISCOUNT_BPS, MAX_PRICE, MAX_OPEN_EXPOSURE, DRY_RUN=1, INVESTOR_AGENT_POLL_INTERVAL_MS
 import * as shared from "@agentinvoice/shared";
+import { payAndGet } from "@agentinvoice/shared/payAndGet";
 import { createPublicClient, createWalletClient, http, parseAbi, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { createInvestorAgent } from "./agent.js";
@@ -21,8 +22,19 @@ async function main() {
   // Mann's x402 helper, bound to the investor key and a spending policy limited to the score API host.
   const scoreApi = need("SCORE_API_URL");
   const payKey = need("INVESTOR_PRIVATE_KEY") as Hex;
+  // Real x402: pays the score API in HBAR from the investor's Hedera account (0.0.x + its ECDSA key),
+  // never more than these caps (tinybars). The facilitator co-signs as fee payer.
   const payScore: PayAndGet = (url) =>
-    shared.payAndGet(url, { privateKey: payKey, policy: { allowedHosts: [new URL(scoreApi).host] } });
+    payAndGet(url, {
+      accountId: need("INVESTOR_ACCOUNT_ID"),
+      privateKey: payKey,
+      policy: {
+        allowedHosts: [new URL(scoreApi).host],
+        perCallCap: process.env.SCORE_MAX_PRICE_TINYBAR ?? "10000000", // 0.1 HBAR
+        dailyBudget: process.env.SCORE_DAILY_BUDGET_TINYBAR ?? "100000000", // 1 HBAR
+      },
+      onAudit: (e) => console.log(`x402 ${e.type} amount=${e.amount ?? "?"}${e.txId ? ` tx=${e.txId}` : ""}${e.reason ? ` reason="${e.reason}"` : ""}`),
+    });
 
   const dryRun = process.env.DRY_RUN === "1";
   const chain = {
