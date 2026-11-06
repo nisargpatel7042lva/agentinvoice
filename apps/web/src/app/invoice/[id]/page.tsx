@@ -1,12 +1,14 @@
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ArrowRight, ChevronLeft } from "lucide-react";
 import { formatUnits } from "@agentinvoice/shared";
-import { Card, CardContent, CardHeader, CardTitle, Badge, buttonVariants } from "@/components/ui";
+import { Card, buttonVariants } from "@/components/ui";
 import { Legend } from "@/components/charts";
 import { EmptyState } from "@/components/EmptyState";
 import { ScoreBadge } from "@/components/ScoreBadge";
+import { Section } from "@/components/Section";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Stepper } from "@/components/Stepper";
+import { Term } from "@/components/Term";
 import { TxLink } from "@/components/TxLink";
 import { api } from "@/lib/api";
 import { loadEnsByVault, loadScore } from "@/lib/agents";
@@ -18,7 +20,7 @@ export const dynamic = "force-dynamic";
 
 const STEP_EVENT: Record<string, string> = { "invoice.created": "Pending", "invoice.accepted": "Open", "invoice.funded": "Funded", "invoice.paid": "Paid" };
 
-function Row({ label, children, last }: { label: string; children: React.ReactNode; last?: boolean }) {
+function Row({ label, children, last }: { label: React.ReactNode; children: React.ReactNode; last?: boolean }) {
   return (
     <div className={cn("flex items-center justify-between gap-4 py-3 text-sm", !last && "border-b border-subtle")}>
       <dt className="text-ink-muted">{label}</dt>
@@ -33,6 +35,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   if (!inv) return <EmptyState message={copy.error.notFound} action={{ label: copy.nav.backMarket, href: "/" }} />;
   const [score, ens, audit] = await Promise.all([loadScore(inv.buyerVault), loadEnsByVault(inv.buyerVault), api.listAudit().catch(() => [])]);
   const agent = "agent" in ens ? ens.agent : undefined;
+  const buyer = agent?.name ?? shortHex(inv.buyerVault);
   const history = audit.filter((e) => e.invoiceId === inv.id);
   const notes = Object.fromEntries(
     history.flatMap((e) => (STEP_EVENT[e.type] ? [[STEP_EVENT[e.type], formatDate(Number(e.consensusTimestamp.split(".")[0]))]] : [])),
@@ -43,135 +46,109 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const pct = (n: number) => (settled ? (n / settled) * 100 : 0);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="mx-auto flex max-w-3xl flex-col gap-5">
       <Link href="/" className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
         <ChevronLeft aria-hidden="true" className="size-4" />
         {copy.nav.backMarket}
       </Link>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-[28px] leading-9 font-semibold tracking-tight">{copy.invoice.title(inv.id)}</h1>
-        <StatusBadge status={inv.status} />
-        <span className="text-sm text-ink-muted">{copy.statusHelp[inv.status]}</span>
+      <div>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-[28px] leading-9 font-semibold tracking-tight">{copy.invoice.title(inv.id)}</h1>
+          <StatusBadge status={inv.status} />
+        </div>
+        <p className="mt-1 text-sm text-ink-muted">{copy.statusHelp[inv.status]}</p>
       </div>
+
+      <Card className="p-6">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+          <div>
+            <div className="text-[13px] text-ink-muted">{copy.deal.youPay}</div>
+            <div className="mt-1 text-[28px] leading-9 font-semibold">{formatAmount(inv.price)}</div>
+          </div>
+          <ArrowRight aria-hidden="true" className="size-5 text-ink-faint" />
+          <div>
+            <div className="text-[13px] text-ink-muted">{copy.deal.youGet} {copy.deal.on(formatDate(inv.dueDate))}</div>
+            <div className="mt-1 text-[28px] leading-9 font-semibold">{formatAmount(inv.faceAmount)}</div>
+          </div>
+          <div className="ml-auto rounded-lg bg-status-paid-bg px-3 py-2 text-right">
+            <div className="text-xs text-status-paid">{copy.deal.return}</div>
+            <div className="text-lg font-semibold text-status-paid">+{formatUnits(ret)} HBAR · {retPct}%</div>
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-subtle pt-4 text-sm text-ink-soft">
+          Buyer
+          <Link href={`/agent/${inv.buyerVault}`} className="font-medium text-accent">{buyer}</Link>
+          {score && (
+            <Term explain="score">
+              <ScoreBadge band={score.band} value={score.band === "New" ? null : score.onTimeRate} />
+            </Term>
+          )}
+        </div>
+
+        {inv.status === "Open" ? (
+          <button type="button" disabled className={cn(buttonVariants({ size: "lg" }), "mt-4 w-full")}>{copy.wallet.connectToFund}</button>
+        ) : null}
+      </Card>
 
       <Card className="px-6 py-5">
         <Stepper status={inv.status} notes={notes} />
       </Card>
 
-      <div className="flex flex-wrap items-start gap-5">
-        <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-5">
-          <Card>
-            <CardHeader><CardTitle>Amounts</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              {[
-                [copy.invoice.face, formatAmount(inv.faceAmount), ""],
-                [copy.invoice.price, formatAmount(inv.price), "text-accent"],
-                [copy.invoice.discount, discountPct(inv), ""],
-                [copy.invoice.due, formatDate(inv.dueDate), ""],
-              ].map(([label, value, cls]) => (
-                <div key={label}>
-                  <div className="text-[13px] text-ink-muted">{label}</div>
-                  <div className={cn("mt-1.5 text-xl font-semibold", cls)}>{value}</div>
+      <Section title={copy.sections.people} hint={`Supplier, ${buyer}, sponsor and holder`}>
+        <dl className="m-0">
+          <Row label={copy.invoice.supplier}><TxLink address={inv.supplier} /></Row>
+          <Row label={<Term explain="agent">Buyer agent</Term>}><Link href={`/agent/${inv.buyerVault}`} className="font-medium text-accent">{buyer}</Link></Row>
+          <Row label={<Term explain="sponsor">Sponsor</Term>}>{agent ? "Listed on the buyer's ENS name" : <span className="text-ink-muted">Unknown</span>}</Row>
+          <Row label={copy.invoice.holder} last>{inv.holder ? <TxLink address={inv.holder} /> : <span className="text-ink-muted">{copy.invoice.holderNone}</span>}</Row>
+        </dl>
+      </Section>
+
+      <Section title={copy.sections.record} hint={score ? `${score.paid} paid on time, ${score.late} late, ${score.defaulted} defaulted` : copy.scoreHelp.New}>
+        {!score || settled === 0 ? (
+          <p className="text-sm text-ink-muted">{copy.scoreHelp.New}</p>
+        ) : (
+          <>
+            <div role="img" aria-label={`${score.paid} on time, ${score.late} late, ${score.defaulted} defaulted`} className="flex h-3 overflow-hidden rounded-full bg-subtle">
+              <div className="bg-accent" style={{ width: `${pct(score.paid)}%` }} />
+              <div className="bg-warn" style={{ width: `${pct(score.late)}%` }} />
+              <div className="bg-danger" style={{ width: `${pct(score.defaulted)}%` }} />
+            </div>
+            <div className="mt-3">
+              <Legend items={[{ label: `On time · ${score.paid}`, color: "accent" }, { label: `Late · ${score.late}`, color: "warn" }, { label: `Defaulted · ${score.defaulted}`, color: "danger" }]} />
+            </div>
+          </>
+        )}
+      </Section>
+
+      <Section title={copy.sections.money} hint="Contract and wallet addresses you can check yourself">
+        <dl className="m-0">
+          <Row label={copy.invoice.face}>{formatAmount(inv.faceAmount)}</Row>
+          <Row label={copy.invoice.discount}>{discountPct(inv)}</Row>
+          <Row label="Buyer vault"><TxLink address={inv.buyerVault} /></Row>
+          {inv.bond && <Row label={copy.invoice.bond}><TxLink address={inv.bond} /></Row>}
+          <Row label={copy.invoice.evidence} last><span title={copy.invoice.evidenceHelp} className="font-mono text-xs text-ink-soft">{shortHex(inv.evidenceHash)}</span></Row>
+        </dl>
+      </Section>
+
+      <Section title={copy.sections.activity} hint={history.length ? `${history.length} events on the public log` : copy.empty.history}>
+        {history.length === 0 ? (
+          <p className="text-sm text-ink-muted">{copy.empty.history}</p>
+        ) : (
+          <ol className="flex flex-col gap-4">
+            {history.map((e) => (
+              <li key={e.sequenceNumber} className="flex gap-3">
+                <span aria-hidden="true" className="mt-1.5 size-2 flex-none rounded-full bg-accent" />
+                <div>
+                  <div className="text-sm font-medium">{e.type}</div>
+                  <div className="text-xs text-ink-muted">HCS {e.topicId} · seq #{e.sequenceNumber}</div>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader><CardTitle>Parties</CardTitle></CardHeader>
-            <CardContent className="pt-1">
-              <dl className="m-0">
-                <Row label={copy.invoice.supplier}><TxLink address={inv.supplier} /></Row>
-                <Row label={copy.invoice.buyer}>
-                  <span className="inline-flex items-center gap-2">
-                    <Link href={`/agent/${inv.buyerVault}`} className="font-medium text-accent">{agent?.name ?? shortHex(inv.buyerVault)}</Link>
-                    {score && <ScoreBadge band={score.band} value={score.band === "New" ? null : score.onTimeRate} />}
-                  </span>
-                </Row>
-                <Row label={copy.sponsor.accountable}>
-                  {agent ? <Badge className="bg-accent-soft font-medium text-accent">Listed on ENS</Badge> : <span className="text-ink-muted">Unknown</span>}
-                </Row>
-                <Row label={copy.invoice.holder} last>{inv.holder ? <TxLink address={inv.holder} /> : <span className="text-ink-muted">{copy.invoice.holderNone}</span>}</Row>
-              </dl>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader><CardTitle>{copy.invoice.history}</CardTitle></CardHeader>
-            <CardContent>
-              {history.length === 0 ? (
-                <p className="text-sm text-ink-muted">{copy.empty.history}</p>
-              ) : (
-                <ol className="flex flex-col gap-4">
-                  {history.map((e) => (
-                    <li key={e.sequenceNumber} className="flex gap-3">
-                      <span aria-hidden="true" className="mt-1.5 size-2 flex-none rounded-full bg-accent" />
-                      <div className="flex-1">
-                        <div className="text-sm font-medium">{e.type}</div>
-                        <div className="text-xs text-ink-muted">HCS {e.topicId} · seq #{e.sequenceNumber}</div>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <aside className="flex min-w-0 flex-[1_1_340px] flex-col gap-5">
-          <Card>
-            <CardHeader><CardTitle>Fund this invoice</CardTitle></CardHeader>
-            <CardContent className="flex flex-col gap-4">
-              <dl className="m-0 flex flex-col gap-2.5 text-sm">
-                <div className="flex justify-between"><dt className="text-ink-muted">You pay now</dt><dd className="m-0 font-semibold">{formatAmount(inv.price)}</dd></div>
-                <div className="flex justify-between"><dt className="text-ink-muted">You receive on {formatDate(inv.dueDate)}</dt><dd className="m-0 font-semibold">{formatAmount(inv.faceAmount)}</dd></div>
-                <div className="flex justify-between border-t border-subtle pt-2.5"><dt className="text-ink-muted">Return</dt><dd className="m-0 font-semibold text-status-paid">+{formatUnits(ret)} HBAR ({retPct}%)</dd></div>
-              </dl>
-              {inv.status === "Open" ? (
-                <button type="button" disabled className={buttonVariants({ size: "lg" })}>{copy.wallet.connectToFund}</button>
-              ) : (
-                <p className="rounded-lg bg-subtle px-3 py-2 text-sm text-ink-soft">{copy.statusHelp[inv.status]}</p>
-              )}
-              <p className="text-xs text-ink-muted">Repayment goes to the wallet recorded as holder when you fund.</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Buyer repayment record</CardTitle>
-              {score && <span className="text-xs text-ink-muted">{settled} settled invoices</span>}
-            </CardHeader>
-            <CardContent>
-              {!score || settled === 0 ? (
-                <p className="text-sm text-ink-muted">{copy.scoreHelp.New}</p>
-              ) : (
-                <>
-                  <div role="img" aria-label={`${score.paid} on time, ${score.late} late, ${score.defaulted} defaulted`} className="flex h-3 overflow-hidden rounded-full bg-subtle">
-                    <div className="bg-accent" style={{ width: `${pct(score.paid)}%` }} />
-                    <div className="bg-warn" style={{ width: `${pct(score.late)}%` }} />
-                    <div className="bg-danger" style={{ width: `${pct(score.defaulted)}%` }} />
-                  </div>
-                  <div className="mt-3">
-                    <Legend items={[{ label: `On time · ${score.paid}`, color: "accent" }, { label: `Late · ${score.late}`, color: "warn" }, { label: `Defaulted · ${score.defaulted}`, color: "danger" }]} />
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader><CardTitle>{copy.money.where}</CardTitle></CardHeader>
-            <CardContent className="pt-1">
-              <dl className="m-0">
-                <Row label="Buyer vault"><TxLink address={inv.buyerVault} /></Row>
-                {inv.bond && <Row label={copy.invoice.bond}><TxLink address={inv.bond} /></Row>}
-                <Row label={copy.invoice.evidence} last><span title={copy.invoice.evidenceHelp} className="font-mono text-xs text-ink-soft">{shortHex(inv.evidenceHash)}</span></Row>
-              </dl>
-            </CardContent>
-          </Card>
-        </aside>
-      </div>
+              </li>
+            ))}
+          </ol>
+        )}
+      </Section>
     </div>
   );
 }

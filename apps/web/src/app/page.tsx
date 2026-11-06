@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { FaceByStatusChart } from "@/components/charts";
 import { EmptyState } from "@/components/EmptyState";
+import { HowItWorks } from "@/components/HowItWorks";
+import { Section } from "@/components/Section";
 import { MarketTable, type MarketRow } from "@/components/MarketTable";
 import { buttonVariants, Card, CardContent, CardHeader, CardTitle, Progress, StatCard } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -38,13 +40,19 @@ export default async function MarketplacePage() {
           <h1 className="text-[28px] leading-9 font-semibold tracking-tight">{copy.market.title}</h1>
           <p className="mt-1.5 text-[15px] text-ink-muted">{copy.market.subtitle}</p>
         </div>
-        <Link href="/supplier" className={buttonVariants()}>
+        <Link href="/supplier" className={buttonVariants({ variant: "outline" })}>
           <Plus aria-hidden="true" />
-          {copy.nav.supplier}
+          I&apos;m a supplier
         </Link>
       </div>
 
-      <section className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4">
+      <HowItWorks />
+
+      <MarketTable rows={rows} />
+
+      <Section title={copy.market.overview} hint={copy.market.overviewHint}>
+      <div className="flex flex-col gap-4">
+      <section className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
         <StatCard label="Open for funding" value={`${s.openCount} ${s.openCount === 1 ? "invoice" : "invoices"}`} sub={`${formatAmount(s.openFace.toString())} face value`} />
         <StatCard label="Average discount" value={s.avgDiscountPct == null ? "—" : `${s.avgDiscountPct.toFixed(1)}%`} sub="Across open invoices" />
         <StatCard label="Funded so far" value={formatAmount(s.fundedVolume.toString())} sub={`${s.fundedCount} invoices funded by investors`} />
@@ -55,15 +63,15 @@ export default async function MarketplacePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Face value by status</CardTitle>
+          <CardTitle>Invoice value by status</CardTitle>
           <span className="text-xs text-ink-muted">From on-chain invoices</span>
         </CardHeader>
         <CardContent>
           <FaceByStatusChart data={faceByStatus(invoices)} />
         </CardContent>
       </Card>
-
-      <MarketTable rows={rows} />
+      </div>
+      </Section>
     </div>
   );
 }

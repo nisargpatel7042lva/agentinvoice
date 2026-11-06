@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { HowItWorks } from "./HowItWorks";
+import { Section } from "./Section";
+import { Term } from "./Term";
 import { STATUSES, approvalFixture, ensAgentFixture, invoiceFixtures, payPolicyFixture } from "@agentinvoice/shared";
 import { ApprovalCard } from "./ApprovalCard";
 import { EmptyState } from "./EmptyState";
@@ -65,6 +68,22 @@ describe("components render", () => {
     expect(screen.getByText("addr, limit, threshold")).toBeTruthy();
     expect(screen.getByText("paid, late, status")).toBeTruthy();
     expect(screen.getByText("expires")).toBeTruthy();
+  });
+
+  it("HowItWorks shows three steps and hides once dismissed", async () => {
+    localStorage.clear();
+    render(<HowItWorks />);
+    expect(await screen.findByText(copy.onboarding.steps[0].title)).toBeTruthy();
+    fireEvent.click(screen.getByText(copy.onboarding.dismiss));
+    expect(screen.queryByText(copy.onboarding.title)).toBeNull();
+    expect(localStorage.getItem("ai.onboarding.dismissed")).toBe("1");
+  });
+
+  it("Section starts closed and Term explains jargon", () => {
+    render(<Section title="Details">hidden body</Section>);
+    expect(screen.getByText("Details").closest("details")?.open).toBe(false);
+    render(<Term explain="sponsor">Sponsor</Term>);
+    expect(screen.getByRole("tooltip").textContent).toBe(copy.glossary.sponsor);
   });
 
   it("Stepper marks Late in place of Paid", () => {

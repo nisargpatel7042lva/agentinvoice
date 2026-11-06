@@ -60,7 +60,7 @@ export const ensAgentFixture: EnsAgent = {
   vault: VAULT,
   limit: "5000000000",
   threshold: "1000000000",
-  paid: 1,
+  paid: 12,
   late: 1,
   status: "active",
   expiresAt: 1_825_000_000,
