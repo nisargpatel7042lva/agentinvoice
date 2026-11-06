@@ -68,3 +68,4 @@ describe("paid-api x402 score service (Prompt 5)", () => {
     expect(computeBand(70, 30, 0).band).toBe("C"); // 70%
   });
 });
+

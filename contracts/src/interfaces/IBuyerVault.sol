@@ -32,3 +32,4 @@ interface IBuyerVault {
     function spentToday() external view returns (uint256);
     function isFrozen() external view returns (bool);
 }
+

@@ -12,3 +12,4 @@ app.listen({ port, host }, (err, address) => {
   }
   console.log(`[paid-api] x402 score server listening on ${address}`);
 });
+

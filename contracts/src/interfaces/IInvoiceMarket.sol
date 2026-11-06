@@ -59,3 +59,4 @@ interface IInvoiceMarket {
     function claim() external;
     function getInvoice(uint256 id) external view returns (Invoice memory);
 }
+

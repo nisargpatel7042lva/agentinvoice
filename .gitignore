@@ -34,4 +34,8 @@ Thumbs.db
 *.log
 package-lock.json
 
+# Web build
+apps/web/.next/
+apps/web/next-env.d.ts
+*.tsbuildinfo
 

@@ -174,3 +174,4 @@ contract InvoiceMarket is IInvoiceMarket {
         return invoices[id];
     }
 }
+

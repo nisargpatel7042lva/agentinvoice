@@ -16,7 +16,7 @@ import {
   invoiceFixtures,
   payPolicyFixture,
   reviewFixture,
-} from "./index.js";
+} from "./index";
 
 describe("spec v2 fixtures", () => {
   it("is spec version 2", () => {

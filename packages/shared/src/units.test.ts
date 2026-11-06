@@ -27,3 +27,4 @@ describe("Hedera unit conversions", () => {
     expect(valueToTinybar(evmValue)).toBe(tinybar);
   });
 });
+

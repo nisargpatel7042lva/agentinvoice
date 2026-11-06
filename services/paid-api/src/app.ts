@@ -76,3 +76,4 @@ export function buildPaidApp(config?: PaidApiConfig): FastifyInstance {
 
   return app;
 }
+

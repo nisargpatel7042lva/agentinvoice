@@ -10,7 +10,9 @@ import {
   type Invoice,
   type PayPolicy,
   type ReviewResult,
-} from "./types.js";
+  SCORE_BANDS,
+  type ScoreResult,
+} from "./types";
 
 const isHex = (len: number) => (v: unknown) =>
   typeof v === "string" && new RegExp(`^0x[0-9a-fA-F]{${len}}$`).test(v);
@@ -73,6 +75,19 @@ export const ReviewResultSchema = z.object({
   action: z.enum(["approve", "reject", "escalate"]),
   reason: z.string(),
 }) satisfies z.ZodType<ReviewResult>;
+
+export const ScoreBandSchema = z.enum(SCORE_BANDS);
+
+export const ScoreResultSchema = z.object({
+  vault: AddressSchema,
+  band: ScoreBandSchema,
+  value: z.number().min(0).max(100).nullable(),
+  paid: z.number().int().nonnegative(),
+  late: z.number().int().nonnegative(),
+  updatedAt: z.number().int(),
+}) satisfies z.ZodType<ScoreResult>;
+
+export const HealthSchema = z.object({ ok: z.boolean() }).loose();
 
 export const PayPolicySchema = z.object({
   dailyBudget: AmountSchema,

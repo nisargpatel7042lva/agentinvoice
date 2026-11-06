@@ -54,7 +54,8 @@ export interface ApprovalStart {
   authorizationUrl: string;
 }
 
-export type ScoreBand = "New" | "A" | "B" | "C";
+export const SCORE_BANDS = ["A", "B", "C", "New"] as const;
+export type ScoreBand = (typeof SCORE_BANDS)[number];
 
 export interface BuyerScore {
   vault: Address;
@@ -71,6 +72,16 @@ export interface BuyerScore {
 export interface Score {
   agent: Address;
   value: number;
+  updatedAt: number;
+}
+
+/** Response of the paid score API (bought through payAndGet). */
+export interface ScoreResult {
+  vault: Address;
+  band: ScoreBand;
+  value: number | null; // 0-100, null when band is New
+  paid: number;
+  late: number;
   updatedAt: number;
 }
 
