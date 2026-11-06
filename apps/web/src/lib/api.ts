@@ -8,6 +8,7 @@ export { isMock };
 // Server-side reads. Mock mode reads the in-memory demo store (so button clicks show up);
 // otherwise the real backend at NEXT_PUBLIC_BACKEND_URL.
 const real = createApiClient({ baseUrl: process.env.NEXT_PUBLIC_BACKEND_URL });
+const mockClient = createApiClient({ mock: true });
 
 export const api = isMock
   ? {
@@ -16,6 +17,8 @@ export const api = isMock
       listAudit: mockStore.listAudit,
       getApproval: mockStore.getApproval,
       getScoreMock: mockStore.getScoreMock,
+      getSaucerSwapStatus: mockClient.getSaucerSwapStatus,
+      getSaucerSwapQuote: mockClient.getSaucerSwapQuote,
     }
   : {
       listInvoices: real.listInvoices,
@@ -23,4 +26,6 @@ export const api = isMock
       listAudit: real.listAudit,
       getApproval: real.getApproval,
       getScoreMock: real.getScoreMock,
+      getSaucerSwapStatus: real.getSaucerSwapStatus,
+      getSaucerSwapQuote: real.getSaucerSwapQuote,
     };

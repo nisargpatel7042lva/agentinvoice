@@ -7,14 +7,16 @@
  */
 import { decodeFunctionResult, encodeFunctionData, type Hex } from "viem";
 import { swapRouterAbi } from "./abi";
+import { ensureUsdcAssociated, type AssociateDeps } from "./associate";
 import { checkHbarAffordability, getHbarBalance, getTokenBalance, isTokenAssociated } from "./balance";
 import { hederaIdToEvmAddress, USDC_TOKEN_ID, V2_SWAP_ROUTER_ID } from "./config";
-import { validateQuote } from "./quote";
+import { quoteHbarToUsdc, validateQuote } from "./quote";
 import type {
   BroadcastResult,
   ExecuteRequest,
   ExecuteResult,
   PreparedSwap,
+  QuoteRequest,
   SaucerSwapConfig,
   SaucerSwapDeps,
   SaucerSwapErrorCode,
@@ -192,7 +194,7 @@ async function defaultWaitForConfirmation(
 export async function executeHbarToUsdc(
   request: ExecuteRequest,
   config: SaucerSwapConfig,
-  deps: SaucerSwapDeps = {},
+  deps: AssociateDeps = {},
 ): Promise<ExecuteResult> {
   if (config.network !== "testnet") {
     return fail("MAINNET_REJECTED", "SaucerSwap library rejects mainnet; testnet only");
@@ -217,9 +219,19 @@ export async function executeHbarToUsdc(
     return fail("NO_OPERATOR", "Set SAUCERSWAP_OPERATOR_ACCOUNT_ID to prepare or execute a swap");
   }
 
-  const associated = await isTokenAssociated(accountId, quote.tokenOut || USDC_TOKEN_ID, config, deps);
+  const tokenOut = quote.tokenOut || USDC_TOKEN_ID;
+  let associated = await isTokenAssociated(accountId, tokenOut, config, deps);
+  if (!associated && request.associateIfNeeded) {
+    const assoc = await ensureUsdcAssociated(config, deps, tokenOut);
+    if (!assoc.ok) return fail(assoc.code, assoc.reason, assoc.transactionId);
+    // Live associate succeeded, already associated, or dry-run skipped broadcast — proceed.
+    associated = true;
+  }
   if (!associated) {
-    return fail("NOT_ASSOCIATED", `Account ${accountId} must associate USDC ${quote.tokenOut} before swap`);
+    return fail(
+      "NOT_ASSOCIATED",
+      `Account ${accountId} must associate USDC ${tokenOut} before swap (run associate, or pass associateIfNeeded)`,
+    );
   }
 
   const hbarBalance = await getHbarBalance(accountId, config, deps);
@@ -285,4 +297,32 @@ export async function executeHbarToUsdc(
     usdcBalanceBefore: usdcBefore,
     usdcBalanceAfter: usdcAfter,
   };
+}
+
+export interface SwapHbarToUsdcRequest extends QuoteRequest {
+  /** Associate USDC before execute when missing (default true for agent/script paths). */
+  associateIfNeeded?: boolean;
+  dryRun?: boolean;
+}
+
+/**
+ * One-shot quote + execute for agents/scripts.
+ * Defaults to associating USDC when needed.
+ */
+export async function swapHbarToUsdc(
+  request: SwapHbarToUsdcRequest,
+  config: SaucerSwapConfig,
+  deps: AssociateDeps = {},
+): Promise<ExecuteResult> {
+  const quoted = await quoteHbarToUsdc(request, config, deps);
+  if (!quoted.ok) return fail(quoted.code, quoted.reason);
+  return executeHbarToUsdc(
+    {
+      quote: quoted.quote,
+      dryRun: request.dryRun,
+      associateIfNeeded: request.associateIfNeeded ?? true,
+    },
+    config,
+    deps,
+  );
 }

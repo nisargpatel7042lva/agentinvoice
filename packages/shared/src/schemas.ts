@@ -131,3 +131,43 @@ export const BuyerScoreSchema = z.object({
   credit: CreditReportSchema.optional(),
 }) satisfies z.ZodType<BuyerScore>;
 
+/** Read-only SaucerSwap status for the treasury UI (no secrets). */
+export const SaucerSwapStatusSchema = z.object({
+  network: z.literal("testnet"),
+  usdc: z.object({
+    tokenId: z.string(),
+    symbol: z.string(),
+    decimals: z.number().int(),
+    label: z.string(),
+    caveat: z.string(),
+    circleOfficialTokenId: z.string(),
+  }),
+  contracts: z.object({
+    whbarTokenId: z.string(),
+    quoterV2: z.string(),
+    swapRouter: z.string(),
+  }),
+  operator: z
+    .object({
+      accountId: z.string(),
+      hbarTinybar: AmountSchema,
+      usdcBaseUnits: AmountSchema,
+      usdcAssociated: z.boolean(),
+    })
+    .optional(),
+  dryRun: z.boolean(),
+});
+
+export const SaucerSwapQuoteSchema = z.object({
+  ok: z.literal(true),
+  amountInTinybar: AmountSchema,
+  amountOut: AmountSchema,
+  amountOutMinimum: AmountSchema,
+  fee: z.number().int(),
+  tokenOut: z.string(),
+  quotedAt: z.number().int(),
+  expiresAt: z.number().int(),
+  usdcLabel: z.string(),
+  caveat: z.string(),
+});
+

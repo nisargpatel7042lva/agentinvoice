@@ -13,11 +13,14 @@ import {
   V2_SWAP_ROUTER_ID,
   WHBAR_TOKEN_ID,
 } from "./config";
+import { ensureUsdcAssociated, type AssociateDeps } from "./associate";
 import { checkHbarAffordability } from "./balance";
 import { quoteHbarToUsdc, validateQuote } from "./quote";
-import { decodeMulticallAmountOut, executeHbarToUsdc } from "./swap";
-import type { SaucerSwapDeps, SwapQuote } from "./types";
+import { getSaucerSwapStatus } from "./status";
+import { decodeMulticallAmountOut, executeHbarToUsdc, swapHbarToUsdc } from "./swap";
+import type { SwapQuote } from "./types";
 import { TINYBAR_PER_HBAR } from "../units";
+import { SAUCERSWAP_TESTNET_USDC } from "../usdc";
 
 const ONE_HBAR = TINYBAR_PER_HBAR;
 const QUOTE_OUT = 2_425_296n; // ~2.425 USDC base units (Phase 1 sample magnitude)
@@ -67,7 +70,7 @@ function liveConfig(over: Parameters<typeof createSaucerSwapConfig>[0] = {}) {
   });
 }
 
-function depsForExecute(over: Partial<SaucerSwapDeps> = {}): SaucerSwapDeps {
+function depsForExecute(over: Partial<AssociateDeps> = {}): AssociateDeps {
   return {
     now: () => 1_700_000_000_000,
     getHbarBalance: async () => 20n * ONE_HBAR,
@@ -313,6 +316,28 @@ describe("saucerswap execute", () => {
     expect(result).toMatchObject({ ok: false, code: "NOT_ASSOCIATED" });
   });
 
+  it("associateIfNeeded associates then executes", async () => {
+    const associateBroadcast = vi.fn(async () => ({ status: "success" as const, transactionId: "0.0.9001@assoc" }));
+    let associated = false;
+    let usdc = 0n;
+    const result = await executeHbarToUsdc(
+      { quote: baseQuote(), associateIfNeeded: true },
+      liveConfig(),
+      depsForExecute({
+        isTokenAssociated: async () => associated,
+        associateBroadcast,
+        getTokenBalance: async () => {
+          const v = usdc;
+          usdc = QUOTE_OUT;
+          associated = true;
+          return v;
+        },
+      }),
+    );
+    expect(associateBroadcast).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({ ok: true, dryRun: false });
+  });
+
   it("requires operator for live execute", async () => {
     const result = await executeHbarToUsdc(
       { quote: baseQuote() },
@@ -320,6 +345,42 @@ describe("saucerswap execute", () => {
       depsForExecute(),
     );
     expect(result).toMatchObject({ ok: false, code: "NO_OPERATOR" });
+  });
+});
+
+describe("saucerswap associate + status", () => {
+  it("ensureUsdcAssociated dry-run never broadcasts", async () => {
+    const associateBroadcast = vi.fn();
+    const r = await ensureUsdcAssociated(
+      createSaucerSwapConfig({ dryRun: true, operatorAccountId: "0.0.9001" }),
+      { isTokenAssociated: async () => false, associateBroadcast },
+    );
+    expect(r).toMatchObject({ ok: true, alreadyAssociated: false, dryRun: true });
+    expect(associateBroadcast).not.toHaveBeenCalled();
+  });
+
+  it("status includes SaucerSwap vs Circle caveat", async () => {
+    const status = await getSaucerSwapStatus(createSaucerSwapConfig({ dryRun: true }));
+    expect(status.usdc.tokenId).toBe(SAUCERSWAP_TESTNET_USDC.tokenId);
+    expect(status.usdc.circleOfficialTokenId).toBe(SAUCERSWAP_TESTNET_USDC.circleOfficialTokenId);
+    expect(status.usdc.caveat).toMatch(/not Circle/);
+  });
+
+  it("swapHbarToUsdc one-shot dry-run with associateIfNeeded", async () => {
+    const broadcast = vi.fn();
+    const result = await swapHbarToUsdc(
+      { amountInTinybar: ONE_HBAR, associateIfNeeded: true },
+      createSaucerSwapConfig({ dryRun: true, operatorAccountId: "0.0.9001" }),
+      {
+        fetch: mockQuoteFetch(),
+        now: () => 1_700_000_000_000,
+        getHbarBalance: async () => 20n * ONE_HBAR,
+        isTokenAssociated: async () => false,
+        broadcast,
+      },
+    );
+    expect(result.ok && result.dryRun).toBe(true);
+    expect(broadcast).not.toHaveBeenCalled();
   });
 });
 
