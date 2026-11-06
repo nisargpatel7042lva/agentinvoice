@@ -60,6 +60,19 @@ export interface Score {
   updatedAt: number;
 }
 
+export const SCORE_BANDS = ["A", "B", "C", "New"] as const;
+export type ScoreBand = (typeof SCORE_BANDS)[number];
+
+/** Response of the paid score API (bought through payAndGet). */
+export interface ScoreResult {
+  vault: Address;
+  band: ScoreBand;
+  value: number | null; // 0-100, null when band is New
+  paid: number;
+  late: number;
+  updatedAt: number;
+}
+
 export interface AuditEvent {
   topicId: string; // HCS topic, e.g. 0.0.12345
   sequenceNumber: number;
