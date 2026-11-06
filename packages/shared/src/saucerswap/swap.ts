@@ -5,7 +5,7 @@
  *
  * Source: https://docs.saucerswap.finance/developers/v2/swap/swap-hbar-for-tokens
  */
-import { encodeFunctionData, type Hex } from "viem";
+import { decodeFunctionResult, encodeFunctionData, type Hex } from "viem";
 import { swapRouterAbi } from "./abi";
 import { checkHbarAffordability, getHbarBalance, getTokenBalance, isTokenAssociated } from "./balance";
 import { hederaIdToEvmAddress, USDC_TOKEN_ID, V2_SWAP_ROUTER_ID } from "./config";
@@ -33,6 +33,21 @@ function hexToBytes(hex: Hex): Uint8Array {
     out[i] = Number.parseInt(h.slice(i * 2, i * 2 + 2), 16);
   }
   return out;
+}
+
+/**
+ * Read amountOut from the router's multicall return value (bytes[]: results[0] is exactInput's uint256).
+ * Returns undefined when the data can't be decoded; callers then rely on the verified balance change.
+ */
+export function decodeMulticallAmountOut(data: Hex): bigint | undefined {
+  try {
+    const results = decodeFunctionResult({ abi: swapRouterAbi, functionName: "multicall", data });
+    const first = results[0];
+    if (!first) return undefined;
+    return decodeFunctionResult({ abi: swapRouterAbi, functionName: "exactInput", data: first });
+  } catch {
+    return undefined;
+  }
 }
 
 /** Encode payable multicall(exactInput + refundETH) for the V2 router. */
@@ -142,13 +157,9 @@ export async function defaultBroadcast(prepared: PreparedSwap, config: SaucerSwa
         };
       }
 
-      let amountOut: bigint | undefined;
-      try {
-        const values = record.contractFunctionResult?.getResult?.(["uint256"]);
-        if (values?.[0] !== undefined) amountOut = BigInt(values[0].toString());
-      } catch {
-        amountOut = undefined;
-      }
+      // The router call is multicall(...), which returns bytes[]; the swap's amountOut is inside results[0].
+      const raw = record.contractFunctionResult?.bytes;
+      const amountOut = raw ? decodeMulticallAmountOut(("0x" + Buffer.from(raw).toString("hex")) as Hex) : undefined;
 
       return { status: "success", transactionId: txId, amountOut };
     } finally {

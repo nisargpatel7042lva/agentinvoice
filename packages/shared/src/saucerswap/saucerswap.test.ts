@@ -15,7 +15,7 @@ import {
 } from "./config";
 import { checkHbarAffordability } from "./balance";
 import { quoteHbarToUsdc, validateQuote } from "./quote";
-import { executeHbarToUsdc } from "./swap";
+import { decodeMulticallAmountOut, executeHbarToUsdc } from "./swap";
 import type { SaucerSwapDeps, SwapQuote } from "./types";
 import { TINYBAR_PER_HBAR } from "../units";
 
@@ -182,6 +182,15 @@ describe("saucerswap affordability", () => {
     expect(reserve.ok).toBe(false);
     if (!reserve.ok) expect(reserve.code).toBe("INSUFFICIENT_RESERVE");
     expect(checkHbarAffordability(3n * ONE_HBAR, ONE_HBAR, ONE_HBAR).ok).toBe(true);
+  });
+});
+
+describe("saucerswap router result", () => {
+  it("reads amountOut from multicall's bytes[] result, not the array header", () => {
+    const exactInputResult = encodeAbiParameters(parseAbiParameters("uint256"), [2_425_296n]);
+    const multicallResult = encodeAbiParameters(parseAbiParameters("bytes[]"), [[exactInputResult, "0x"]]);
+    expect(decodeMulticallAmountOut(multicallResult)).toBe(2_425_296n);
+    expect(decodeMulticallAmountOut("0x1234")).toBeUndefined();
   });
 });
 
