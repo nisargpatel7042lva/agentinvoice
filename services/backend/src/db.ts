@@ -85,6 +85,21 @@ const MIGRATIONS: string[] = [
     updated_at INTEGER NOT NULL
   );
   `,
+  // Role a wallet chose on the website (buyer or seller), set once. buyer_names maps a buyer's vault to its ENS name.
+  `
+  CREATE TABLE user_roles (
+    owner      TEXT PRIMARY KEY,
+    role       TEXT NOT NULL CHECK (role IN ('buyer','seller')),
+    created_at INTEGER NOT NULL
+  );
+  CREATE TABLE buyer_names (
+    vault      TEXT PRIMARY KEY,
+    owner      TEXT NOT NULL UNIQUE,
+    name       TEXT NOT NULL UNIQUE,
+    tx_hash    TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
