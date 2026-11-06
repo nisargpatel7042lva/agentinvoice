@@ -37,14 +37,15 @@ export interface AppOptions {
   features?: { indexer?: boolean; ens?: boolean; audit?: boolean }; // which background jobs run, for /health
   limits?: Partial<RateLimits>; // per-client requests per minute on the rate-limited endpoints
   issuer?: InvoiceIssuer; // creates invoices on-chain for POST /api/invoices; without it the route answers 503
+  trustProxy?: boolean; // behind Caddy or a load balancer: use X-Forwarded-For so rate limits apply per visitor, not to the proxy
   minter?: NameMinter; // registers seller ENS names on Sepolia for POST /api/names; without it the route answers 503
   saucerswap?: SaucerSwapRouteOptions; // read-only quote/status; execute stays in agents/scripts
 }
 
-export function buildApp({ dbPath, world, audit, onAudit, features = {}, limits, issuer, minter, saucerswap }: AppOptions) {
+export function buildApp({ dbPath, world, audit, onAudit, features = {}, limits, issuer, minter, saucerswap, trustProxy }: AppOptions) {
   const db = openDb(dbPath);
 
-  const app = Fastify({ logger: process.env.NODE_ENV !== "test" && !process.env.VITEST, bodyLimit: MAX_BODY_BYTES });
+  const app = Fastify({ logger: process.env.NODE_ENV !== "test" && !process.env.VITEST, bodyLimit: MAX_BODY_BYTES, trustProxy: Boolean(trustProxy) });
   app.decorate("db", db);
   app.decorate("audit", (event: AuditInput) => {
     try {

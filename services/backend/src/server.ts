@@ -44,6 +44,7 @@ const app = buildApp({
   audit: { topicId: config.hcs?.topicId },
   issuer: config.issuer && config.indexer ? hederaIssuer({ market: config.indexer.market, privateKey: config.issuer.privateKey, rpcUrl: config.indexer.rpcUrl }) : undefined,
   minter: mintFromEnv(),
+  trustProxy: process.env.TRUST_PROXY === "1",
   features: { indexer: Boolean(config.indexer), ens: Boolean(config.ens), audit: Boolean(submit) },
   onAudit: (event: AuditInput) => {
     if (!submit) return;
