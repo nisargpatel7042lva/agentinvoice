@@ -39,6 +39,21 @@ export default async function MarketplacePage() {
         <div>
           <h1 className="text-[28px] leading-9 font-semibold tracking-tight">{copy.market.title}</h1>
           <p className="mt-1.5 text-[15px] text-ink-muted">{copy.market.subtitle}</p>
+          <ul aria-label="Market summary" className="mt-3 flex flex-wrap gap-2 text-[13px]">
+            <li className="rounded-full border border-line bg-surface px-3 py-1 text-ink-soft">
+              <span className="font-semibold text-ink">{s.openCount}</span> ready to fund
+            </li>
+            {s.avgDiscountPct != null && (
+              <li className="rounded-full border border-line bg-surface px-3 py-1 text-ink-soft">
+                Average discount <span className="font-semibold text-ink">{s.avgDiscountPct.toFixed(1)}%</span>
+              </li>
+            )}
+            {s.onTimePct != null && (
+              <li className="rounded-full border border-line bg-surface px-3 py-1 text-ink-soft">
+                <span className="font-semibold text-status-paid">{Math.round(s.onTimePct)}%</span> repaid on time
+              </li>
+            )}
+          </ul>
         </div>
         <Link href="/supplier" className={buttonVariants({ variant: "outline" })}>
           <Plus aria-hidden="true" />

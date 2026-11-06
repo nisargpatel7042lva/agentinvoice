@@ -3,8 +3,9 @@
 // Charts on Recharts (the library shadcn/ui Charts wraps). Flat fills only, no gradients.
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-const C = { accent: "#0f766e", warn: "#d97706", danger: "#b91c1c", grid: "#f4f4f5", axis: "#71717a" };
-const tooltipStyle = { borderRadius: 8, border: "1px solid #e4e4e7", fontSize: 12, boxShadow: "0 4px 12px rgb(15 23 42 / 0.08)" };
+// CSS variables from the theme, so charts follow day/night mode.
+const C = { accent: "var(--color-accent)", warn: "var(--color-warn)", danger: "var(--color-danger)", grid: "var(--color-subtle)", axis: "var(--color-ink-muted)" };
+const tooltipStyle = { borderRadius: 8, border: "1px solid var(--color-line)", background: "var(--color-surface)", color: "var(--color-ink)", fontSize: 12, boxShadow: "var(--shadow-raised)" };
 
 export function FaceByStatusChart({ data }: { data: { status: string; hbar: number }[] }) {
   return (

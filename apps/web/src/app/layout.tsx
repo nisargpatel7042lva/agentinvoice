@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { NavLinks } from "@/components/NavLinks";
+import { ThemeToggle, themeInitScript } from "@/components/ThemeToggle";
 import { isMock } from "@/lib/api";
 import { copy } from "@/lib/copy";
 import "./globals.css";
@@ -17,25 +18,30 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${mono.variable}`}>
+    // data-theme is set before paint by themeInitScript, so React must not complain that it differs.
+    <html lang="en" className={`${inter.variable} ${mono.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="min-h-screen bg-canvas font-sans text-ink antialiased">
-        <div className="bg-ink px-4 py-2 text-center text-xs text-line">
+        <div className="border-b border-line bg-subtle px-4 py-1.5 text-center text-xs text-ink-muted">
           {copy.banner.testnet}
           {isMock ? ` ${copy.banner.mock}` : ""}
         </div>
-        <header className="border-b border-line bg-surface">
+        <header className="sticky top-0 z-20 border-b border-line bg-surface/85 backdrop-blur">
           <nav className="mx-auto flex min-h-15 max-w-[1240px] flex-wrap items-center gap-x-7 gap-y-2 px-4 py-2 md:px-6">
             <Link href="/" className="flex items-center gap-2.5 text-[15px] font-semibold text-ink">
-              <span aria-hidden="true" className="flex size-7 items-center justify-center rounded-lg bg-accent text-[13px] font-bold text-white">AI</span>
+              <span aria-hidden="true" className="flex size-7 items-center justify-center rounded-lg bg-accent text-[13px] font-bold text-on-accent">AI</span>
               {copy.nav.brand}
             </Link>
             <NavLinks />
-            <div className="ml-auto flex items-center gap-2.5">
+            <div className="ml-auto flex items-center gap-2">
               <span className="hidden items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-xs text-ink-soft sm:flex">
                 <span aria-hidden="true" className="size-1.5 rounded-full bg-good" />
                 Hedera testnet
               </span>
-              <span className="flex h-9 items-center rounded-lg bg-ink px-3.5 text-sm font-medium text-white">{copy.wallet.connect}</span>
+              <ThemeToggle />
+              <span className="flex h-9 items-center rounded-lg bg-ink px-3.5 text-sm font-medium text-canvas">{copy.wallet.connect}</span>
             </div>
           </nav>
         </header>

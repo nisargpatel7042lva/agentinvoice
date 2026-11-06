@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { HowItWorks } from "./HowItWorks";
 import { Section } from "./Section";
 import { Term } from "./Term";
+import { THEME_KEY, ThemeToggle } from "./ThemeToggle";
 import { STATUSES, approvalFixture, ensAgentFixture, invoiceFixtures, payPolicyFixture } from "@agentinvoice/shared";
 import { ApprovalCard } from "./ApprovalCard";
 import { EmptyState } from "./EmptyState";
@@ -84,6 +85,17 @@ describe("components render", () => {
     expect(screen.getByText("Details").closest("details")?.open).toBe(false);
     render(<Term explain="sponsor">Sponsor</Term>);
     expect(screen.getByRole("tooltip").textContent).toBe(copy.glossary.sponsor);
+  });
+
+  it("ThemeToggle flips data-theme and remembers the choice", async () => {
+    localStorage.clear();
+    document.documentElement.dataset.theme = "light";
+    render(<ThemeToggle />);
+    fireEvent.click(await screen.findByRole("button", { name: "Switch to dark mode" }));
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(localStorage.getItem(THEME_KEY)).toBe("dark");
+    fireEvent.click(screen.getByRole("button", { name: "Switch to light mode" }));
+    expect(document.documentElement.dataset.theme).toBe("light");
   });
 
   it("Stepper marks Late in place of Paid", () => {
