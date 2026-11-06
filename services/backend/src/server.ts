@@ -1,6 +1,7 @@
 import { sweepExpired } from "./approval/store.js";
 import { auditEventForStatus, hederaSubmit, publishAudit, type AuditInput } from "./audit/audit.js";
 import { buildApp } from "./app.js";
+import { hederaIssuer } from "./chain/issuer.js";
 import { hederaReader } from "./chain/reader.js";
 import { EnvError, loadEnv, type Config } from "./env.js";
 import { liveEnsDeps } from "./ens/live.js";
@@ -30,6 +31,7 @@ const app = buildApp({
   dbPath: config.dbPath,
   world: config.world ? { ...config.world, appUrl: config.appUrl, ttlSeconds: config.approvalTtlSeconds } : null,
   audit: { topicId: config.hcs?.topicId },
+  issuer: config.issuer && config.indexer ? hederaIssuer({ market: config.indexer.market, privateKey: config.issuer.privateKey, rpcUrl: config.indexer.rpcUrl }) : undefined,
   features: { indexer: Boolean(config.indexer), ens: Boolean(config.ens), audit: Boolean(submit) },
   onAudit: (event: AuditInput) => {
     if (!submit) return;

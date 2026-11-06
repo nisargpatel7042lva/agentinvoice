@@ -2,7 +2,7 @@ import { ApprovalSchema, ApprovalStartSchema } from "@agentinvoice/shared";
 import type { FastifyInstance } from "fastify";
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
-import type { ApprovalLimits } from "../app.js";
+import type { RateLimits } from "../app.js";
 import { createApproval, decide, getApproval, markStepUpUsed, pendingForStepUp } from "../approval/store.js";
 import { handleCallback, remoteWorldKeys, StepUpError, type StepUpErrorCode } from "../world/callback.js";
 import type { CallbackContext } from "../world/callback.js";
@@ -52,7 +52,7 @@ const REJECTING: ReadonlySet<StepUpErrorCode> = new Set([
   "insufficient_acr",
 ]);
 
-export function approvalRoutes(app: FastifyInstance, world: WorldOptions | undefined, limits: ApprovalLimits) {
+export function approvalRoutes(app: FastifyInstance, world: WorldOptions | undefined, limits: RateLimits) {
   const limit = (max: number) => ({ rateLimit: { max, timeWindow: "1 minute" } });
   const now = () => world?.now?.() ?? Math.floor(Date.now() / 1000);
   const keys = world?.getKey ?? remoteWorldKeys();

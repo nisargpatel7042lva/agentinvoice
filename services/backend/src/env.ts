@@ -25,6 +25,7 @@ export interface Config {
   world?: { clientId: string; clientSecret: string; redirectUri: string };
   ens?: { publisherKey: `0x${string}`; resolver: `0x${string}`; agentName: string; vault: `0x${string}`; sepoliaRpcUrl?: string };
   indexer?: { market: `0x${string}`; startBlock?: bigint; rpcUrl?: string };
+  issuer?: { privateKey: `0x${string}` }; // wallet that creates invoices for POST /api/invoices (needs the market address)
   hcs?: { topicId: string; submit?: { accountId: string; privateKey: string } };
   disabled: string[]; // human-readable names of the features that are off
 }
@@ -84,6 +85,15 @@ export function loadEnv(raw: Env = process.env): Config {
     indexer = { market: market as `0x${string}`, startBlock, rpcUrl: get("HEDERA_RPC_URL", url) };
   } else if (env.INVOICE_MARKET_ADDRESS === undefined) disabled.push("Chain indexer");
 
+  // POST /api/invoices creates invoices from this wallet, which then is their supplier. It needs the market to call.
+  let issuer: Config["issuer"];
+  const supplierKey = get("SUPPLIER_PRIVATE_KEY", privateKey);
+  if (env.SUPPLIER_PRIVATE_KEY !== undefined && env.INVOICE_MARKET_ADDRESS === undefined) {
+    problems.push("Invoice issuer: set INVOICE_MARKET_ADDRESS (or unset SUPPLIER_PRIVATE_KEY to turn POST /api/invoices off)");
+  }
+  if (supplierKey && indexer) issuer = { privateKey: supplierKey as `0x${string}` };
+  else if (env.SUPPLIER_PRIVATE_KEY === undefined) disabled.push("Invoice issuer (POST /api/invoices)");
+
   // HCS: a topic alone lets the API read the audit log; an account and key as well let it publish.
   let hcs: Config["hcs"];
   const topicId = get("HCS_TOPIC_ID", hederaId);
@@ -95,5 +105,5 @@ export function loadEnv(raw: Env = process.env): Config {
   if (!topicId && env.HCS_TOPIC_ID === undefined) disabled.push("HCS audit reading");
 
   if (problems.length > 0) throw new EnvError(problems);
-  return { port, dbPath, appUrl, approvalTtlSeconds, world, ens, indexer, hcs, disabled };
+  return { port, dbPath, appUrl, approvalTtlSeconds, world, ens, indexer, issuer, hcs, disabled };
 }

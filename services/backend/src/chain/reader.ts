@@ -4,7 +4,8 @@ import type { ChainInvoice, ChainReader } from "../indexer.js";
 
 // getInvoice's struct follows the frozen spec v2 (packages/shared/spec.md section 1). UNVERIFIED against the deployed
 // contract until Mann ships InvoiceMarket; if the struct changes, only this ABI needs to change.
-const marketAbi = parseAbi([
+export const marketAbi = parseAbi([
+  "function createInvoice(address buyerVault, uint256 faceAmount, uint256 price, uint64 dueDate, bytes32 evidenceHash) returns (uint256 id)",
   "function getInvoice(uint256 id) view returns ((uint256 id, address supplier, address buyerVault, uint256 faceAmount, uint256 price, uint64 dueDate, uint8 status, address bond, address holder, bytes32 evidenceHash))",
 ]);
 

@@ -19,7 +19,7 @@ describe("loadEnv", () => {
     const c = loadEnv({});
 
     expect(c).toMatchObject({ port: 3001, dbPath: "agentinvoice.db", appUrl: "http://localhost:3000" });
-    expect(c.disabled).toEqual(["World approvals", "ENS publisher", "Chain indexer", "HCS audit publishing", "HCS audit reading"]);
+    expect(c.disabled).toEqual(["World approvals", "ENS publisher", "Chain indexer", "Invoice issuer (POST /api/invoices)", "HCS audit publishing", "HCS audit reading"]);
   });
 
   it("enables a feature only when its whole group is set", () => {
@@ -35,7 +35,7 @@ describe("loadEnv", () => {
     expect(c.world).toMatchObject({ clientId: "c", redirectUri: "https://api.example.test/api/world/callback" });
     expect(c.indexer).toEqual({ market: ADDR, startBlock: 123n, rpcUrl: undefined });
     expect(c.hcs).toEqual({ topicId: "0.0.5555", submit: undefined });
-    expect(c.disabled).toEqual(["ENS publisher", "HCS audit publishing"]);
+    expect(c.disabled).toEqual(["ENS publisher", "Invoice issuer (POST /api/invoices)", "HCS audit publishing"]);
   });
 
   it("fails fast listing every missing variable of a half-configured group", () => {
@@ -53,6 +53,17 @@ describe("loadEnv", () => {
     expect(m).toContain("ENS_PUBLISHER_KEY");
     expect(m).not.toContain("supersecretvalue");
     expect(m).not.toContain("not-an-address");
+  });
+
+  it("turns the invoice issuer on with a supplier key and the market address, and refuses a key without a market", () => {
+    const c = loadEnv({ INVOICE_MARKET_ADDRESS: ADDR, SUPPLIER_PRIVATE_KEY: KEY });
+    expect(c.issuer).toEqual({ privateKey: KEY });
+    expect(c.disabled).not.toContain("Invoice issuer (POST /api/invoices)");
+
+    const m = message({ SUPPLIER_PRIVATE_KEY: KEY });
+    expect(m).toContain("Invoice issuer: set INVOICE_MARKET_ADDRESS");
+    expect(m).not.toContain(KEY);
+    expect(message({ INVOICE_MARKET_ADDRESS: ADDR, SUPPLIER_PRIVATE_KEY: "short" })).toContain("SUPPLIER_PRIVATE_KEY");
   });
 
   it("needs a topic for HCS publishing", () => {
