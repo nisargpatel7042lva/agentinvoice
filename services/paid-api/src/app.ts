@@ -1,5 +1,6 @@
 import Fastify, { FastifyInstance } from "fastify";
 import { AddressSchema, type BuyerScore, type ScoreBand } from "@agentinvoice/shared";
+export { buildPaidExpressApp, type PaidExpressConfig } from "./expressApp.js";
 
 export interface PaidApiConfig {
   payTo?: string;
