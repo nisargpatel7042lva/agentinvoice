@@ -18,7 +18,7 @@ export const buyerClaimMessage = (label: string, parent: string, vault: Address,
 
 export interface BuyerMintDeps extends Pick<MintDeps, "parent" | "isTaken" | "register"> {
   roleOf: (owner: Address) => "buyer" | "seller" | null;
-  vaultOwner: (vault: Address) => Promise<Address | null>; // BuyerVault.owner() on Hedera, null when it is not a vault
+  vaultOwner: (vault: Address) => Promise<Address | null>; // BuyerVault.owner() on Hedera; throws when the chain cannot be read
   existing: (owner: Address, vault: Address) => string | null; // a name this wallet or vault already has
   remember: (vault: Address, owner: Address, name: string, txHash: Hex) => void;
 }
@@ -32,7 +32,12 @@ export async function mintBuyerName(deps: BuyerMintDeps, input: { label: string;
   const ok = await verifyMessage({ address: owner, message: buyerClaimMessage(label, deps.parent, vault, owner), signature: input.signature }).catch(() => false);
   if (!ok) throw new BuyerMintError("bad_signature", "The signature does not match this wallet.");
   if (deps.roleOf(owner) !== "buyer") throw new BuyerMintError("not_buyer", "Choose the buyer role on your profile first.");
-  const actual = await deps.vaultOwner(vault).catch(() => null);
+  let actual: Address | null;
+  try {
+    actual = await deps.vaultOwner(vault);
+  } catch {
+    throw new BuyerMintError("chain_failed", "Could not read that vault on Hedera right now. Check the address is a BuyerVault and try again in a moment.");
+  }
   if (!actual || getAddress(actual) !== owner) throw new BuyerMintError("not_vault_owner", "This wallet does not own that vault.");
   const had = deps.existing(owner, vault);
   if (had) throw new BuyerMintError("already_registered", `Already registered as ${had}.`);

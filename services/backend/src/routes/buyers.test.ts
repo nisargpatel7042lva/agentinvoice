@@ -54,6 +54,14 @@ describe("buyer routes", () => {
     expect((await other.inject({ method: "POST", url: "/api/buyers", payload: { label: "acmebuyer", owner: acct.address, vault, signature: s2 } })).statusCode).toBe(403);
     await app.close();
   });
+  it("says the chain could not be read (502), not 'not your vault', when the RPC fails", async () => {
+    const app = buildApp({ dbPath: ":memory:", world: null, buyerMinter: { ...buyerMinter, vaultOwner: async () => { throw new Error("rpc down"); } } });
+    const sig = await acct.signMessage({ message: roleMessage("buyer", acct.address) });
+    await app.inject({ method: "POST", url: "/api/roles", payload: { owner: acct.address, role: "buyer", signature: sig } });
+    const s2 = await acct.signMessage({ message: buyerClaimMessage("acmebuyer", "demo.eth", vault, acct.address) });
+    expect((await app.inject({ method: "POST", url: "/api/buyers", payload: { label: "acmebuyer", owner: acct.address, vault, signature: s2 } })).statusCode).toBe(502);
+    await app.close();
+  });
   it("answers 503 when minting is not configured", async () => {
     const app = buildApp({ dbPath: ":memory:", world: null });
     expect((await app.inject({ method: "POST", url: "/api/buyers", payload: { label: "acmebuyer", owner: acct.address, vault, signature: "0x12" } })).statusCode).toBe(503);

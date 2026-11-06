@@ -29,7 +29,7 @@ function buyerMintFromEnv() {
   if (!base) return undefined;
   const rpc = process.env.HEDERA_RPC_URL || process.env.HEDERA_TESTNET_RPC_URL || hederaTestnet.rpcUrl;
   const client = createPublicClient({ chain: { id: hederaTestnet.id, name: hederaTestnet.name, nativeCurrency: hederaTestnet.nativeCurrency, rpcUrls: { default: { http: [rpc] } } }, transport: http(rpc, { timeout: 15_000, retryCount: 1 }) });
-  return { ...base, vaultOwner: async (vault: `0x${string}`) => (await client.readContract({ address: vault, abi: buyerVaultAbi, functionName: "owner" }).catch(() => null)) as `0x${string}` | null };
+  return { ...base, vaultOwner: async (vault: `0x${string}`) => (await client.readContract({ address: vault, abi: buyerVaultAbi, functionName: "owner" })) as `0x${string}` };
 }
 
 let config: Config;
