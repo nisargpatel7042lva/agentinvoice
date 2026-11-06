@@ -12,10 +12,10 @@ describe("migrate", () => {
     const db = new Database(":memory:");
     migrate(db);
 
-    expect(tables(db)).toEqual(["approvals", "events", "invoices", "meta", "seller_names"]);
+    expect(tables(db)).toEqual(["approvals", "bond_issuances", "events", "invoices", "meta", "seller_names"]);
     const v = db.prepare("SELECT value FROM meta WHERE key = 'schema_version'").get() as { value: string };
     expect(Number(v.value)).toBe(SCHEMA_VERSION);
-    expect(SCHEMA_VERSION).toBe(3);
+    expect(SCHEMA_VERSION).toBe(4);
   });
 
   it("is idempotent and keeps existing rows", () => {

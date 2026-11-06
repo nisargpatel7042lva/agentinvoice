@@ -76,7 +76,7 @@ export function upsertChainInvoice(db: Database.Database, id: string, inv: Chain
      VALUES (@id, @supplier, @buyerVault, @faceAmount, @price, @dueDate, @status, @bond, @holder, @evidenceHash, 'chain', @updatedAt)
      ON CONFLICT (id) DO UPDATE SET
        supplier = excluded.supplier, buyer_vault = excluded.buyer_vault, face_amount = excluded.face_amount,
-       price = excluded.price, due_date = excluded.due_date, status = excluded.status, bond = excluded.bond,
+       price = excluded.price, due_date = excluded.due_date, status = excluded.status, bond = COALESCE(excluded.bond, invoices.bond),
        holder = excluded.holder, evidence_hash = excluded.evidence_hash, updated_at = excluded.updated_at
      WHERE invoices.source = 'chain'`,
   ).run({

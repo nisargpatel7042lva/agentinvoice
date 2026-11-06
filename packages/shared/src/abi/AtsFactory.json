@@ -1,0 +1,489 @@
+[
+ {
+  "anonymous": false,
+  "inputs": [
+   {
+    "indexed": true,
+    "internalType": "address",
+    "name": "deployer",
+    "type": "address"
+   },
+   {
+    "indexed": false,
+    "internalType": "address",
+    "name": "bondAddress",
+    "type": "address"
+   },
+   {
+    "components": [
+     {
+      "components": [
+       {
+        "internalType": "contract IBusinessLogicResolver",
+        "name": "resolver",
+        "type": "address"
+       },
+       {
+        "internalType": "uint256",
+        "name": "maxSupply",
+        "type": "uint256"
+       },
+       {
+        "components": [
+         {
+          "internalType": "bytes32",
+          "name": "key",
+          "type": "bytes32"
+         },
+         {
+          "internalType": "uint256",
+          "name": "version",
+          "type": "uint256"
+         }
+        ],
+        "internalType": "struct IFactory.ResolverProxyConfiguration",
+        "name": "resolverProxyConfiguration",
+        "type": "tuple"
+       },
+       {
+        "components": [
+         {
+          "internalType": "string",
+          "name": "name",
+          "type": "string"
+         },
+         {
+          "internalType": "string",
+          "name": "symbol",
+          "type": "string"
+         },
+         {
+          "internalType": "string",
+          "name": "isin",
+          "type": "string"
+         },
+         {
+          "internalType": "uint8",
+          "name": "decimals",
+          "type": "uint8"
+         }
+        ],
+        "internalType": "struct ICore.ERC20MetadataInfo",
+        "name": "erc20MetadataInfo",
+        "type": "tuple"
+       },
+       {
+        "components": [
+         {
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+         },
+         {
+          "internalType": "address[]",
+          "name": "members",
+          "type": "address[]"
+         }
+        ],
+        "internalType": "struct IResolverProxy.Rbac[]",
+        "name": "rbacs",
+        "type": "tuple[]"
+       },
+       {
+        "internalType": "address[]",
+        "name": "externalPauses",
+        "type": "address[]"
+       },
+       {
+        "internalType": "address[]",
+        "name": "externalControlLists",
+        "type": "address[]"
+       },
+       {
+        "internalType": "address[]",
+        "name": "externalKycLists",
+        "type": "address[]"
+       },
+       {
+        "internalType": "address",
+        "name": "compliance",
+        "type": "address"
+       },
+       {
+        "internalType": "address",
+        "name": "identityRegistry",
+        "type": "address"
+       },
+       {
+        "internalType": "bool",
+        "name": "arePartitionsProtected",
+        "type": "bool"
+       },
+       {
+        "internalType": "bool",
+        "name": "isMultiPartition",
+        "type": "bool"
+       },
+       {
+        "internalType": "bool",
+        "name": "isControllable",
+        "type": "bool"
+       },
+       {
+        "internalType": "bool",
+        "name": "isWhiteList",
+        "type": "bool"
+       },
+       {
+        "internalType": "bool",
+        "name": "clearingActive",
+        "type": "bool"
+       },
+       {
+        "internalType": "bool",
+        "name": "internalKycActivated",
+        "type": "bool"
+       },
+       {
+        "internalType": "bool",
+        "name": "erc20VotesActivated",
+        "type": "bool"
+       }
+      ],
+      "internalType": "struct IFactory.SecurityData",
+      "name": "security",
+      "type": "tuple"
+     },
+     {
+      "components": [
+       {
+        "internalType": "bytes3",
+        "name": "currency",
+        "type": "bytes3"
+       },
+       {
+        "internalType": "uint256",
+        "name": "nominalValue",
+        "type": "uint256"
+       },
+       {
+        "internalType": "uint8",
+        "name": "nominalValueDecimals",
+        "type": "uint8"
+       },
+       {
+        "internalType": "uint256",
+        "name": "startingDate",
+        "type": "uint256"
+       },
+       {
+        "internalType": "uint256",
+        "name": "maturityDate",
+        "type": "uint256"
+       }
+      ],
+      "internalType": "struct IFactory.BondDetailsData",
+      "name": "bondDetails",
+      "type": "tuple"
+     },
+     {
+      "internalType": "address[]",
+      "name": "proceedRecipients",
+      "type": "address[]"
+     },
+     {
+      "internalType": "bytes[]",
+      "name": "proceedRecipientsData",
+      "type": "bytes[]"
+     }
+    ],
+    "indexed": false,
+    "internalType": "struct IFactory.BondData",
+    "name": "bondData",
+    "type": "tuple"
+   },
+   {
+    "components": [
+     {
+      "internalType": "enum RegulationType",
+      "name": "regulationType",
+      "type": "uint8"
+     },
+     {
+      "internalType": "enum RegulationSubType",
+      "name": "regulationSubType",
+      "type": "uint8"
+     },
+     {
+      "components": [
+       {
+        "internalType": "bool",
+        "name": "countriesControlListType",
+        "type": "bool"
+       },
+       {
+        "internalType": "string",
+        "name": "listOfCountries",
+        "type": "string"
+       },
+       {
+        "internalType": "string",
+        "name": "info",
+        "type": "string"
+       }
+      ],
+      "internalType": "struct AdditionalSecurityData",
+      "name": "additionalSecurityData",
+      "type": "tuple"
+     }
+    ],
+    "indexed": false,
+    "internalType": "struct FactoryRegulationData",
+    "name": "regulationData",
+    "type": "tuple"
+   }
+  ],
+  "name": "BondDeployed",
+  "type": "event"
+ },
+ {
+  "inputs": [
+   {
+    "components": [
+     {
+      "components": [
+       {
+        "internalType": "contract IBusinessLogicResolver",
+        "name": "resolver",
+        "type": "address"
+       },
+       {
+        "internalType": "uint256",
+        "name": "maxSupply",
+        "type": "uint256"
+       },
+       {
+        "components": [
+         {
+          "internalType": "bytes32",
+          "name": "key",
+          "type": "bytes32"
+         },
+         {
+          "internalType": "uint256",
+          "name": "version",
+          "type": "uint256"
+         }
+        ],
+        "internalType": "struct IFactory.ResolverProxyConfiguration",
+        "name": "resolverProxyConfiguration",
+        "type": "tuple"
+       },
+       {
+        "components": [
+         {
+          "internalType": "string",
+          "name": "name",
+          "type": "string"
+         },
+         {
+          "internalType": "string",
+          "name": "symbol",
+          "type": "string"
+         },
+         {
+          "internalType": "string",
+          "name": "isin",
+          "type": "string"
+         },
+         {
+          "internalType": "uint8",
+          "name": "decimals",
+          "type": "uint8"
+         }
+        ],
+        "internalType": "struct ICore.ERC20MetadataInfo",
+        "name": "erc20MetadataInfo",
+        "type": "tuple"
+       },
+       {
+        "components": [
+         {
+          "internalType": "bytes32",
+          "name": "role",
+          "type": "bytes32"
+         },
+         {
+          "internalType": "address[]",
+          "name": "members",
+          "type": "address[]"
+         }
+        ],
+        "internalType": "struct IResolverProxy.Rbac[]",
+        "name": "rbacs",
+        "type": "tuple[]"
+       },
+       {
+        "internalType": "address[]",
+        "name": "externalPauses",
+        "type": "address[]"
+       },
+       {
+        "internalType": "address[]",
+        "name": "externalControlLists",
+        "type": "address[]"
+       },
+       {
+        "internalType": "address[]",
+        "name": "externalKycLists",
+        "type": "address[]"
+       },
+       {
+        "internalType": "address",
+        "name": "compliance",
+        "type": "address"
+       },
+       {
+        "internalType": "address",
+        "name": "identityRegistry",
+        "type": "address"
+       },
+       {
+        "internalType": "bool",
+        "name": "arePartitionsProtected",
+        "type": "bool"
+       },
+       {
+        "internalType": "bool",
+        "name": "isMultiPartition",
+        "type": "bool"
+       },
+       {
+        "internalType": "bool",
+        "name": "isControllable",
+        "type": "bool"
+       },
+       {
+        "internalType": "bool",
+        "name": "isWhiteList",
+        "type": "bool"
+       },
+       {
+        "internalType": "bool",
+        "name": "clearingActive",
+        "type": "bool"
+       },
+       {
+        "internalType": "bool",
+        "name": "internalKycActivated",
+        "type": "bool"
+       },
+       {
+        "internalType": "bool",
+        "name": "erc20VotesActivated",
+        "type": "bool"
+       }
+      ],
+      "internalType": "struct IFactory.SecurityData",
+      "name": "security",
+      "type": "tuple"
+     },
+     {
+      "components": [
+       {
+        "internalType": "bytes3",
+        "name": "currency",
+        "type": "bytes3"
+       },
+       {
+        "internalType": "uint256",
+        "name": "nominalValue",
+        "type": "uint256"
+       },
+       {
+        "internalType": "uint8",
+        "name": "nominalValueDecimals",
+        "type": "uint8"
+       },
+       {
+        "internalType": "uint256",
+        "name": "startingDate",
+        "type": "uint256"
+       },
+       {
+        "internalType": "uint256",
+        "name": "maturityDate",
+        "type": "uint256"
+       }
+      ],
+      "internalType": "struct IFactory.BondDetailsData",
+      "name": "bondDetails",
+      "type": "tuple"
+     },
+     {
+      "internalType": "address[]",
+      "name": "proceedRecipients",
+      "type": "address[]"
+     },
+     {
+      "internalType": "bytes[]",
+      "name": "proceedRecipientsData",
+      "type": "bytes[]"
+     }
+    ],
+    "internalType": "struct IFactory.BondData",
+    "name": "_bondData",
+    "type": "tuple"
+   },
+   {
+    "components": [
+     {
+      "internalType": "enum RegulationType",
+      "name": "regulationType",
+      "type": "uint8"
+     },
+     {
+      "internalType": "enum RegulationSubType",
+      "name": "regulationSubType",
+      "type": "uint8"
+     },
+     {
+      "components": [
+       {
+        "internalType": "bool",
+        "name": "countriesControlListType",
+        "type": "bool"
+       },
+       {
+        "internalType": "string",
+        "name": "listOfCountries",
+        "type": "string"
+       },
+       {
+        "internalType": "string",
+        "name": "info",
+        "type": "string"
+       }
+      ],
+      "internalType": "struct AdditionalSecurityData",
+      "name": "additionalSecurityData",
+      "type": "tuple"
+     }
+    ],
+    "internalType": "struct FactoryRegulationData",
+    "name": "_factoryRegulationData",
+    "type": "tuple"
+   }
+  ],
+  "name": "deployBond",
+  "outputs": [
+   {
+    "internalType": "address",
+    "name": "bondAddress_",
+    "type": "address"
+   }
+  ],
+  "stateMutability": "nonpayable",
+  "type": "function"
+ }
+]
