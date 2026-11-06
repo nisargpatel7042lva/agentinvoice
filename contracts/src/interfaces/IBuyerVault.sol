@@ -20,6 +20,8 @@ interface IBuyerVault {
     function setLimits(uint256 _dailyLimit, uint256 _approvalThreshold) external;
     function allowSupplier(address supplier, uint256 limit) external;
     function removeSupplier(address supplier) external;
+    function allowMarket(address market, bool allowed) external; // owner only: the InvoiceMarket contracts this vault may call
+    function allowedMarket(address market) external view returns (bool);
 
     function accept(address market, uint256 id) external;
     function payInvoice(address market, uint256 id, bytes calldata approval) external;

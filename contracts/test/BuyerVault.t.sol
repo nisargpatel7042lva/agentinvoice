@@ -41,6 +41,9 @@ contract BuyerVaultTest {
         // Fund vault with 500 ether
         (bool sent, ) = address(vault).call{value: 500 ether}("");
         require(sent);
+
+        // The vault only calls markets its owner allowed (test contract is the owner)
+        vault.allowMarket(address(market), true);
     }
 
     function vm_addr(uint256 pk) internal pure returns (address) {
