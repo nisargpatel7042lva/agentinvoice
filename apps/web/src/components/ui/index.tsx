@@ -5,17 +5,18 @@ import type { ComponentProps } from "react";
 import { cn } from "@/lib/cn";
 
 export const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium tracking-[-0.01em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4",
   {
     variants: {
       variant: {
-        default: "bg-accent text-on-accent hover:bg-accent-hover",
+        // Primary: navy pill with the glowing cyan dot that turns into an arrow on hover (globals.css .btn-dot).
+        default: "btn-dot bg-ink text-canvas hover:bg-ink-soft",
         dark: "bg-ink text-canvas hover:bg-ink-soft",
         outline: "border border-line bg-surface text-ink hover:bg-subtle",
         "outline-accent": "border border-accent text-accent hover:bg-accent-soft",
         ghost: "text-ink-soft hover:bg-subtle",
       },
-      size: { default: "h-10 px-4", sm: "h-8 px-3 text-[13px]", lg: "h-11 px-5 text-[15px]" },
+      size: { default: "h-[42px] px-[18px]", sm: "h-8 px-3.5 text-[13px]", lg: "h-[52px] px-6 text-[15px]", xl: "btn-lg h-[62px] px-7 text-[17px]" },
     },
     defaultVariants: { variant: "default", size: "default" },
   },
@@ -26,7 +27,7 @@ export function Button({ className, variant, size, ...props }: ComponentProps<"b
 }
 
 export function Card({ className, ...props }: ComponentProps<"section">) {
-  return <section className={cn("rounded-xl border border-line bg-surface", className)} {...props} />;
+  return <section className={cn("rounded-2xl border border-line bg-surface shadow-card", className)} {...props} />;
 }
 export function CardHeader({ className, ...props }: ComponentProps<"div">) {
   return <div className={cn("flex flex-wrap items-baseline justify-between gap-2 px-6 pt-5", className)} {...props} />;

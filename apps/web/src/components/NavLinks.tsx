@@ -6,8 +6,8 @@ import { cn } from "@/lib/cn";
 import { copy } from "@/lib/copy";
 
 const links = [
-  { href: "/", label: copy.nav.market, match: (p: string) => p === "/" || p.startsWith("/invoice") },
-  { href: "/network", label: "Network", match: (p: string) => p.startsWith("/network") },
+  { href: "/market", label: copy.nav.market, match: (p: string) => p.startsWith("/market") || p.startsWith("/invoice") },
+  { href: "/network", label: "Network", match: (p: string) => p.startsWith("/network") || p.startsWith("/agent") },
   { href: "/supplier", label: copy.nav.supplier, match: (p: string) => p.startsWith("/supplier") },
 ];
 
@@ -20,7 +20,7 @@ export function NavLinks() {
           key={l.href}
           href={l.href}
           aria-current={l.match(path) ? "page" : undefined}
-          className={cn("rounded-md px-3 py-1.5", l.match(path) ? "bg-subtle font-medium text-ink" : "text-ink-muted hover:text-ink")}
+          className={cn("rounded-full px-3.5 py-1.5 font-medium transition-colors", l.match(path) ? "bg-subtle text-ink" : "text-ink-muted hover:text-ink")}
         >
           {l.label}
         </Link>
