@@ -11,6 +11,7 @@ import { Button, Card } from "@/components/ui";
 import { copy } from "@/lib/copy";
 import { isMock } from "@/lib/env";
 import { formatAmount, shortHex } from "@/lib/format";
+import { InvoicePreview } from "./InvoicePreview";
 
 const input = "mt-1.5 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:outline-2 focus:outline-accent";
 const label = "block text-sm font-medium text-ink";
@@ -24,7 +25,7 @@ function inDays(n: number) {
   return new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
 }
 
-export function SupplierForm() {
+export function SupplierForm({ aside }: { aside?: React.ReactNode }) {
   const router = useRouter();
   const { pending, run, toastEl } = useAction();
   const [buyer, setBuyer] = useState("");
@@ -74,6 +75,7 @@ export function SupplierForm() {
   }
 
   return (
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
     <Card className="p-6">
       {isMock && (
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-subtle px-4 py-3 text-[13px] text-ink-soft">
@@ -136,5 +138,10 @@ export function SupplierForm() {
       </form>
       {toastEl}
     </Card>
+    <div className="flex flex-col gap-4 lg:sticky lg:top-24">
+      <InvoicePreview buyer={buyer} verified={!!resolved} face={face} price={price} due={due} description={description} evidence={!!evidence} />
+      {aside}
+    </div>
+    </div>
   );
 }

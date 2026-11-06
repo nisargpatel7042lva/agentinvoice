@@ -145,3 +145,147 @@ body {
     transition: none;
   }
 }
+
+/* ---------- Portal character (shared with the landing page) ----------
+   A grainy pastel banner per page, with floating product cards. Hues match the landing verbs:
+   apricot = Fund (market), lemon = Sell (create), sage = Pay (profile), lilac = Verify (network). */
+.pl-panel {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 24px;
+  color: #161513;
+  /* Light tokens inside the pastel panel, whatever the page theme. */
+  --color-ink: #161513;
+  --color-ink-soft: #2e2c28;
+  --color-ink-muted: #6b6860;
+  --color-ink-faint: #a29e94;
+  --color-canvas: #f7f4ee;
+  --color-surface: #fffdf9;
+  --color-subtle: #f1ede5;
+  --color-line: #e6e1d7;
+  --color-accent: #c2410c;
+}
+.pl-panel::before {
+  content: "";
+  position: absolute;
+  inset: -6%;
+  z-index: -2;
+  background: var(--pl-bg);
+  animation: pl-drift 20s ease-in-out infinite alternate;
+}
+.pl-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.18;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.pl-apricot {
+  --pl-bg: radial-gradient(55% 70% at 88% 80%, rgb(249 150 84 / 0.8), transparent 70%), radial-gradient(45% 60% at 25% 110%, rgb(249 170 120 / 0.55), transparent 70%), linear-gradient(180deg, #f8dcc7, #f9cba9);
+}
+.pl-lemon {
+  --pl-bg: radial-gradient(55% 70% at 88% 80%, rgb(246 222 104 / 0.8), transparent 70%), radial-gradient(45% 60% at 25% 110%, rgb(246 210 120 / 0.5), transparent 70%), linear-gradient(180deg, #f2ecdf, #f4ebc6);
+}
+.pl-sage {
+  --pl-bg: radial-gradient(55% 70% at 88% 80%, rgb(150 206 150 / 0.8), transparent 70%), radial-gradient(45% 60% at 25% 110%, rgb(170 214 170 / 0.5), transparent 70%), linear-gradient(180deg, #e9ebe0, #dfe9d4);
+}
+.pl-lilac {
+  --pl-bg: radial-gradient(55% 70% at 88% 80%, rgb(222 150 200 / 0.8), transparent 70%), radial-gradient(45% 60% at 25% 110%, rgb(226 170 205 / 0.5), transparent 70%), linear-gradient(180deg, #f0e4e6, #ecd6e2);
+}
+[data-theme="dark"] .pl-panel::before {
+  filter: brightness(0.86) saturate(0.95);
+}
+.pl-title em,
+.pl-serif {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.pl-card {
+  border-radius: 18px;
+  padding: 14px 16px;
+  font-size: 13px;
+  color: #161513;
+  box-shadow: 0 24px 48px -28px rgb(60 30 10 / 0.45);
+  animation: pl-float-in 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: var(--d, 0s);
+}
+.pl-coral {
+  background: #fe8a70;
+}
+.pl-glass {
+  background: rgb(255 255 255 / 0.5);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgb(255 255 255 / 0.65);
+}
+.pl-dark {
+  background: #2c3426;
+  color: #f3f1ec;
+}
+.pl-paper {
+  background: #fffdf9;
+  border: 1px solid #e6e1d7;
+}
+.pl-k {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+.pl-big {
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+}
+.pl-chip {
+  display: inline-flex;
+  width: fit-content;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #fff;
+  color: #161513;
+  font-size: 12px;
+  font-weight: 500;
+}
+.pl-lift {
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.pl-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 28px 50px -30px rgb(60 30 10 / 0.5);
+}
+@keyframes pl-float-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes pl-drift {
+  from {
+    transform: translate(-2%, -1.5%) scale(1.06);
+  }
+  to {
+    transform: translate(2%, 1.5%) scale(1.06);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pl-panel::before,
+  .pl-card {
+    animation: none;
+  }
+  .pl-lift {
+    transition: none;
+  }
+}

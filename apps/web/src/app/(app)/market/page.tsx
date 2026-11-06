@@ -1,13 +1,15 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { ArrowDown, Plus } from "lucide-react";
+import { formatUnits } from "@agentinvoice/shared";
+import { Banner } from "@/components/Banner";
+import { BestReturns } from "@/components/BestReturns";
+import { CountUp } from "@/components/CountUp";
 import { FaceByStatusChart } from "@/components/charts";
 import { EmptyState } from "@/components/EmptyState";
-import { PageHeader } from "@/components/PageHeader";
 import { HowItWorks } from "@/components/HowItWorks";
 import { Section } from "@/components/Section";
 import { MarketTable, type MarketRow } from "@/components/MarketTable";
 import { buttonVariants } from "@/components/ui";
-import { SummaryStrip } from "@/components/SummaryStrip";
 import { api } from "@/lib/api";
 import { loadEnsByVault } from "@/lib/agents";
 import { loadCreditReport } from "@/lib/credit";
@@ -41,27 +43,65 @@ export default async function MarketplacePage() {
   });
   const s = marketStats(invoices);
 
-  const kpis = [
-    { label: "Ready to fund", value: `${s.openCount}`, sub: `${formatAmount(s.openFace.toString())} face value` },
-    { label: "Average discount", value: s.avgDiscountPct == null ? "—" : `${s.avgDiscountPct.toFixed(1)}%`, sub: "Across open invoices" },
-    { label: "Funded so far", value: formatAmount(s.fundedVolume.toString()), sub: `${s.fundedCount} invoices` },
-    { label: "Repaid on time", value: s.onTimePct == null ? "—" : `${Math.round(s.onTimePct)}%`, sub: `Of ${s.settledCount} settled` },
-  ];
+  const hb = (x: bigint) => Number(formatUnits(x));
+  const d = (n: number) => ({ ["--d" as string]: n + "s" });
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
-        title={copy.market.title}
+    <div className="flex flex-col gap-8">
+      <Banner
+        hue="apricot"
+        eyebrow="Marketplace"
+        title={
+          <>
+            Fund invoices
+            <br />
+            <em>before they&apos;re due.</em>
+          </>
+        }
         sub={copy.market.subtitle}
         action={
-          <Link href="/supplier" className={buttonVariants({ variant: "outline" })}>
-            <Plus aria-hidden="true" />
-            {copy.nav.supplier}
-          </Link>
+          <>
+            <a href="#market" className={buttonVariants({ size: "lg" })}>
+              Browse invoices
+              <ArrowDown aria-hidden="true" />
+            </a>
+            <Link href="/supplier" className={buttonVariants({ variant: "ghost", size: "lg", className: "text-[#161513] hover:bg-white/40" })}>
+              <Plus aria-hidden="true" />
+              {copy.nav.supplier}
+            </Link>
+          </>
+        }
+        cards={
+          <div className="grid grid-cols-2 gap-3">
+            <div className="pl-card pl-coral flex flex-col gap-1.5" style={d(0.1)}>
+              <span className="pl-k">Ready to fund</span>
+              <span className="pl-big">
+                <CountUp value={s.openCount} /> {s.openCount === 1 ? "invoice" : "invoices"}
+              </span>
+              <span className="pl-chip">{formatAmount(s.openFace.toString())} face value</span>
+            </div>
+            <div className="pl-card pl-dark flex flex-col gap-1 sm:translate-y-5" style={d(0.25)}>
+              <span className="pl-k">Repaid on time</span>
+              <span className="pl-serif text-[44px] leading-none">{s.onTimePct == null ? "—" : <CountUp value={Math.round(s.onTimePct)} suffix="%" />}</span>
+              <span className="text-xs text-white/60">Of {s.settledCount} settled invoices</span>
+            </div>
+            <div className="pl-card pl-glass col-span-2 grid grid-cols-2 gap-3" style={d(0.4)}>
+              <span>
+                <span className="pl-k block">Average discount</span>
+                <span className="mt-1 block text-xl font-semibold">{s.avgDiscountPct == null ? "—" : <CountUp value={s.avgDiscountPct} decimals={1} suffix="%" />}</span>
+              </span>
+              <span>
+                <span className="pl-k block">Funded so far</span>
+                <span className="mt-1 block text-xl font-semibold">
+                  <CountUp value={hb(s.fundedVolume)} decimals={1} suffix=" HBAR" />
+                </span>
+              </span>
+            </div>
+          </div>
         }
       />
 
-      <SummaryStrip label="Market summary" items={kpis} />
+      <BestReturns rows={rows} />
 
       <HowItWorks />
 
