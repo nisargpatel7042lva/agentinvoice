@@ -96,9 +96,8 @@ export const PayPolicySchema = z.object({
   allowedHosts: z.array(z.string()),
 }) satisfies z.ZodType<PayPolicy>;
 
-export const ScoreBandSchema = z.enum(["New", "A", "B", "C"]);
-
 export const BuyerScoreSchema = z.object({
+
   vault: AddressSchema,
   band: ScoreBandSchema,
   onTimeRate: z.number().min(0).max(100),
