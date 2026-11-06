@@ -4,6 +4,7 @@ import buyerVaultAbiJson from "./abi/BuyerVault.json";
 import invoiceMarketAbiJson from "./abi/InvoiceMarket.json";
 import atsFactoryAbiJson from "./abi/AtsFactory.json";
 import atsBondAbiJson from "./abi/AtsBond.json";
+import buyerEscrowAbiJson from "./abi/BuyerEscrow.json";
 
 /** Deployed contract addresses on Hedera testnet (written by Mann's deploy script). */
 export const contracts = {
@@ -14,6 +15,7 @@ export const contracts = {
 
 export const invoiceMarketAbi = invoiceMarketAbiJson as Abi;
 export const buyerVaultAbi = buyerVaultAbiJson as Abi;
+export const buyerEscrowAbi = buyerEscrowAbiJson as Abi;
 /** Hedera Asset Tokenization Studio: the factory that deploys a bond, and the bond itself (subset of IAsset). */
 export const atsFactoryAbi = atsFactoryAbiJson as Abi;
 export const atsBondAbi = atsBondAbiJson as Abi;
