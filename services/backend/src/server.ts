@@ -1,3 +1,5 @@
+import { buyerVaultAbi, hederaTestnet } from "@invoiceagent/shared";
+import { createPublicClient, http } from "viem";
 import { sweepExpired } from "./approval/store.js";
 import { auditEventForStatus, hederaSubmit, publishAudit, type AuditInput } from "./audit/audit.js";
 import { buildApp } from "./app.js";
@@ -22,6 +24,14 @@ function mintFromEnv() {
   return liveMintDeps({ sponsorKey: e.SPONSOR_PRIVATE_KEY as `0x${string}`, userRegistry: e.ENS_USER_REGISTRY_ADDRESS as `0x${string}`, resolver: e.ENS_RESOLVER_ADDRESS as `0x${string}`, parentLabel: e.ENS_PARENT_LABEL, rpcUrl: e.SEPOLIA_RPC_URL || undefined });
 }
 
+function buyerMintFromEnv() {
+  const base = mintFromEnv();
+  if (!base) return undefined;
+  const rpc = process.env.HEDERA_RPC_URL || process.env.HEDERA_TESTNET_RPC_URL || hederaTestnet.rpcUrl;
+  const client = createPublicClient({ chain: { id: hederaTestnet.id, name: hederaTestnet.name, nativeCurrency: hederaTestnet.nativeCurrency, rpcUrls: { default: { http: [rpc] } } }, transport: http(rpc, { timeout: 15_000, retryCount: 1 }) });
+  return { ...base, vaultOwner: async (vault: `0x${string}`) => (await client.readContract({ address: vault, abi: buyerVaultAbi, functionName: "owner" })) as `0x${string}` };
+}
+
 let config: Config;
 try {
   config = loadEnv();
@@ -44,6 +54,7 @@ const app = buildApp({
   audit: { topicId: config.hcs?.topicId },
   issuer: config.issuer && config.indexer ? hederaIssuer({ market: config.indexer.market, privateKey: config.issuer.privateKey, rpcUrl: config.indexer.rpcUrl }) : undefined,
   minter: mintFromEnv(),
+  buyerMinter: buyerMintFromEnv(),
   trustProxy: process.env.TRUST_PROXY === "1",
   features: { indexer: Boolean(config.indexer), ens: Boolean(config.ens), audit: Boolean(submit) },
   onAudit: (event: AuditInput) => {

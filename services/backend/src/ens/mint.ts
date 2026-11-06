@@ -4,7 +4,7 @@ import { getAddress, verifyMessage, type Address, type Hex } from "viem";
 // The seller proves they control the wallet with a signed message, so nobody can mint a name for someone else.
 
 export const LABEL_RE = /^[a-z0-9](?:[a-z0-9-]{1,18})[a-z0-9]$/; // 3 to 20 chars, no leading or trailing dash
-const RESERVED = new Set(["buyer", "admin", "agent", "sponsor", "www", "root"]);
+export const RESERVED_LABELS = new Set(["buyer", "admin", "agent", "sponsor", "www", "root"]);
 
 export class MintError extends Error {
   constructor(
@@ -21,14 +21,14 @@ export interface MintDeps {
   parent: string; // e.g. agentinvoicenf71.eth
   isTaken: (label: string) => Promise<boolean>; // on-chain: the registry already has an owner for this label
   existingNameFor: (owner: Address) => string | null; // one name per wallet (local record)
-  register: (label: string, owner: Address) => Promise<{ txHash: Hex }>; // registry.register + resolver.setAddress
+  register: (label: string, owner: Address, pointsTo?: Address) => Promise<{ txHash: Hex }>; // registry.register + resolver.setAddress (the address record is pointsTo, default the owner)
   remember: (owner: Address, name: string, txHash: Hex) => void;
 }
 
 export async function mintSellerName(deps: MintDeps, input: { label: string; owner: Address; signature: Hex }) {
   const label = input.label.trim().toLowerCase();
   if (!LABEL_RE.test(label)) throw new MintError("bad_label", "Use 3 to 20 letters, numbers or dashes.");
-  if (RESERVED.has(label)) throw new MintError("reserved", "That name is reserved. Pick another.");
+  if (RESERVED_LABELS.has(label)) throw new MintError("reserved", "That name is reserved. Pick another.");
   const ok = await verifyMessage({ address: input.owner, message: claimMessage(label, deps.parent, input.owner), signature: input.signature }).catch(() => false);
   if (!ok) throw new MintError("bad_signature", "The signature does not match this wallet.");
   const had = deps.existingNameFor(input.owner);

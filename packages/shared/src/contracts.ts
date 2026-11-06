@@ -4,6 +4,7 @@ import buyerVaultAbiJson from "./abi/BuyerVault.json";
 import invoiceMarketAbiJson from "./abi/InvoiceMarket.json";
 import atsFactoryAbiJson from "./abi/AtsFactory.json";
 import atsBondAbiJson from "./abi/AtsBond.json";
+export { buyerVaultBytecode } from "./abi/buyerVaultBytecode";
 import buyerEscrowAbiJson from "./abi/BuyerEscrow.json";
 
 /** Deployed contract addresses on Hedera testnet (written by Mann's deploy script). */

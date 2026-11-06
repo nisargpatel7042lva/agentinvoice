@@ -6,7 +6,8 @@ import { useAccount, useBalance, useSignMessage } from "wagmi";
 import { formatUnits } from "viem";
 import { ArrowUpRight, FilePlus2, LayoutList } from "lucide-react";
 import type { Invoice, Status } from "@invoiceagent/shared";
-import { loadProfile, mintName, nameClaimMessage } from "@/app/actions";
+import { loadProfile, mintName, nameClaimMessage, roleMessage, setRole, type Role } from "@/app/actions";
+import { BuyerSetup } from "@/components/BuyerSetup";
 import { Banner } from "@/components/Banner";
 import { StatusBadge } from "@/components/StatusBadge";
 import { toast } from "@/components/ToastHost";
@@ -35,6 +36,7 @@ export function ProfileView() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
+  const [roleBusy, setRoleBusy] = useState<Role | null>(null);
 
   const refresh = useCallback(async () => {
     if (address) setProfile(await loadProfile(address));
@@ -42,6 +44,26 @@ export function ProfileView() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  async function chooseRole(role: Role) {
+    if (!address) return;
+    setRoleBusy(role);
+    try {
+      const msg = await roleMessage(role, address);
+      if (!msg.ok || !msg.data) return toast("error", msg.message);
+      let signature: string;
+      try {
+        signature = await signMessageAsync({ message: msg.data.message });
+      } catch {
+        return toast("error", "Signing was cancelled. Nothing was saved.");
+      }
+      const r = await setRole(role, address, signature);
+      toast(r.ok ? "success" : "error", r.message);
+      await refresh();
+    } finally {
+      setRoleBusy(null);
+    }
+  }
 
   async function mint() {
     if (!address) return;
@@ -136,7 +158,31 @@ export function ProfileView() {
         }
       />
 
-      {!profile?.name && (
+      {profile && !profile.role && profile.canMint && (
+        <Card className="p-6">
+          <h2 className="text-base font-semibold">
+            How will you use <span className="pl-serif text-accent">Invoice Agent</span>?
+          </h2>
+          <p className="mt-2 max-w-xl text-sm text-ink-soft">Choose once. A wallet is either a seller or a buyer, and the choice cannot be changed. You sign one message to confirm it.</p>
+          <div className="mt-4 grid max-w-xl gap-3 sm:grid-cols-2">
+            <button type="button" disabled={roleBusy !== null} onClick={() => void chooseRole("seller")} className="pl-lift rounded-xl border border-line bg-surface p-4 text-left disabled:opacity-60">
+              <span className="block font-semibold">{roleBusy === "seller" ? "Waiting for your signature…" : "I'm a seller"}</span>
+              <span className="mt-1 block text-sm text-ink-muted">I'm owed money by an agent and want to be paid today.</span>
+            </button>
+            <button type="button" disabled={roleBusy !== null} onClick={() => void chooseRole("buyer")} className="pl-lift rounded-xl border border-line bg-surface p-4 text-left disabled:opacity-60">
+              <span className="block font-semibold">{roleBusy === "buyer" ? "Waiting for your signature…" : "I'm a buyer"}</span>
+              <span className="mt-1 block text-sm text-ink-muted">I run an agent that owes suppliers and pays from a vault.</span>
+            </button>
+          </div>
+        </Card>
+      )}
+      {profile?.role === "buyer" && !profile.name && profile.parent && <BuyerSetup parent={profile.parent} onDone={refresh} />}
+      {profile?.role === "buyer" && profile.name && (
+        <p className="-mt-4 text-sm text-ink-muted">
+          Your agent is <span className="font-mono text-ink">{profile.name}</span>, paying from vault <span className="font-mono text-ink">{profile.vault ? shortHex(profile.vault) : ""}</span>. Fund the vault with HBAR so it can pay invoices.
+        </p>
+      )}
+      {profile?.role === "seller" && !profile.name && (
         <Card className="p-6">
           <h2 className="text-base font-semibold">
             Claim your <span className="pl-serif text-accent">ENS name</span>
@@ -158,7 +204,7 @@ export function ProfileView() {
           )}
         </Card>
       )}
-      {profile?.name && (
+      {profile?.role === "seller" && profile.name && (
         <p className="-mt-4 text-sm text-ink-muted">
           Your public name is{" "}
           <a className="inline-flex items-center gap-0.5 font-mono text-accent" href={"https://sepolia.app.ens.domains/" + profile.name} target="_blank" rel="noreferrer">

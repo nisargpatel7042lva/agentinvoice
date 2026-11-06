@@ -40,6 +40,7 @@ Expect `ok: true`, `degraded: false`.
 3. Environment variables (Production):
    - `NEXT_PUBLIC_BACKEND_URL` = `https://52.63.226.208.sslip.io`
    - `NEXT_PUBLIC_BUYER_ENS_NAME` = `buyer.agentinvoicenf71.eth`
+   - `NEXT_PUBLIC_AGENT_ADDRESS` = the buyer agent wallet that pays from vaults (`0xd2B87eFbfd542eA386cBD1724A2E8DAEb31E0fA3`) and `NEXT_PUBLIC_VERIFIER_ADDRESS` = the approval verifier (`0x27a3c43158AC762F57B3aBe459a98e67659738EE`). Public addresses; the Profile page uses them when a buyer deploys their own vault.
    - Do not set `NEXT_PUBLIC_MOCK`.
 4. Settings, Functions, region: Sydney (`syd1`), next to the backend.
 5. Deploy, open the address, then put it in the server `APP_URL` (step 1).
