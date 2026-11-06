@@ -9,14 +9,15 @@
     "packages/*"
   ],
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p apps/web/tsconfig.json",
     "lint": "eslint .",
     "test": "vitest run --passWithNoTests",
     "forge": "cd contracts && forge test -q",
     "verify:fast": "bun run typecheck && bun run lint && bun run test && bun run forge",
     "verify": "bun run verify:fast && bun run e2e:local",
     "e2e:local": "tsx scripts/e2e.ts --local",
-    "e2e:testnet": "tsx scripts/e2e.ts --testnet"
+    "e2e:testnet": "tsx scripts/e2e.ts --testnet",
+    "dev": "bun run --cwd apps/web dev"
   },
   "engines": {
     "node": ">=20"
