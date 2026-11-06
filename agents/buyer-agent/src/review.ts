@@ -1,4 +1,4 @@
-import type { Hash32, Invoice } from "@agentinvoice/shared";
+import type { Hash32, Invoice } from "@invoiceagent/shared";
 import { z } from "zod";
 
 export const REVIEW_MAX_TOKENS = 300;

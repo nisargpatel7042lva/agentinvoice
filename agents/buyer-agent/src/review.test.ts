@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Invoice } from "@agentinvoice/shared";
+import type { Invoice } from "@invoiceagent/shared";
 import { createAnthropicReviewModel, reviewInvoice, type InvoiceModel } from "./review.js";
 
 const PRIVATE_KEY = `0x${"ab".repeat(32)}`;
