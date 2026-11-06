@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Invoice } from "@agentinvoice/shared";
-import { decide, decisionLine, type DecideInput } from "./decide.js";
+import { DUE_WITHIN_SECONDS, decide, decisionLine, type DecideInput } from "./decide.js";
 
 function invoice(overrides: Partial<Invoice> = {}): Invoice {
   return {
@@ -51,6 +51,26 @@ describe("buyer decide", () => {
     expect(decide(input({ invoice: invoice({ faceAmount: "101" }) })).reason).toBe(
       "face amount exceeds supplier limit",
     );
+  });
+
+  it("pays a funded invoice due within 10 seconds", () => {
+    const decision = decide(
+      input({
+        invoice: invoice({ status: "Funded", faceAmount: "100", dueDate: 2_000 + DUE_WITHIN_SECONDS }),
+        now: 2_000,
+      }),
+    );
+    expect(decision.action).toBe("pay");
+  });
+
+  it("skips a funded invoice due in more than 10 seconds", () => {
+    const decision = decide(
+      input({
+        invoice: invoice({ status: "Funded", faceAmount: "100", dueDate: 2_000 + DUE_WITHIN_SECONDS + 1 }),
+        now: 2_000,
+      }),
+    );
+    expect(decision).toEqual({ action: "skip", reason: "not due yet" });
   });
 
   it("pays a funded invoice that is due and below the threshold", () => {

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { invoiceFixtures, type Address, type Hash32, type Invoice } from "@agentinvoice/shared";
 import { createBuyerAgent, MAX_RETRIES } from "./agent.js";
+import { DUE_WITHIN_SECONDS } from "./decide.js";
 import { loadConfig } from "./config.js";
 import { log } from "./logger.js";
 import type { InvoiceModel } from "./review.js";
@@ -223,6 +224,35 @@ describe("buyer flow", () => {
     await agent.tick();
     expect(model.complete).toHaveBeenCalledTimes(1);
     expect(wired.pay).not.toHaveBeenCalled();
+  });
+
+  it("pays an invoice due within 10 seconds", async () => {
+    const funded = invoiceFixtures.find((invoice) => invoice.status === "Funded")!;
+    const model = reviewModel("accept", "delivery matches the evidence");
+    const wired = deps([funded], { now: () => funded.dueDate - DUE_WITHIN_SECONDS, model });
+    await createBuyerAgent(wired).tick();
+    expect(wired.pay).toHaveBeenCalledWith(BigInt(funded.id));
+  });
+
+  it("does not pay an invoice due in more than 10 seconds", async () => {
+    const funded = invoiceFixtures.find((invoice) => invoice.status === "Funded")!;
+    const model = reviewModel("accept", "delivery matches the evidence");
+    const wired = deps([funded], { now: () => funded.dueDate - DUE_WITHIN_SECONDS - 1, model });
+    await createBuyerAgent(wired).tick();
+    expect(model.complete).not.toHaveBeenCalled();
+    expect(wired.pay).not.toHaveBeenCalled();
+  });
+
+  it("pays the oldest due invoice first", async () => {
+    const funded = invoiceFixtures.find((invoice) => invoice.status === "Funded")!;
+    const newer = { ...funded, id: "1", dueDate: funded.dueDate + DUE_WITHIN_SECONDS };
+    const older = { ...funded, id: "9", dueDate: funded.dueDate };
+    const model = reviewModel("accept", "delivery matches the evidence");
+    const pay = vi.fn(async () => hash);
+    const wired = deps([newer, older], { now: () => funded.dueDate, model, pay });
+    await createBuyerAgent(wired).tick();
+    expect(pay).toHaveBeenNthCalledWith(1, 9n);
+    expect(pay).toHaveBeenNthCalledWith(2, 1n);
   });
 
   it("does not pay the same invoice twice in one run", async () => {

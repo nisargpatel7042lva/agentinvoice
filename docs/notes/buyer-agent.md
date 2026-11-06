@@ -19,6 +19,7 @@
 
 - `decide()` is deterministic and does not call a model.
 - `createBuyerAgent()` lists Pending and Funded invoices, then accepts or pays from `decide()`.
+- A funded invoice is payable when `dueDate <= now + 10` seconds. Due invoices are handled oldest due date first, before pending accepts.
 - A payment calls `reviewInvoice` only after `decide()` says pay. `accept` pays, `dispute` logs the reason, and `escalate` logs that sponsor approval is needed. No model means no payment. Pending acceptance does not call the model.
 - `DRY_RUN=1` skips transactions. The loop default in config is 15000 ms.
 - No model name is configured. `reviewInvoice` takes a model caller so tests never hit the network.

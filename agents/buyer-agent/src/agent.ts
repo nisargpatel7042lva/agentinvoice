@@ -46,7 +46,10 @@ export function createBuyerAgent(deps: BuyerDeps) {
       deps.api.listInvoices("Pending"),
       deps.api.listInvoices("Funded"),
     ]);
-    const listed = [...pending, ...funded].filter(ours);
+    const listed = [
+      ...funded.filter(ours).sort((a, b) => a.dueDate - b.dueDate || Number(a.id) - Number(b.id)),
+      ...pending.filter(ours),
+    ];
     if (listed.length === 0 || stopped) return;
     const now = deps.now?.() ?? Math.floor(Date.now() / 1000);
 
