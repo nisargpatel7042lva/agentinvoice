@@ -39,6 +39,33 @@ To verify: open the link above in the ENS app, or run `bunx tsx --env-file=.env 
 
 How this meets the ENS requirement, honestly: ENSv2 on Sepolia is the only place an agent's limits, payment record and expiry live, each agent is a subname with its own permissions, expiry and revocation, and the backend publisher and `readAgentFromEns` read and write them from chain state; this is a testnet prototype with no public live demo link yet.
 
+## Smart Contracts (Hedera Testnet)
+
+The on-chain money rails and financial settlements run on **Hedera Testnet (Chain ID 296)**.
+
+| Contract | Address | Explorer Link |
+| --- | --- | --- |
+| **`InvoiceMarket`** | `0xb41048c7369d33d4e396ccb2e95e974b95a06d8b` | [HashScan Explorer](https://hashscan.io/testnet/address/0xb41048c7369d33d4e396ccb2e95e974b95a06d8b) |
+| **`BuyerVault`** | `0xbc792de2be972434a996f222da426b590e858056` | [HashScan Explorer](https://hashscan.io/testnet/address/0xbc792de2be972434a996f222da426b590e858056) |
+| **`Deployer`** | `0xd2B87eFbfd542eA386cBD1724A2E8DAEb31E0fA3` | [HashScan Explorer](https://hashscan.io/testnet/address/0xd2B87eFbfd542eA386cBD1724A2E8DAEb31E0fA3) |
+| **`Verifier`** | `0x27a3c43158AC762F57B3aBe459a98e67659738EE` | [HashScan Explorer](https://hashscan.io/testnet/address/0x27a3c43158AC762F57B3aBe459a98e67659738EE) |
+
+### Plain-English Payout Rules & Money Rails
+1. **Invoice Lifecycle:**
+   - **Creation:** A verified supplier creates an invoice with a face amount, discounted price, and due date. Initial status is `Pending`.
+   - **Acceptance:** The buyer's autonomous `BuyerVault` accepts the invoice (`Open`) if the supplier is allowlisted and within daily credit limits.
+2. **Immediate Financing:**
+   - An investor funds the invoice by paying the discounted `price` in HBAR.
+   - The funds are immediately routed to the supplier, and the investor's address is recorded on-chain as the immutable `holder`.
+   - An `InvoiceFunded` event triggers off-chain minting of the corresponding Asset Tokenization Studio (ATS) bond.
+3. **Maturity & Repayment:**
+   - On or before maturity, the `BuyerVault` pays the full `faceAmount` back into `InvoiceMarket`.
+   - Repayments are credited to the investor's claim balance.
+4. **Pull-Payment Claims:**
+   - The investor retrieves their repayment yield at any time via `claim()`. This pull-payment architecture safeguards all participants against reentrancy and unexpected recipient revert conditions.
+5. **Overdue Invoices:**
+   - If an invoice is unpaid past the due date, it can be marked as `Late`. Past the due date plus the grace period (60 seconds for testnet demo mode), anyone can mark it as `Defaulted`.
+
 ## Layout
 
 - `packages/*` shared libraries (`@agentinvoice/shared`)
