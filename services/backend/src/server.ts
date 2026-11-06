@@ -1,5 +1,6 @@
 import { hederaReader } from "./chain/reader.js";
 import { buildApp } from "./app.js";
+import { sweepExpired } from "./approval/store.js";
 import { createIndexer } from "./indexer.js";
 
 const dbPath = process.env.DB_PATH ?? "agentinvoice.db";
@@ -21,5 +22,15 @@ if (market) {
 } else {
   app.log.warn("INVOICE_MARKET_ADDRESS not set: indexer disabled");
 }
+
+// Expire approvals nobody used, every 30 seconds.
+const sweeper = setInterval(() => {
+  try {
+    sweepExpired(app.db, Math.floor(Date.now() / 1000));
+  } catch (err) {
+    app.log.error({ err }, "approval sweep failed");
+  }
+}, 30_000);
+app.addHook("onClose", async () => clearInterval(sweeper));
 
 await app.listen({ port, host: "0.0.0.0" });
