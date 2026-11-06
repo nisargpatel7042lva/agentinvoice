@@ -1,10 +1,12 @@
-import { parseUnits, type Invoice, type ScoreBand, type BuyerScore } from "@agentinvoice/shared";
+import { parseUnits, type Invoice, type ScoreBand, type BuyerScore, type DualPartyCibilScore } from "@agentinvoice/shared";
 
 export interface Rules {
   minBand: ScoreBand; // MIN_BAND, default B
   minDiscountBps: number; // MIN_DISCOUNT_BPS
   maxPrice: bigint; // MAX_PRICE per invoice, tinybar
   maxOpenExposure: bigint; // MAX_OPEN_EXPOSURE per vault, tinybar
+  minSupplierCibil?: number; // MIN_SUPPLIER_CIBIL (default 550)
+  minBuyerCibil?: number; // MIN_BUYER_CIBIL (default 600)
 }
 
 export type Decision = { action: "buy"; reason: string } | { action: "skip"; reason: string };
@@ -18,8 +20,32 @@ export function discountBps(inv: Pick<Invoice, "faceAmount" | "price">): number 
 }
 
 /** Pure: same inputs, same answer. `exposure` = price already funded by us for this buyer vault and not yet repaid. */
-export function decide(invoice: Invoice, score: BuyerScore | null, rules: Rules, exposure = 0n): Decision {
+export function decide(
+  invoice: Invoice,
+  score: BuyerScore | null,
+  rules: Rules,
+  exposure = 0n,
+  cibil?: DualPartyCibilScore | null
+): Decision {
   if (invoice.status !== "Open") return { action: "skip", reason: `status ${invoice.status}, not Open` };
+
+  if (cibil) {
+    if (cibil.riskRecommendation === "Reject") {
+      return {
+        action: "skip",
+        reason: `CIBIL risk recommendation: Reject (supplier: ${cibil.supplier.tier}, buyer: ${cibil.buyer.tier})`,
+      };
+    }
+    const minSup = rules.minSupplierCibil ?? 550;
+    if (cibil.supplier.score > 0 && cibil.supplier.score < minSup) {
+      return { action: "skip", reason: `supplier CIBIL ${cibil.supplier.score} below minimum ${minSup}` };
+    }
+    const minBuy = rules.minBuyerCibil ?? 600;
+    if (cibil.buyer.score > 0 && cibil.buyer.score < minBuy) {
+      return { action: "skip", reason: `buyer CIBIL ${cibil.buyer.score} below minimum ${minBuy}` };
+    }
+  }
+
   if (!score) return { action: "skip", reason: "no score available" };
   if (RANK[score.band] < RANK[rules.minBand]) {
     return { action: "skip", reason: score.band === "New" ? "band New: no payment history" : `band ${score.band} below minimum ${rules.minBand}` };
@@ -31,7 +57,8 @@ export function decide(invoice: Invoice, score: BuyerScore | null, rules: Rules,
   if (exposure + price > rules.maxOpenExposure) {
     return { action: "skip", reason: `exposure ${exposure + price} would exceed max ${rules.maxOpenExposure} for this vault` };
   }
-  return { action: "buy", reason: `band ${score.band}, discount ${bps} bps, price within limits` };
+  const cibilNote = cibil ? `, CIBIL verified (S:${cibil.supplier.score} B:${cibil.buyer.score})` : "";
+  return { action: "buy", reason: `band ${score.band}, discount ${bps} bps, price within limits${cibilNote}` };
 }
 
 const BANDS = new Set<string>(["A", "B", "C", "New"]);
@@ -45,5 +72,7 @@ export function rulesFromEnv(env: Record<string, string | undefined> = process.e
     minDiscountBps: Number(env.MIN_DISCOUNT_BPS ?? "100"),
     maxPrice: parseUnits(env.MAX_PRICE ?? "100"),
     maxOpenExposure: parseUnits(env.MAX_OPEN_EXPOSURE ?? "500"),
+    minSupplierCibil: env.MIN_SUPPLIER_CIBIL ? Number(env.MIN_SUPPLIER_CIBIL) : 550,
+    minBuyerCibil: env.MIN_BUYER_CIBIL ? Number(env.MIN_BUYER_CIBIL) : 600,
   };
 }

@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { ArrowRight, ChevronLeft } from "lucide-react";
-import { formatUnits } from "@agentinvoice/shared";
+import { calculateDualPartyCibilScore, formatUnits } from "@agentinvoice/shared";
 import { Card } from "@/components/ui";
 import { Legend } from "@/components/charts";
 import { EmptyState } from "@/components/EmptyState";
 import { ScoreBadge } from "@/components/ScoreBadge";
+import { CibilAssessment } from "@/components/CibilAssessment";
 import { Section } from "@/components/Section";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Stepper } from "@/components/Stepper";
@@ -36,7 +37,13 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const inv = await api.getInvoice(id).catch(() => null);
   if (!inv) return <EmptyState message={copy.error.notFound} action={{ label: copy.nav.backMarket, href: "/" }} />;
-  const [score, ens, audit] = await Promise.all([loadScore(inv.buyerVault), loadEnsByVault(inv.buyerVault), api.listAudit().catch(() => [])]);
+  const [score, ens, audit, allInvoices] = await Promise.all([
+    loadScore(inv.buyerVault),
+    loadEnsByVault(inv.buyerVault),
+    api.listAudit().catch(() => []),
+    api.listInvoices().catch(() => [inv]),
+  ]);
+  const cibil = calculateDualPartyCibilScore(inv, allInvoices);
   const agent = "agent" in ens ? ens.agent : undefined;
   const buyer = agent?.name ?? shortHex(inv.buyerVault);
   const history = audit.filter((e) => e.invoiceId === inv.id);
@@ -98,6 +105,10 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       <Card className="px-6 py-5">
         <Stepper status={inv.status} notes={notes} />
       </Card>
+
+      <Section title={copy.cibilSection.title} hint={copy.cibilSection.hint}>
+        <CibilAssessment cibil={cibil} />
+      </Section>
 
       <Section title={copy.sections.people} hint={`Supplier, ${buyer}, sponsor and holder`}>
         <dl className="m-0">

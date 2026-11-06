@@ -63,6 +63,18 @@ const MIGRATIONS: string[] = [
   ALTER TABLE approvals ADD COLUMN subject_hash TEXT;
   CREATE INDEX approvals_invoice ON approvals (invoice_id);
   `,
+  `
+  CREATE TABLE IF NOT EXISTS cibil_attestations (
+    party         TEXT PRIMARY KEY,
+    role          TEXT NOT NULL CHECK (role IN ('supplier','buyer')),
+    score         INTEGER NOT NULL,
+    tier          TEXT NOT NULL,
+    evidence_hash TEXT,
+    tx_hash       TEXT,
+    updated_at    INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS cibil_attestations_role ON cibil_attestations (role);
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

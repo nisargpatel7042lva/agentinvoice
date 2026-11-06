@@ -84,6 +84,17 @@ export const copy = {
     C: "Often late. Our investor agent skips these by default.",
     New: "Not enough history to score yet.",
   } satisfies Record<ScoreBand, string>,
+  cibilHelp: {
+    Excellent: "750 - 900: Prime on-chain credit record. Very low risk.",
+    Good: "650 - 749: Established on-chain history with solid fulfillment.",
+    Fair: "550 - 649: Moderate risk. Higher discount recommended.",
+    Poor: "300 - 549: Elevated default or dispute risk. High risk.",
+    New: "Unrated: Fewer than 2 settled transactions on-chain.",
+  },
+  cibilSection: {
+    title: "Dual-Party CIBIL Credit Profile",
+    hint: "On-chain credit scoring for both the Business (Supplier) and Buyer Agent",
+  },
   supplier: {
     title: "Create an invoice",
     buyerLabel: "Buyer's ENS name",

@@ -7,6 +7,8 @@ import {
   InvoiceListSchema,
   InvoiceSchema,
   BuyerScoreSchema,
+  PartyCibilScoreSchema,
+  DualPartyCibilScoreSchema,
 } from "./schemas";
 import {
   approvalFixture,
@@ -93,6 +95,15 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       const s = scoreFixtures.find((x) => x.vault.toLowerCase() === vault.toLowerCase());
       return s ? Promise.resolve(BuyerScoreSchema.parse(s)) : notFound(`score ${vault}`);
     },
+
+    getSupplierCibil: (address: string) =>
+      call(PartyCibilScoreSchema, `/api/cibil/supplier/${encodeURIComponent(address)}`),
+
+    getBuyerCibil: (address: string) =>
+      call(PartyCibilScoreSchema, `/api/cibil/buyer/${encodeURIComponent(address)}`),
+
+    getInvoiceCibil: (id: string) =>
+      call(DualPartyCibilScoreSchema, `/api/invoices/${encodeURIComponent(id)}/cibil`),
   };
 }
 

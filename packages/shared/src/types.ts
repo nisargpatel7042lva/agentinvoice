@@ -57,6 +57,35 @@ export interface ApprovalStart {
 export const SCORE_BANDS = ["A", "B", "C", "New"] as const;
 export type ScoreBand = (typeof SCORE_BANDS)[number];
 
+export const CIBIL_TIERS = ["Excellent", "Good", "Fair", "Poor", "New"] as const;
+export type CibilTier = (typeof CIBIL_TIERS)[number];
+
+export interface PartyCibilScore {
+  address: Address;
+  role: "supplier" | "buyer";
+  score: number; // 300 to 900, or 0 if unrated/new
+  tier: CibilTier;
+  onTimeRate?: number; // 0 to 100
+  acceptanceRate?: number; // 0 to 100 (for supplier)
+  totalInvoices: number;
+  settledInvoices: number;
+  defaultedInvoices: number;
+  disputeRate?: number; // 0 to 100
+  evidenceHash?: Hash32;
+  summary: string;
+  asOf: number;
+}
+
+export interface DualPartyCibilScore {
+  invoiceId: string;
+  supplier: PartyCibilScore;
+  buyer: PartyCibilScore;
+  investmentGrade: boolean; // true if both parties meet minimum thresholds
+  riskRecommendation: "Strong Buy" | "Moderate Buy" | "High Risk / Caution" | "Reject";
+  recommendedDiscountBps: number;
+  asOf: number;
+}
+
 export interface BuyerScore {
   vault: Address;
   band: ScoreBand;

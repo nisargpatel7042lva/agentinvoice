@@ -13,6 +13,7 @@ import { Stepper } from "./Stepper";
 import { InvoiceCard } from "./InvoiceCard";
 import { PolicyPanel } from "./PolicyPanel";
 import { ScoreBadge } from "./ScoreBadge";
+import { CibilBadge } from "./CibilBadge";
 import { StatusBadge } from "./StatusBadge";
 import { Toast } from "./Toast";
 import { TxLink } from "./TxLink";
@@ -31,6 +32,18 @@ describe("components render", () => {
     render(<ScoreBadge band="New" value={null} />);
     expect(screen.getByText("A · 86")).toBeTruthy();
     expect(screen.getByText("New")).toBeTruthy();
+  });
+
+  it("CibilBadge shows tier, score and label correctly", () => {
+    const { unmount } = render(<CibilBadge tier="Excellent" score={780} label="Supplier" />);
+    expect(screen.getByText("780")).toBeTruthy();
+    expect(screen.getByText("(Excellent)")).toBeTruthy();
+    expect(screen.getByText("Supplier:")).toBeTruthy();
+    unmount();
+
+    render(<CibilBadge tier="New" score={0} />);
+    expect(screen.getByText("New")).toBeTruthy();
+    expect(screen.getByText("(New)")).toBeTruthy();
   });
 
   it("InvoiceCard, PolicyPanel, TxLink, EmptyState, Toast", () => {

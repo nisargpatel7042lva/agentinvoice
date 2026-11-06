@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
-import type { Invoice, ScoreBand } from "@agentinvoice/shared";
+import type { Invoice, PartyCibilScore, ScoreBand } from "@agentinvoice/shared";
 import { buttonVariants, Table, TableBox, Td, Th } from "@/components/ui";
 import { ScoreBadge } from "@/components/ScoreBadge";
+import { CibilBadge } from "@/components/CibilBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Term } from "@/components/Term";
 import { cn } from "@/lib/cn";
@@ -18,6 +19,8 @@ export interface MarketRow {
   sponsorName?: string;
   band?: ScoreBand;
   score?: number | null;
+  supplierCibil?: PartyCibilScore | null;
+  buyerCibil?: PartyCibilScore | null;
 }
 
 // Open first: that is what a new visitor can act on. Everything else is one click away.
@@ -75,7 +78,8 @@ export function MarketTable({ rows }: { rows: MarketRow[] }) {
               <thead>
                 <tr>
                   <Th>Buyer</Th>
-                  <Th><Term explain="score">Score</Term></Th>
+                  <Th><Term explain="score">Buyer CIBIL</Term></Th>
+                  <Th>Supplier CIBIL</Th>
                   <Th className="text-right">{copy.deal.youPay}</Th>
                   <Th className="text-right">{copy.deal.youGet}</Th>
                   <Th className="text-right">{copy.deal.return}</Th>
@@ -85,7 +89,7 @@ export function MarketTable({ rows }: { rows: MarketRow[] }) {
                 </tr>
               </thead>
               <tbody>
-                {shown.map(({ invoice: inv, buyerName, band, score }) => (
+                {shown.map(({ invoice: inv, buyerName, band, score, supplierCibil, buyerCibil }) => (
                   <tr key={inv.id} className="hover:bg-canvas">
                     <Td>
                       <Link href={`/agent/${inv.buyerVault}`} className="flex items-center gap-2.5">
@@ -95,7 +99,20 @@ export function MarketTable({ rows }: { rows: MarketRow[] }) {
                         <span className="font-medium text-ink">{buyerName ?? shortHex(inv.buyerVault)}</span>
                       </Link>
                     </Td>
-                    <Td>{band && <ScoreBadge band={band} value={score} />}</Td>
+                    <Td>
+                      {buyerCibil ? (
+                        <CibilBadge tier={buyerCibil.tier} score={buyerCibil.score} />
+                      ) : (
+                        band && <ScoreBadge band={band} value={score} />
+                      )}
+                    </Td>
+                    <Td>
+                      {supplierCibil ? (
+                        <CibilBadge tier={supplierCibil.tier} score={supplierCibil.score} />
+                      ) : (
+                        <span className="text-xs text-ink-muted">Unrated</span>
+                      )}
+                    </Td>
                     <Td className="text-right font-semibold">{formatAmount(inv.price)}</Td>
                     <Td className="text-right">{formatAmount(inv.faceAmount)}</Td>
                     <Td className="text-right font-medium text-status-paid">{returnPct(inv)}</Td>

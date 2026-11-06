@@ -7,6 +7,7 @@ import { approvalRoutes, worldFromEnv, type WorldOptions } from "./routes/approv
 import { auditRoutes, type AuditOptions } from "./routes/audit.js";
 import type { InvoiceIssuer } from "./chain/issuer.js";
 import { invoiceCreateRoutes, invoiceRoutes } from "./routes/invoices.js";
+import { cibilRoutes } from "./routes/cibil.js";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -81,6 +82,7 @@ export function buildApp({ dbPath, world, audit, onAudit, features = {}, limits,
   });
 
   invoiceRoutes(app);
+  cibilRoutes(app);
   auditRoutes(app, audit ?? { topicId: process.env.HCS_TOPIC_ID || undefined });
   // Rate limiting is opt-in per route (global: false), so only the approval endpoints are limited. The plugin must finish
   // loading before the routes are added, so they are registered inside this scope. POST /api/invoices spends gas, so it is limited too.

@@ -5,9 +5,12 @@ import {
   type Approval,
   type ApprovalStart,
   type AuditEvent,
+  CIBIL_TIERS,
+  type DualPartyCibilScore,
   type EnsAgent,
   type Hash32,
   type Invoice,
+  type PartyCibilScore,
   type PayPolicy,
   type ReviewResult,
   SCORE_BANDS,
@@ -87,7 +90,6 @@ export const PayPolicySchema = z.object({
 }) satisfies z.ZodType<PayPolicy>;
 
 export const BuyerScoreSchema = z.object({
-
   vault: AddressSchema,
   band: ScoreBandSchema,
   onTimeRate: z.number().min(0).max(100),
@@ -98,4 +100,32 @@ export const BuyerScoreSchema = z.object({
   evidence: z.array(z.string()),
   asOf: z.number().int(),
 });
+
+export const CibilTierSchema = z.enum(CIBIL_TIERS);
+
+export const PartyCibilScoreSchema = z.object({
+  address: AddressSchema,
+  role: z.enum(["supplier", "buyer"]),
+  score: z.number().int().min(0).max(900),
+  tier: CibilTierSchema,
+  onTimeRate: z.number().min(0).max(100).optional(),
+  acceptanceRate: z.number().min(0).max(100).optional(),
+  totalInvoices: z.number().int().nonnegative(),
+  settledInvoices: z.number().int().nonnegative(),
+  defaultedInvoices: z.number().int().nonnegative(),
+  disputeRate: z.number().min(0).max(100).optional(),
+  evidenceHash: Hash32Schema.optional(),
+  summary: z.string(),
+  asOf: z.number().int(),
+}) satisfies z.ZodType<PartyCibilScore>;
+
+export const DualPartyCibilScoreSchema = z.object({
+  invoiceId: z.string(),
+  supplier: PartyCibilScoreSchema,
+  buyer: PartyCibilScoreSchema,
+  investmentGrade: z.boolean(),
+  riskRecommendation: z.enum(["Strong Buy", "Moderate Buy", "High Risk / Caution", "Reject"]),
+  recommendedDiscountBps: z.number().int().min(0).max(10000),
+  asOf: z.number().int(),
+}) satisfies z.ZodType<DualPartyCibilScore>;
 

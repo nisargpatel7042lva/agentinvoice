@@ -69,6 +69,20 @@ describe("paid-api GET /score (real x402)", () => {
     // Fixtures: one invoice per status for this vault → 1 paid, 1 late, 1 defaulted = 33% on time → band C.
     expect(res.body).toMatchObject({ vault: VAULT, paid: 1, late: 1, defaulted: 1, band: "C", onTimeRate: 33, openExposure: "2000000000" });
   });
+
+  it("answers 402 for /cibil when unpaid, and returns dual-party report when paid", async () => {
+    const f = facilitator(true);
+    const app = buildPaidExpressApp({ payTo: PAY_TO, facilitatorClient: f, loadInvoices: async () => invoiceFixtures });
+
+    const unpaid = await get(app, `/cibil?invoiceId=1`);
+    expect(unpaid.statusCode).toBe(402);
+
+    const paid = await get(app, `/cibil?invoiceId=1`, { "payment-signature": payment });
+    expect(paid.statusCode).toBe(200);
+    expect(paid.body).toHaveProperty("supplier");
+    expect(paid.body).toHaveProperty("buyer");
+    expect(paid.body).toHaveProperty("riskRecommendation");
+  });
 });
 
 describe("computeBand", () => {

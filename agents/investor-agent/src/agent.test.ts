@@ -36,6 +36,42 @@ describe("decide", () => {
     expect(rulesFromEnv({ MAX_PRICE: "1.5" }).maxPrice).toBe(150_000_000n);
     expect(() => rulesFromEnv({ MIN_BAND: "D" })).toThrow();
   });
+
+  it("skips when CIBIL risk recommendation is Reject or below minimum score", () => {
+    const badCibil = {
+      invoiceId: open.id,
+      supplier: {
+        address: open.supplier,
+        role: "supplier" as const,
+        score: 420,
+        tier: "Poor" as const,
+        totalInvoices: 3,
+        settledInvoices: 3,
+        defaultedInvoices: 1,
+        summary: "Poor rating",
+        asOf: Date.now(),
+      },
+      buyer: {
+        address: open.buyerVault,
+        role: "buyer" as const,
+        score: 750,
+        tier: "Excellent" as const,
+        totalInvoices: 5,
+        settledInvoices: 5,
+        defaultedInvoices: 0,
+        summary: "Excellent rating",
+        asOf: Date.now(),
+      },
+      investmentGrade: false,
+      riskRecommendation: "Reject" as const,
+      recommendedDiscountBps: 2000,
+      asOf: Date.now(),
+    };
+
+    const res = decide(forVault(A), A, rules, 0n, badCibil);
+    expect(res.action).toBe("skip");
+    expect(res.reason).toMatch(/CIBIL risk recommendation: Reject/);
+  });
 });
 
 describe("score cache", () => {

@@ -10,3 +10,4 @@ export * from "./api";
 export * from "./contracts";
 export * from "./agentAccount";
 export * from "./score";
+export * from "./cibil";

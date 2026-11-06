@@ -6,6 +6,7 @@ import { HowItWorks } from "@/components/HowItWorks";
 import { Section } from "@/components/Section";
 import { MarketTable, type MarketRow } from "@/components/MarketTable";
 import { buttonVariants, Card, CardContent, CardHeader, CardTitle, Progress, StatCard } from "@/components/ui";
+import { calculateBuyerCibilScore, calculateSupplierCibilScore } from "@agentinvoice/shared";
 import { api } from "@/lib/api";
 import { loadEnsByVault, loadScore } from "@/lib/agents";
 import { copy } from "@/lib/copy";
@@ -29,7 +30,16 @@ export default async function MarketplacePage() {
   );
   const rows: MarketRow[] = invoices.map((invoice) => {
     const i = info.get(invoice.buyerVault.toLowerCase());
-    return { invoice, buyerName: i?.name, band: i?.score?.band, score: i?.score && i.score.band !== "New" ? i.score.onTimeRate : null };
+    const supplierCibil = calculateSupplierCibilScore(invoice.supplier, invoices);
+    const buyerCibil = calculateBuyerCibilScore(invoice.buyerVault, invoices);
+    return {
+      invoice,
+      buyerName: i?.name,
+      band: i?.score?.band,
+      score: i?.score && i.score.band !== "New" ? i.score.onTimeRate : null,
+      supplierCibil,
+      buyerCibil,
+    };
   });
   const s = marketStats(invoices);
 
