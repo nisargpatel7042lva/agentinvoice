@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { decodePaymentRequiredHeader } from "@x402/core/http";
 import type { FacilitatorClient } from "@x402/core/server";
 import type { SettleResponse, SupportedResponse, VerifyResponse } from "@x402/core/types";
-import { invoiceFixtures } from "@agentinvoice/shared";
+import { invoiceFixtures, type BuyerScore } from "@agentinvoice/shared";
 import { buildPaidExpressApp, computeBand } from "./app.js";
 import { dispatch, makeMockReq, makeMockRes } from "./testUtils.js";
 
@@ -68,6 +68,11 @@ describe("paid-api GET /score (real x402)", () => {
     expect(res.statusCode).toBe(200);
     // Fixtures: one invoice per status for this vault → 1 paid, 1 late, 1 defaulted = 33% on time → band C.
     expect(res.body).toMatchObject({ vault: VAULT, paid: 1, late: 1, defaulted: 1, band: "C", onTimeRate: 33, openExposure: "2000000000" });
+    const body = res.body as BuyerScore;
+    expect(typeof body.creditScore).toBe("number");
+    expect(body.credit).toBeDefined();
+    expect(body.credit?.score).toBe(body.creditScore);
+    expect(body.credit?.factors).toHaveLength(5);
   });
 });
 

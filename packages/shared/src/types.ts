@@ -57,6 +57,28 @@ export interface ApprovalStart {
 export const SCORE_BANDS = ["A", "B", "C", "New"] as const;
 export type ScoreBand = (typeof SCORE_BANDS)[number];
 
+export interface CreditFactor {
+  key: "payment" | "defaults" | "exposure" | "history" | "volume";
+  label: string; // plain English, e.g. "Payment history"
+  weight: number; // 0.35 …
+  value: number; // 0..1
+  points: number; // round(600 * weight * value), shows contribution
+  detail: string; // e.g. "12 of 13 settled invoices paid on time"
+  evidence: string[]; // invoice ids that drove this factor
+}
+
+export interface CreditReport {
+  vault: Address;
+  score: number | null;
+  band: ScoreBand;
+  model: string;
+  factors: CreditFactor[];
+  summary: string;
+  asOf: number;
+  counts: { onTime: number; paidLate: number; late: number; defaulted: number; settled: number };
+  openExposure: Amount;
+}
+
 export interface BuyerScore {
   vault: Address;
   band: ScoreBand;
@@ -67,6 +89,8 @@ export interface BuyerScore {
   openExposure: Amount;
   evidence: string[]; // transaction IDs / mirror hashes
   asOf: number; // unix seconds
+  creditScore?: number | null;
+  credit?: CreditReport;
 }
 
 export interface Score {

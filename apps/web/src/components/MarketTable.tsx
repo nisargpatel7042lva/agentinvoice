@@ -31,15 +31,17 @@ function returnPct(inv: Invoice): string {
 
 export function MarketTable({ rows }: { rows: MarketRow[] }) {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("Open");
+  const [minScore, setMinScore] = useState<number>(0);
   const [q, setQ] = useState("");
   const shown = useMemo(
     () =>
       rows.filter(
         (r) =>
           (filter === "All" || r.invoice.status === filter) &&
+          (!minScore || (r.score != null && r.score >= minScore)) &&
           (!q || (r.buyerName ?? r.invoice.buyerVault).toLowerCase().includes(q.toLowerCase())),
       ),
-    [rows, filter, q],
+    [rows, filter, minScore, q],
   );
   const showStatus = filter !== "Open";
 
@@ -60,10 +62,22 @@ export function MarketTable({ rows }: { rows: MarketRow[] }) {
             </button>
           ))}
         </div>
-        <label className="flex h-9 min-w-[220px] items-center gap-2 rounded-lg border border-line px-3 text-sm text-ink-muted">
-          <Search aria-hidden="true" className="size-4" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by buyer name" aria-label="Search by buyer name" className="w-full bg-transparent text-ink outline-none" />
-        </label>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <select
+            value={minScore}
+            onChange={(e) => setMinScore(Number(e.target.value))}
+            aria-label={copy.creditScore.minScoreFilter}
+            className="h-9 rounded-lg border border-line bg-surface px-2.5 text-xs text-ink font-medium outline-none"
+          >
+            <option value={0}>{copy.creditScore.filterAny}</option>
+            <option value={650}>{copy.creditScore.filter650}</option>
+            <option value={750}>{copy.creditScore.filter750}</option>
+          </select>
+          <label className="flex h-9 min-w-[200px] items-center gap-2 rounded-lg border border-line px-3 text-sm text-ink-muted">
+            <Search aria-hidden="true" className="size-4" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by buyer name" aria-label="Search by buyer name" className="w-full bg-transparent text-ink outline-none" />
+          </label>
+        </div>
       </div>
 
       {shown.length === 0 ? (
@@ -95,7 +109,7 @@ export function MarketTable({ rows }: { rows: MarketRow[] }) {
                         <span className="font-medium text-ink">{buyerName ?? shortHex(inv.buyerVault)}</span>
                       </Link>
                     </Td>
-                    <Td>{band && <ScoreBadge band={band} value={score} />}</Td>
+                    <Td>{band && <ScoreBadge band={band} score={score} />}</Td>
                     <Td className="text-right font-semibold">{formatAmount(inv.price)}</Td>
                     <Td className="text-right">{formatAmount(inv.faceAmount)}</Td>
                     <Td className="text-right font-medium text-status-paid">{returnPct(inv)}</Td>
@@ -118,7 +132,7 @@ export function MarketTable({ rows }: { rows: MarketRow[] }) {
                 <Link href={`/invoice/${inv.id}`} className="block px-4 py-4">
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate font-medium text-ink">{buyerName ?? shortHex(inv.buyerVault)}</span>
-                    {showStatus ? <StatusBadge status={inv.status} /> : band && <ScoreBadge band={band} value={score} />}
+                    {showStatus ? <StatusBadge status={inv.status} /> : band && <ScoreBadge band={band} score={score} />}
                   </div>
                   <p className="mt-1.5 text-sm text-ink-soft">
                     Pay <span className="font-semibold text-ink">{formatAmount(inv.price)}</span>, get{" "}
