@@ -87,3 +87,7 @@ Deployed bytecode matched the docs, not the newer repo source: `UserRegistry.ini
 - The shared stub `readAgentFromEns` in `packages/shared/src/ens.ts` still throws "not implemented". Nisarg owns that file; the real implementation lives in the backend and can be re-exported or called from there.
 - Scripts (all re-runnable, in `scripts/ens/`): `fund-sponsor.ts`, `register.ts` (register/reuse, 1.9), `grant.ts` (1.10), `refusal.ts` (1.10 proof), `revoke.ts` (1.11), `seed-records.ts`, `check.ts` (1.12). They replace the old register/grant/check trio; 1.13 is satisfied because that trio's jobs are all covered.
 - Revocation is shown through `unregister` (registry state) and `isRevoked`; a live `readAgentFromEns` of a revoked name that has records was not run, since revoking would destroy the demo agent.
+
+## ENS app check (2026-11-06)
+
+https://sepolia.app.ens.domains/buyer.agentinvoicenf71.eth opens and shows owner 0x27a3...38EE, registered Nov 6 2026, expires Feb 3 2027 and the Ethereum address record. The app page text did not list the custom text records (limit, threshold, paid, late, status); they are read back with `bun scripts/ens/check.ts`.
