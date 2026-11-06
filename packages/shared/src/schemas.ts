@@ -11,7 +11,6 @@ import {
   type PayPolicy,
   type ReviewResult,
   SCORE_BANDS,
-  type ScoreResult,
 } from "./types";
 
 const isHex = (len: number) => (v: unknown) =>
@@ -77,15 +76,6 @@ export const ReviewResultSchema = z.object({
 }) satisfies z.ZodType<ReviewResult>;
 
 export const ScoreBandSchema = z.enum(SCORE_BANDS);
-
-export const ScoreResultSchema = z.object({
-  vault: AddressSchema,
-  band: ScoreBandSchema,
-  value: z.number().min(0).max(100).nullable(),
-  paid: z.number().int().nonnegative(),
-  late: z.number().int().nonnegative(),
-  updatedAt: z.number().int(),
-}) satisfies z.ZodType<ScoreResult>;
 
 export const HealthSchema = z.object({ ok: z.boolean() }).loose();
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { invoiceFixtures, scoreFixtures, type Invoice, type ScoreResult } from "@agentinvoice/shared";
+import { invoiceFixtures, scoreFixtures, type Invoice, type BuyerScore } from "@agentinvoice/shared";
 import { createInvestorAgent, MAX_RETRIES } from "./agent.js";
 import { decide, rulesFromEnv, type Rules } from "./decide.js";
 import { createScoreReader, SCORE_TTL_MS } from "./score.js";
@@ -7,7 +7,7 @@ import { createScoreReader, SCORE_TTL_MS } from "./score.js";
 const [A, B, C, NEW] = scoreFixtures;
 const open = invoiceFixtures.find((i) => i.status === "Open")!; // face 10 HBAR, price 9.5 HBAR (500 bps)
 const rules: Rules = { minBand: "B", minDiscountBps: 100, maxPrice: 2_000_000_000n, maxOpenExposure: 2_000_000_000n };
-const forVault = (s: ScoreResult): Invoice => ({ ...open, buyerVault: s.vault });
+const forVault = (s: BuyerScore): Invoice => ({ ...open, buyerVault: s.vault });
 
 describe("decide", () => {
   it("buys band A and band B at minimum B", () => {
@@ -41,18 +41,18 @@ describe("decide", () => {
 describe("score cache", () => {
   it("pays once per vault per 60 s and re-pays after", async () => {
     let t = 0;
-    const pay = vi.fn(async () => A);
+    const pay = vi.fn(async () => ({ ok: true as const, data: A }));
     const getScore = createScoreReader("https://score.test", pay, () => t);
     await getScore(A.vault);
     await getScore(A.vault.toUpperCase().replace("0X", "0x"));
     expect(pay).toHaveBeenCalledTimes(1);
-    expect(pay).toHaveBeenCalledWith(`https://score.test/score/${A.vault}`);
+    expect(pay).toHaveBeenCalledWith(`https://score.test/score?vault=${A.vault}`);
     t = SCORE_TTL_MS + 1;
     await getScore(A.vault);
     expect(pay).toHaveBeenCalledTimes(2);
   });
   it("does not cache a failed payment", async () => {
-    const pay = vi.fn().mockRejectedValueOnce(new Error("402 failed")).mockResolvedValue(A);
+    const pay = vi.fn().mockResolvedValueOnce({ ok: false, reason: "402 failed" }).mockResolvedValue({ ok: true, data: A });
     const getScore = createScoreReader("https://score.test", pay);
     await expect(getScore(A.vault)).rejects.toThrow();
     await expect(getScore(A.vault)).resolves.toEqual(A);

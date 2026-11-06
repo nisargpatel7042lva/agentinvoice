@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { payAndGet, resetSpentTodayForTesting } from "./payAndGet.js";
+import { payAndGet, resetSpentTodayForTesting } from "./payAndGet";
 
 describe("payAndGet spending controls (v2-M4)", () => {
   beforeEach(() => {

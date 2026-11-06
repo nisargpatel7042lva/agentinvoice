@@ -18,8 +18,11 @@ function need(name: string): string {
 }
 
 async function main() {
-  const payAndGet = (shared as unknown as { payAndGet?: PayAndGet }).payAndGet;
-  if (!payAndGet) throw new Error("payAndGet is not exported from @agentinvoice/shared yet (Mann's x402 helper). Cannot buy scores.");
+  // Mann's x402 helper, bound to the investor key and a spending policy limited to the score API host.
+  const scoreApi = need("SCORE_API_URL");
+  const payKey = need("INVESTOR_PRIVATE_KEY") as Hex;
+  const payScore: PayAndGet = (url) =>
+    shared.payAndGet(url, { privateKey: payKey, policy: { allowedHosts: [new URL(scoreApi).host] } });
 
   const dryRun = process.env.DRY_RUN === "1";
   const chain = {
@@ -29,13 +32,13 @@ async function main() {
     rpcUrls: { default: { http: [process.env.HEDERA_TESTNET_RPC_URL ?? shared.hederaTestnet.rpcUrl] } },
   } as const;
   const market = need("MARKET_ADDRESS") as Address;
-  const account = dryRun ? undefined : privateKeyToAccount(need("INVESTOR_PRIVATE_KEY") as Hex);
+  const account = dryRun ? undefined : privateKeyToAccount(payKey);
   const wallet = account ? createWalletClient({ account, chain, transport: http() }) : undefined;
   const reader = createPublicClient({ chain, transport: http() });
 
   const agent = createInvestorAgent({
     api: shared.createApiClient({ baseUrl: need("BACKEND_URL") }),
-    getScore: createScoreReader(need("SCORE_API_URL"), payAndGet),
+    getScore: createScoreReader(scoreApi, payScore),
     rules: rulesFromEnv(),
     dryRun,
     txUrl: (h) => `${shared.hederaTestnet.explorerUrl}/transaction/${h}`,

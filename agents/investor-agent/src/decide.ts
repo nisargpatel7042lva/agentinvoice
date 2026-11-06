@@ -1,4 +1,4 @@
-import { parseUnits, type Invoice, type ScoreBand, type ScoreResult } from "@agentinvoice/shared";
+import { parseUnits, type Invoice, type ScoreBand, type BuyerScore } from "@agentinvoice/shared";
 
 export interface Rules {
   minBand: ScoreBand; // MIN_BAND, default B
@@ -18,7 +18,7 @@ export function discountBps(inv: Pick<Invoice, "faceAmount" | "price">): number 
 }
 
 /** Pure: same inputs, same answer. `exposure` = price already funded by us for this buyer vault and not yet repaid. */
-export function decide(invoice: Invoice, score: ScoreResult | null, rules: Rules, exposure = 0n): Decision {
+export function decide(invoice: Invoice, score: BuyerScore | null, rules: Rules, exposure = 0n): Decision {
   if (invoice.status !== "Open") return { action: "skip", reason: `status ${invoice.status}, not Open` };
   if (!score) return { action: "skip", reason: "no score available" };
   if (RANK[score.band] < RANK[rules.minBand]) {

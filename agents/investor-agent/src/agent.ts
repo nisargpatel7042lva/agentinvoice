@@ -1,4 +1,4 @@
-import { tinybarToWeibar, type ApiClient, type Hash32, type Invoice, type ScoreResult } from "@agentinvoice/shared";
+import { tinybarToWeibar, type ApiClient, type Hash32, type Invoice, type BuyerScore } from "@agentinvoice/shared";
 import { decide, discountBps, type Decision, type Rules } from "./decide.js";
 
 /** Buys an invoice on-chain. Implemented with viem in main.ts; faked in tests. `value` is msg.value in weibar. */
@@ -6,7 +6,7 @@ export type BuyFn = (id: bigint, valueWeibar: bigint) => Promise<Hash32>;
 
 export interface AgentDeps {
   api: Pick<ApiClient, "listInvoices">;
-  getScore: (vault: string) => Promise<ScoreResult>;
+  getScore: (vault: string) => Promise<BuyerScore>;
   buy: BuyFn;
   rules: Rules;
   dryRun?: boolean;
@@ -26,7 +26,7 @@ export function createInvestorAgent(deps: AgentDeps) {
   const failures = new Map<string, number>(); // invoice id -> failed buy attempts
   let stopped = false;
 
-  function line(inv: Invoice, score: ScoreResult | null, d: Decision, outcome: string) {
+  function line(inv: Invoice, score: BuyerScore | null, d: Decision, outcome: string) {
     log(`invoice=${inv.id} band=${score?.band ?? "?"} discount=${discountBps(inv)}bps ${outcome} reason="${d.reason}"`);
   }
 

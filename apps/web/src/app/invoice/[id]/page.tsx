@@ -43,7 +43,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             <Row label={copy.invoice.supplier}><TxLink address={inv.supplier} /></Row>
             <Row label={copy.invoice.buyer}>
               <Link href={`/agent/${inv.buyerVault}`} className="text-accent">{inv.buyerVault.slice(0, 10)}…</Link>{" "}
-              {score && <ScoreBadge band={score.band} value={score.value} />}
+              {score && <ScoreBadge band={score.band} value={score.band === "New" ? null : score.onTimeRate} />}
             </Row>
             <Row label={copy.invoice.holder}>{inv.holder ? <TxLink address={inv.holder} /> : copy.invoice.holderNone}</Row>
           </dl>

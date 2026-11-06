@@ -1,9 +1,9 @@
-export * from "./chain.js";
-export * from "./types.js";
-export * from "./units.js";
-export * from "./schemas.js";
-export * from "./fixtures.js";
-export * from "./ens.js";
-export * from "./api.js";
-export * from "./payAndGet.js";
+export * from "./chain";
+export * from "./types";
+export * from "./units";
+export * from "./schemas";
+export * from "./fixtures";
+export * from "./ens";
+export * from "./api";
+export * from "./payAndGet";
 

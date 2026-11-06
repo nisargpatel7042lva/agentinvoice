@@ -1,4 +1,4 @@
-import type { Address, PayPolicy } from "./types.js";
+import type { Address, PayPolicy } from "./types";
 
 export interface PayAndGetOptions {
   policy?: Partial<PayPolicy>;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hbarToValue, valueToHbar, tinybarToValue, valueToTinybar } from "./units.js";
+import { hbarToValue, valueToHbar, tinybarToValue, valueToTinybar } from "./units";
 
 describe("Hedera unit conversions", () => {
   it("converts 1 HBAR to 18 decimals and back", () => {
