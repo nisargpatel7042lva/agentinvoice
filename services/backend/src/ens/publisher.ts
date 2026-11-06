@@ -1,4 +1,5 @@
 import type Database from "better-sqlite3";
+import { setMeta } from "../db.js";
 
 // Keeps the agent's public ENS record in sync with chain state. The publisher wallet may write ONLY paid, late and status
 // (least privilege, enforced on-chain by the resolver roles and again here). limit, threshold and addr belong to the sponsor.
@@ -93,7 +94,11 @@ export function createEnsPublisher(opts: EnsPublisherOptions) {
 
   async function publishNow(): Promise<PublishResult> {
     const current = await opts.deps.readText("status").catch(() => null);
-    return publishRecords(buildRecords(countsFromDb(opts.db, opts.vault), current), opts.deps);
+    const result = await publishRecords(buildRecords(countsFromDb(opts.db, opts.vault), current), opts.deps);
+    const now = String(Math.floor(Date.now() / 1000));
+    setMeta(opts.db, "last_ens_check_at", now); // for /health
+    if (result.written.length > 0) setMeta(opts.db, "last_ens_publish_at", now);
+    return result;
   }
 
   async function run() {
