@@ -4,7 +4,14 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CircleCheck } from "lucide-react";
 import type { Hash32 } from "@invoiceagent/shared";
-import { createInvoice, lookupBuyer } from "@/app/actions";
+import { useAccount, useReadContract, useSignMessage, useWriteContract } from "wagmi";
+import { waitForTransactionReceipt } from "wagmi/actions";
+import { parseEventLogs } from "viem";
+import { buyerVaultAbi, contracts, invoiceMarketAbi, parseUnits } from "@invoiceagent/shared";
+import { createInvoice, invoiceDescriptionMessage, lookupBuyer, setInvoiceDescription } from "@/app/actions";
+import { toast } from "@/components/ToastHost";
+import { explainTxError } from "@/lib/useChainTx";
+import { hederaTestnet, wagmiConfig } from "@/lib/wagmi";
 import type { BuyerLookup } from "@/lib/ens";
 import { useAction } from "@/components/ActionButton";
 import { Button, Card } from "@/components/ui";
@@ -33,6 +40,10 @@ export function SupplierForm({ aside }: { aside?: React.ReactNode }) {
   const [due, setDue] = useState("");
   const [description, setDescription] = useState("");
   const [evidence, setEvidence] = useState<Hash32 | null>(null);
+  const { address } = useAccount();
+  const { writeContractAsync } = useWriteContract();
+  const { signMessageAsync } = useSignMessage();
+  const [mining, setMining] = useState(false);
 
   // The buyer is looked up live: a 0x vault address as typed, or an ENS name read from Sepolia (mock mode: the sample name).
   const typed = buyer.trim();
@@ -53,12 +64,75 @@ export function SupplierForm({ aside }: { aside?: React.ReactNode }) {
   }, [typed]);
   const current = lookup.for === typed ? lookup.result : "loading";
   const resolved = current !== "loading" && current.kind === "ok" ? { vault: current.vault, status: current.agent?.status, limit: current.agent?.limit } : null;
+  // The buyer's vault only lets its agent pay sellers the buyer has allowed, so say so before the seller waits for nothing.
+  const { data: allowed } = useReadContract({
+    address: resolved?.vault as `0x${string}` | undefined,
+    abi: buyerVaultAbi,
+    functionName: "allowedSupplier",
+    args: address ? [address] : undefined,
+    chainId: hederaTestnet.id,
+    query: { enabled: Boolean(resolved && address) },
+  });
   const ready = !!resolved && !!evidence && !!face && !!price && !!due && !!description.trim();
 
+
+  // With a wallet connected the seller creates the invoice themselves, so they are its on-chain supplier. Without one, the platform issuer does it (demo fallback).
+  async function createFromWallet(vault: `0x${string}`, evidenceHash: Hash32) {
+    setMining(true);
+    try {
+      let faceAmount: bigint, priceAmount: bigint;
+      try {
+        faceAmount = parseUnits(face.trim());
+        priceAmount = parseUnits(price.trim());
+      } catch {
+        return toast("error", "Amounts must be numbers like 10 or 9.5.");
+      }
+      if (faceAmount <= 0n || priceAmount <= 0n || priceAmount > faceAmount) return toast("error", "The price must be above 0 and no more than the face amount.");
+      const dueDate = Math.floor(new Date(`${due}T12:00:00Z`).getTime() / 1000);
+      if (!Number.isFinite(dueDate) || dueDate * 1000 < Date.now()) return toast("error", "Pick a due date in the future.");
+      toast("pending", "Confirm in your wallet, then wait for the network…");
+      const hash = await writeContractAsync({
+        address: contracts.invoiceMarket,
+        abi: invoiceMarketAbi,
+        functionName: "createInvoice",
+        args: [vault, faceAmount, priceAmount, BigInt(dueDate), evidenceHash],
+        chainId: hederaTestnet.id,
+        gas: 600_000n, // Hedera under-estimates; a fixed limit above the real use
+      });
+      const receipt = await waitForTransactionReceipt(wagmiConfig, { hash, chainId: hederaTestnet.id });
+      if (receipt.status !== "success") throw new Error("The transaction was reverted.");
+      const created = parseEventLogs({ abi: invoiceMarketAbi, logs: receipt.logs, eventName: "InvoiceCreated" })[0] as { args?: { id?: bigint } } | undefined;
+      const id = created?.args?.id?.toString();
+      if (!id || !address) throw new Error("Created, but could not read the invoice number. Check your profile.");
+      toast("success", `Invoice #${id} created on Hedera testnet. Saving the description…`);
+      // The description is off-chain: sign it so only the real supplier can attach it, retrying until the indexer has seen the invoice.
+      const text = description.trim();
+      const msg = await invoiceDescriptionMessage(id, address, text);
+      if (msg.ok && msg.data) {
+        const signature = await signMessageAsync({ message: msg.data.message }).catch(() => null);
+        if (signature) {
+          for (let i = 0; i < 8; i += 1) {
+            const r = await setInvoiceDescription(id, address, text, signature);
+            if (r.ok || !r.retry) break;
+            await new Promise((resolve) => setTimeout(resolve, 3000));
+          }
+        } else toast("error", "The invoice is on-chain, but the description was not saved because signing was cancelled.");
+      }
+      router.push(`/invoice/${id}`);
+    } catch (e) {
+      toast("error", explainTxError(e));
+    } finally {
+      setMining(false);
+    }
+  }
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!evidence) return;
+    if (address && resolved) {
+      void createFromWallet(resolved.vault as `0x${string}`, evidence);
+      return;
+    }
     run(
       () => createInvoice({ buyerName: buyer, face, price, dueDate: due, description, evidenceHash: evidence }),
       (r) => r.ok && r.data && router.push(`/invoice/${r.data.id}`),
@@ -87,6 +161,11 @@ export function SupplierForm({ aside }: { aside?: React.ReactNode }) {
             )
           )}
         </label>
+        {resolved && address && allowed === false && (
+          <p className="-mt-2 rounded-lg border border-line bg-surface px-3 py-2 text-xs text-ink-soft">
+            This buyer has not allowed your wallet yet, so its agent will skip the invoice until they do. You can still create it. Ask the buyer to allow <span className="font-mono">{shortHex(address)}</span> on their profile.
+          </p>
+        )}
         <div className="grid gap-5 sm:grid-cols-2">
           <label className={label}>
             {copy.supplier.faceLabel} (HBAR)
@@ -117,8 +196,8 @@ export function SupplierForm({ aside }: { aside?: React.ReactNode }) {
           />
           <span className="mt-1.5 block text-xs font-normal text-ink-muted">{evidence ? `Fingerprint ${shortHex(evidence)}` : copy.supplier.evidenceHelp}</span>
         </label>
-        <Button type="submit" size="lg" disabled={!ready || pending} aria-busy={pending}>
-          {pending ? "Working…" : copy.supplier.submit}
+        <Button type="submit" size="lg" disabled={!ready || pending || mining} aria-busy={pending || mining}>
+          {pending || mining ? "Working…" : copy.supplier.submit}
         </Button>
       </form>
       {toastEl}
