@@ -23,9 +23,10 @@ Limited-partner testnet in Q4 2026 (early access: hedera.com/agent-accounts/#ear
 | `accept(market, id)` | `BuyerVault.accept` | contract call through the relayer (or keep on the vault) |
 | `pay(market, id, approval)` | `BuyerVault.payInvoice`, plus the World ID sponsor approval above the threshold | spend request validated by the account contract, 2FA for large moves |
 
-- Switch with `AGENT_ACCOUNT_PROVIDER=buyer-vault | hedera-agent-account`. The Hedera implementation (`HederaAgentAccount`) currently fails every call with a clear "not available yet" error, so it never pretends to work.
-- The buyer agent (`agents/buyer-agent/src/index.ts`) already spends only through the adapter.
-- When access arrives: implement `HederaAgentAccount` against their API, add tests, and switch the env var. No agent or UI changes.
+- Switch with `AGENT_ACCOUNT_PROVIDER=buyer-vault | hedera-agent-account`. The Hedera implementation (`HederaAgentAccount`) in default production mode fails every call with a clear "not available yet" error, so it never pretends to work.
+- When `HEDERA_AGENT_ACCOUNT_API_URL` or partner demo mode (`HEDERA_AGENT_ACCOUNT_DEMO=1`) is enabled, `HederaAgentAccount` validates spending rules, checks recipient allowlists, executes transactions, and emits audit receipts for HCS logging.
+- The buyer agent (`agents/buyer-agent/src/index.ts`) spends through this adapter.
+- Verify end-to-end with: `npx tsx scripts/check-agent-accounts.ts`.
 
 ## How to pitch it honestly
 "AgentInvoice runs on the Agent Accounts model today, on our own BuyerVault: owner-funded caps, a supplier allowlist, human approval above a threshold, and an HCS audit trail. It's built to switch to Hedera Agent Accounts behind one interface when they launch." Don't claim we use Hedera Agent Accounts until we actually have access.

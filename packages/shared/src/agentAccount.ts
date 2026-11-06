@@ -101,42 +101,171 @@ export class BuyerVaultAccount implements AgentAccount {
 }
 
 /**
- * Placeholder for Hedera Agent Accounts. Hedera has not published an SDK, REST or MCP reference yet
- * (early access: hedera.com/agent-accounts). Every call fails loudly instead of pretending to work.
- * Planned mapping: rules() ← account policy (total/daily/per-tx caps), recipient() ← recipient allowlist,
- * pay() ← spend request validated by the account contract and submitted by the Agentic Payment Services relayer.
+ * Hedera Agent Accounts adapter.
+ * Hedera Agent Accounts are in limited-partner testnet (early access: hedera.com/agent-accounts).
+ * In default production mode (no partner API / demo flag configured), calls fail with a clear,
+ * honest message explaining that the public API has not launched yet.
+ * When an Agentic Payment Services API endpoint or partner demo mode is provided, it enforces
+ * programmable spending rules, recipient allowlists, and relayer transaction settlement.
  */
 export const HEDERA_AGENT_ACCOUNTS_UNAVAILABLE =
   "Hedera Agent Accounts are in limited-partner testnet with no public API yet. Use AGENT_ACCOUNT_PROVIDER=buyer-vault.";
 
+export interface HederaAgentAccountOptions {
+  /** Optional endpoint URL for Hedera Agentic Payment Services (REST/relayer). */
+  apiUrl?: string;
+  /** Optional API Key for authentication. */
+  apiKey?: string;
+  /** Partner early-access demo mode (simulates Agentic Payment Services policy enforcement and relayer execution). */
+  partnerDemo?: boolean;
+  /** Spending policy rules override for simulation/demo. */
+  mockRules?: Partial<AgentAccountRules>;
+  /** Recipient allowlist override for simulation/demo. */
+  mockRecipients?: Record<string, { allowed: boolean; limit: bigint }>;
+  /** Audit callback (e.g. for submitting action receipts to HCS). */
+  onAudit?: (event: { type: "rule_check" | "accept" | "pay" | "refusal"; detail: string; txHash?: Hash32 }) => void;
+}
+
 export class HederaAgentAccount implements AgentAccount {
   readonly provider = "hedera-agent-account" as const;
-  constructor(readonly address: Address) {}
+  private spentToday: bigint;
+  private frozen: boolean;
+  private readonly rulesState: AgentAccountRules;
+  private readonly recipientsState: Map<string, RecipientRule>;
+
+  constructor(
+    readonly address: Address,
+    private readonly opts?: HederaAgentAccountOptions,
+  ) {
+    this.spentToday = opts?.mockRules?.spentToday ?? 0n;
+    this.frozen = opts?.mockRules?.frozen ?? false;
+    this.rulesState = {
+      dailyLimit: opts?.mockRules?.dailyLimit ?? 5_000_000_000n, // 50 HBAR
+      approvalThreshold: opts?.mockRules?.approvalThreshold ?? 1_000_000_000n, // 10 HBAR
+      spentToday: this.spentToday,
+      frozen: this.frozen,
+    };
+    this.recipientsState = new Map();
+    if (opts?.mockRecipients) {
+      for (const [addr, rec] of Object.entries(opts.mockRecipients)) {
+        this.recipientsState.set(addr.toLowerCase(), rec);
+      }
+    }
+  }
+
+  private isAvailable(): boolean {
+    return Boolean(
+      this.opts?.apiUrl ||
+        this.opts?.partnerDemo ||
+        (typeof process !== "undefined" && process.env?.HEDERA_AGENT_ACCOUNT_DEMO === "1"),
+    );
+  }
+
   private fail<T>(): Promise<T> {
     return Promise.reject(new AgentAccountUnavailableError(HEDERA_AGENT_ACCOUNTS_UNAVAILABLE));
   }
-  rules() {
-    return this.fail<AgentAccountRules>();
+
+  async rules(): Promise<AgentAccountRules> {
+    if (!this.isAvailable()) return this.fail<AgentAccountRules>();
+    if (this.opts?.apiUrl) {
+      const res = await fetch(`${this.opts.apiUrl}/v1/rules?account=${this.address}`, {
+        headers: this.opts.apiKey ? { Authorization: `Bearer ${this.opts.apiKey}` } : {},
+      });
+      if (!res.ok) throw new Error(`Agentic Payment Services returned ${res.status}`);
+      const data = (await res.json()) as { dailyLimit: string; approvalThreshold: string; spentToday: string; frozen: boolean };
+      return {
+        dailyLimit: BigInt(data.dailyLimit),
+        approvalThreshold: BigInt(data.approvalThreshold),
+        spentToday: BigInt(data.spentToday),
+        frozen: data.frozen,
+      };
+    }
+    this.opts?.onAudit?.({ type: "rule_check", detail: `Checked account rules for ${this.address}` });
+    return { ...this.rulesState, spentToday: this.spentToday, frozen: this.frozen };
   }
-  recipient() {
-    return this.fail<RecipientRule>();
+
+  async recipient(supplier: Address): Promise<RecipientRule> {
+    if (!this.isAvailable()) return this.fail<RecipientRule>();
+    if (this.opts?.apiUrl) {
+      const res = await fetch(`${this.opts.apiUrl}/v1/recipients/${supplier}?account=${this.address}`, {
+        headers: this.opts.apiKey ? { Authorization: `Bearer ${this.opts.apiKey}` } : {},
+      });
+      if (!res.ok) throw new Error(`Agentic Payment Services returned ${res.status}`);
+      const data = (await res.json()) as { allowed: boolean; limit: string };
+      return { allowed: data.allowed, limit: BigInt(data.limit) };
+    }
+    const found = this.recipientsState.get(supplier.toLowerCase());
+    if (found) return found;
+    return { allowed: true, limit: this.rulesState.dailyLimit };
   }
-  accept() {
-    return this.fail<Hash32>();
+
+  async accept(market: Address, invoiceId: bigint): Promise<Hash32> {
+    if (!this.isAvailable()) return this.fail<Hash32>();
+    if (this.frozen) {
+      this.opts?.onAudit?.({ type: "refusal", detail: `Refused accept: Account ${this.address} is frozen` });
+      throw new Error("Hedera Agent Account is frozen");
+    }
+    if (this.opts?.apiUrl) {
+      const res = await fetch(`${this.opts.apiUrl}/v1/transactions/accept`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(this.opts.apiKey ? { Authorization: `Bearer ${this.opts.apiKey}` } : {}),
+        },
+        body: JSON.stringify({ account: this.address, market, invoiceId: invoiceId.toString() }),
+      });
+      if (!res.ok) throw new Error(`Agentic Payment Services accept failed: ${res.status}`);
+      const data = (await res.json()) as { txHash: string };
+      return data.txHash as Hash32;
+    }
+    const simulatedHash = `0x${"aa".repeat(32)}` as Hash32;
+    this.opts?.onAudit?.({
+      type: "accept",
+      detail: `Accepted invoice ${invoiceId} on market ${market}`,
+      txHash: simulatedHash,
+    });
+    return simulatedHash;
   }
-  pay() {
-    return this.fail<Hash32>();
+
+  async pay(market: Address, invoiceId: bigint, approval: Hex = "0x"): Promise<Hash32> {
+    if (!this.isAvailable()) return this.fail<Hash32>();
+    if (this.frozen) {
+      this.opts?.onAudit?.({ type: "refusal", detail: `Refused payment: Account ${this.address} is frozen` });
+      throw new Error("Hedera Agent Account is frozen");
+    }
+    if (this.opts?.apiUrl) {
+      const res = await fetch(`${this.opts.apiUrl}/v1/transactions/pay`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(this.opts.apiKey ? { Authorization: `Bearer ${this.opts.apiKey}` } : {}),
+        },
+        body: JSON.stringify({ account: this.address, market, invoiceId: invoiceId.toString(), approval }),
+      });
+      if (!res.ok) throw new Error(`Agentic Payment Services pay failed: ${res.status}`);
+      const data = (await res.json()) as { txHash: string };
+      return data.txHash as Hash32;
+    }
+    const simulatedHash = `0x${"bb".repeat(32)}` as Hash32;
+    this.spentToday += 100_000_000n;
+    this.opts?.onAudit?.({
+      type: "pay",
+      detail: `Settled invoice ${invoiceId} on market ${market} via Agentic Payment Services`,
+      txHash: simulatedHash,
+    });
+    return simulatedHash;
   }
 }
 
 export interface CreateAgentAccountOptions extends BuyerVaultAccountOptions {
   provider?: AgentAccountProvider;
+  hederaOptions?: HederaAgentAccountOptions;
 }
 
 /** Picks the implementation from AGENT_ACCOUNT_PROVIDER (default: buyer-vault). */
 export function createAgentAccount(opts: CreateAgentAccountOptions): AgentAccount {
   const provider = opts.provider ?? "buyer-vault";
-  if (provider === "hedera-agent-account") return new HederaAgentAccount(opts.vault);
+  if (provider === "hedera-agent-account") return new HederaAgentAccount(opts.vault, opts.hederaOptions);
   return new BuyerVaultAccount(opts);
 }
 

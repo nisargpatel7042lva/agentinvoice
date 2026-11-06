@@ -34,7 +34,18 @@ async function start(stop: { stopped: boolean }): Promise<void> {
   const wallet = account ? createWalletClient({ account, chain, transport: http(config.rpcUrl) }) : undefined;
   const market = config.marketAddress;
   // All spending goes through the AgentAccount adapter: BuyerVault today, Hedera Agent Accounts when their API ships.
-  const spender = createAgentAccount({ provider: config.accountProvider, vault: config.buyerVaultAddress, reader, writer: wallet });
+  const spender = createAgentAccount({
+    provider: config.accountProvider,
+    vault: config.buyerVaultAddress,
+    reader,
+    writer: wallet,
+    hederaOptions: {
+      apiUrl: process.env.HEDERA_AGENT_ACCOUNT_API_URL,
+      apiKey: process.env.HEDERA_AGENT_ACCOUNT_API_KEY,
+      partnerDemo: process.env.HEDERA_AGENT_ACCOUNT_DEMO === "1",
+      onAudit: (e) => log(`[hedera-agent-account audit] ${e.type}: ${e.detail}${e.txHash ? ` tx=${e.txHash}` : ""}`),
+    },
+  });
 
   const agent = createBuyerAgent({
     api: createApiClient({ baseUrl: config.backendUrl }),
