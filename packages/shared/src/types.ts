@@ -54,11 +54,26 @@ export interface ApprovalStart {
   authorizationUrl: string;
 }
 
+export type ScoreBand = "New" | "A" | "B" | "C";
+
+export interface BuyerScore {
+  vault: Address;
+  band: ScoreBand;
+  onTimeRate: number; // 0 to 100
+  paid: number;
+  late: number;
+  defaulted: number;
+  openExposure: Amount;
+  evidence: string[]; // transaction IDs / mirror hashes
+  asOf: number; // unix seconds
+}
+
 export interface Score {
   agent: Address;
   value: number;
   updatedAt: number;
 }
+
 
 export interface AuditEvent {
   topicId: string; // HCS topic, e.g. 0.0.12345

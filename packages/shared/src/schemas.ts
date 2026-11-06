@@ -80,3 +80,18 @@ export const PayPolicySchema = z.object({
   allowedPayTo: z.array(AddressSchema),
   allowedHosts: z.array(z.string()),
 }) satisfies z.ZodType<PayPolicy>;
+
+export const ScoreBandSchema = z.enum(["New", "A", "B", "C"]);
+
+export const BuyerScoreSchema = z.object({
+  vault: AddressSchema,
+  band: ScoreBandSchema,
+  onTimeRate: z.number().min(0).max(100),
+  paid: z.number().int().nonnegative(),
+  late: z.number().int().nonnegative(),
+  defaulted: z.number().int().nonnegative(),
+  openExposure: AmountSchema,
+  evidence: z.array(z.string()),
+  asOf: z.number().int(),
+});
+
