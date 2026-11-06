@@ -21,11 +21,21 @@
         "vitest": "^5.1.0",
       },
     },
+    "agents/buyer-agent": {
+      "name": "@agentinvoice/buyer-agent",
+      "version": "0.0.0",
+      "dependencies": {
+        "zod": "^4.6.7",
+      },
+      "devDependencies": {
+        "tsx": "^4.23.15",
+      },
+    },
     "agents/investor-agent": {
       "name": "@agentinvoice/investor-agent",
       "version": "0.0.0",
       "dependencies": {
-        "@agentinvoice/shared": "workspace:*",
+        "@agentinvoice/shared": "*",
         "viem": "^2.57.16",
       },
     },
@@ -33,7 +43,7 @@
       "name": "@agentinvoice/web",
       "version": "0.0.0",
       "dependencies": {
-        "@agentinvoice/shared": "workspace:*",
+        "@agentinvoice/shared": "*",
         "next": "16.4.5",
         "react": "19.3.1",
         "react-dom": "19.3.1",
@@ -59,7 +69,7 @@
       "name": "@agentinvoice/backend",
       "version": "0.0.0",
       "dependencies": {
-        "@agentinvoice/shared": "workspace:*",
+        "@agentinvoice/shared": "*",
         "@fastify/rate-limit": "^11.2.2",
         "@hashgraph/sdk": "^2.81.0",
         "@worldcoin/agentkit": "^0.2.1",
@@ -91,6 +101,8 @@
     "@adraffy/ens-normalize": ["@adraffy/ens-normalize@1.11.1", "", {}, "sha512-nhCBV3quEgesuf7c7KYfperqSS14T8bYuvJ8PcLJp6znkZpFc0AuW4qBtr8eKVyPPe/8RSr7sglCWPU5eaxwKQ=="],
 
     "@agentinvoice/backend": ["@agentinvoice/backend@workspace:services/backend"],
+
+    "@agentinvoice/buyer-agent": ["@agentinvoice/buyer-agent@workspace:agents/buyer-agent"],
 
     "@agentinvoice/investor-agent": ["@agentinvoice/investor-agent@workspace:agents/investor-agent"],
 
