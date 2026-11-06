@@ -1,4 +1,5 @@
 import { Banner } from "@/components/Banner";
+import { RoleGate } from "@/components/RoleGate";
 import { SupplierForm } from "./SupplierForm";
 
 const NEXT = [
@@ -33,7 +34,9 @@ export default function SupplierPage() {
           </ol>
         }
       />
-      <SupplierForm />
+      <RoleGate>
+        <SupplierForm />
+      </RoleGate>
     </div>
   );
 }

@@ -11,7 +11,7 @@ import { Section } from "@/components/Section";
 import { MarketTable, type MarketRow } from "@/components/MarketTable";
 import { buttonVariants } from "@/components/ui";
 import { api } from "@/lib/api";
-import { loadEnsByVault } from "@/lib/agents";
+import { loadEnsByVault, registeredNames } from "@/lib/agents";
 import { loadCreditReport } from "@/lib/credit";
 import { copy } from "@/lib/copy";
 import { formatAmount } from "@/lib/format";
@@ -27,8 +27,8 @@ export default async function MarketplacePage() {
   const info = new Map(
     await Promise.all(
       vaults.map(async (v) => {
-        const [creditReport, ens] = await Promise.all([loadCreditReport(v), loadEnsByVault(v)]);
-        return [v, { creditReport, name: "agent" in ens ? ens.agent?.name : undefined }] as const;
+        const [creditReport, ens, names] = await Promise.all([loadCreditReport(v), loadEnsByVault(v), registeredNames()]);
+        return [v, { creditReport, name: ("agent" in ens ? ens.agent?.name : undefined) ?? names.get(v) }] as const;
       }),
     ),
   );
