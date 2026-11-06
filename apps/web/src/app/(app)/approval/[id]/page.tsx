@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/PageHeader";
 import { ApprovalActions } from "@/components/ApprovalActions";
 import { EmptyState } from "@/components/EmptyState";
 import { api } from "@/lib/api";
@@ -15,11 +16,8 @@ export default async function ApprovalPage({ params }: { params: Promise<{ id: s
   const agent = "agent" in ens ? ens.agent : undefined;
 
   return (
-    <div className="mx-auto grid max-w-xl gap-5">
-      <div>
-        <h1 className="text-[28px] leading-9 font-semibold tracking-tight">{copy.approval.title}</h1>
-        <p className="mt-1 text-sm text-ink-muted">You are the sponsor: the person responsible for this buyer agent.</p>
-      </div>
+    <div className="grid max-w-xl gap-6">
+      <PageHeader title={copy.approval.title} sub="You are the sponsor: the person responsible for this buyer agent." />
       <ApprovalActions
         approval={approval}
         agentName={agent?.name ?? invoice?.buyerVault ?? "The buyer agent"}

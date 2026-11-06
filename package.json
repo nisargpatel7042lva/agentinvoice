@@ -1,5 +1,5 @@
 {
-  "name": "agentinvoice",
+  "name": "invoiceagent",
   "private": true,
   "version": "0.0.0",
   "workspaces": [
@@ -24,7 +24,7 @@
     "node": ">=20"
   },
   "devDependencies": {
-    "@agentinvoice/shared": "workspace:*",
+    "@invoiceagent/shared": "workspace:*",
     "@eslint/js": "^10.0.1",
     "@hashgraph/sdk": "^2.81.0",
     "@testing-library/dom": "^10.4.2",

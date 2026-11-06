@@ -1,6 +1,6 @@
 import type { Address, CreditFactor, CreditReport, Invoice, ScoreBand } from "./types";
 
-export const CREDIT_MODEL_VERSION = "agentinvoice-credit-v1";
+export const CREDIT_MODEL_VERSION = "invoiceagent-credit-v1";
 
 export interface ComputeCreditReportParams {
   vault: Address;

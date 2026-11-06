@@ -7,6 +7,8 @@ import {
   InvoiceListSchema,
   InvoiceSchema,
   BuyerScoreSchema,
+  SaucerSwapQuoteSchema,
+  SaucerSwapStatusSchema,
 } from "./schemas";
 import {
   approvalFixture,
@@ -92,6 +94,54 @@ export function createApiClient(opts: ApiClientOptions = {}) {
     getScoreMock: (vault: string) => {
       const s = scoreFixtures.find((x) => x.vault.toLowerCase() === vault.toLowerCase());
       return s ? Promise.resolve(BuyerScoreSchema.parse(s)) : notFound(`score ${vault}`);
+    },
+
+    /** Read-only SaucerSwap treasury status (503 when backend feature is off). */
+    getSaucerSwapStatus: () =>
+      mock
+        ? Promise.resolve(
+            SaucerSwapStatusSchema.parse({
+              network: "testnet",
+              usdc: {
+                tokenId: "0.0.5449",
+                symbol: "USDC",
+                decimals: 6,
+                label: "SaucerSwap testnet USDC",
+                caveat:
+                  "SaucerSwap testnet USDC (0.0.5449) is not Circle's official testnet USDC (0.0.429274). Circle's token has no SaucerSwap testnet pool.",
+                circleOfficialTokenId: "0.0.429274",
+              },
+              contracts: {
+                whbarTokenId: "0.0.15058",
+                quoterV2: "0.0.1390002",
+                swapRouter: "0.0.1414040",
+              },
+              dryRun: true,
+            }),
+          )
+        : call(SaucerSwapStatusSchema, "/api/saucerswap/status"),
+
+    /** Read-only HBAR→USDC quote (amountInTinybar defaults to 1 HBAR on the server). */
+    getSaucerSwapQuote: (amountInTinybar?: string) => {
+      const q = amountInTinybar ? `?amountInTinybar=${encodeURIComponent(amountInTinybar)}` : "";
+      if (mock) {
+        return Promise.resolve(
+          SaucerSwapQuoteSchema.parse({
+            ok: true,
+            amountInTinybar: amountInTinybar ?? "100000000",
+            amountOut: "2425296",
+            amountOutMinimum: "2401043",
+            fee: 3000,
+            tokenOut: "0.0.5449",
+            quotedAt: Math.floor(Date.now() / 1000),
+            expiresAt: Math.floor(Date.now() / 1000) + 30,
+            usdcLabel: "SaucerSwap testnet USDC",
+            caveat:
+              "SaucerSwap testnet USDC (0.0.5449) is not Circle's official testnet USDC (0.0.429274). Circle's token has no SaucerSwap testnet pool.",
+          }),
+        );
+      }
+      return call(SaucerSwapQuoteSchema, `/api/saucerswap/quote${q}`);
     },
   };
 }

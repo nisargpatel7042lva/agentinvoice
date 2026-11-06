@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { partyOf, sampleNetworkInvoices } from "./directory";
+import { partyOf, sampleNetworkInvoices } from "./graph.fixtures";
 import { buildGraph, egoGraph } from "./graph";
 
 const look = { party: partyOf, band: (v: string) => (v.startsWith("0x2222") ? ("A" as const) : undefined) };

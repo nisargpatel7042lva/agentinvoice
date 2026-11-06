@@ -1,5 +1,5 @@
 {
-  "name": "@agentinvoice/backend",
+  "name": "@invoiceagent/backend",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,7 +10,7 @@
     "@types/better-sqlite3": "^9.6.0"
   },
   "dependencies": {
-    "@agentinvoice/shared": "*",
+    "@invoiceagent/shared": "*",
     "@fastify/rate-limit": "^11.2.2",
     "@hashgraph/sdk": "^2.81.0",
     "@worldcoin/agentkit": "^0.2.1",

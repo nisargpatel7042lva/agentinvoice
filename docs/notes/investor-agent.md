@@ -1,6 +1,6 @@
 # Investor agent notes (2026-11-06)
 
-**Missing inputs:** `docs/notes/x402-hedera.md` and the `payAndGet(url)` helper don't exist on any branch yet (they're Mann's). The agent takes `payAndGet` as an injected dependency, and `main.ts` refuses to start until `@agentinvoice/shared` exports it. We write no payment code ourselves.
+**Missing inputs:** `docs/notes/x402-hedera.md` and the `payAndGet(url)` helper don't exist on any branch yet (they're Mann's). The agent takes `payAndGet` as an injected dependency, and `main.ts` refuses to start until `@invoiceagent/shared` exports it. We write no payment code ourselves.
 
 - **Code:** `agents/investor-agent/src`.
   - `decide.ts`: pure rules.

@@ -1,6 +1,6 @@
 "use client";
 
-import type { Amount, Approval } from "@agentinvoice/shared";
+import type { Amount, Approval } from "@invoiceagent/shared";
 import { copy } from "@/lib/copy";
 import { formatAmount } from "@/lib/format";
 import { Card } from "./Card";

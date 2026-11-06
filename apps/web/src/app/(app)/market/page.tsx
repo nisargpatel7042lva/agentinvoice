@@ -1,11 +1,15 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { ArrowDown, Plus } from "lucide-react";
+import { formatUnits } from "@invoiceagent/shared";
+import { Banner } from "@/components/Banner";
+import { BestReturns } from "@/components/BestReturns";
+import { CountUp } from "@/components/CountUp";
 import { FaceByStatusChart } from "@/components/charts";
 import { EmptyState } from "@/components/EmptyState";
 import { HowItWorks } from "@/components/HowItWorks";
 import { Section } from "@/components/Section";
 import { MarketTable, type MarketRow } from "@/components/MarketTable";
-import { buttonVariants, Card, CardContent, CardHeader, CardTitle, Progress, StatCard } from "@/components/ui";
+import { buttonVariants } from "@/components/ui";
 import { api } from "@/lib/api";
 import { loadEnsByVault } from "@/lib/agents";
 import { loadCreditReport } from "@/lib/credit";
@@ -39,59 +43,74 @@ export default async function MarketplacePage() {
   });
   const s = marketStats(invoices);
 
+  const hb = (x: bigint) => Number(formatUnits(x));
+  const d = (n: number) => ({ ["--d" as string]: n + "s" });
+
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-[28px] leading-9 font-semibold tracking-tight">{copy.market.title}</h1>
-          <p className="mt-1.5 text-[15px] text-ink-muted">{copy.market.subtitle}</p>
-          <ul aria-label="Market summary" className="mt-3 flex flex-wrap gap-2 text-[13px]">
-            <li className="rounded-full border border-line bg-surface px-3 py-1 text-ink-soft">
-              <span className="font-semibold text-ink">{s.openCount}</span> ready to fund
-            </li>
-            {s.avgDiscountPct != null && (
-              <li className="rounded-full border border-line bg-surface px-3 py-1 text-ink-soft">
-                Average discount <span className="font-semibold text-ink">{s.avgDiscountPct.toFixed(1)}%</span>
-              </li>
-            )}
-            {s.onTimePct != null && (
-              <li className="rounded-full border border-line bg-surface px-3 py-1 text-ink-soft">
-                <span className="font-semibold text-status-paid">{Math.round(s.onTimePct)}%</span> repaid on time
-              </li>
-            )}
-          </ul>
-        </div>
-        <Link href="/supplier" className={buttonVariants({ variant: "outline" })}>
-          <Plus aria-hidden="true" />
-          I&apos;m a supplier
-        </Link>
-      </div>
+    <div className="flex flex-col gap-8">
+      <Banner
+        hue="apricot"
+        eyebrow="Marketplace"
+        title={
+          <>
+            Fund invoices
+            <br />
+            <em>before they&apos;re due.</em>
+          </>
+        }
+        sub={copy.market.subtitle}
+        action={
+          <>
+            <a href="#market" className={buttonVariants({ size: "lg" })}>
+              Browse invoices
+              <ArrowDown aria-hidden="true" />
+            </a>
+            <Link href="/supplier" className={buttonVariants({ variant: "ghost", size: "lg", className: "text-[#161513] hover:bg-white/40" })}>
+              <Plus aria-hidden="true" />
+              {copy.nav.supplier}
+            </Link>
+          </>
+        }
+        cards={
+          <div className="grid grid-cols-2 gap-3">
+            <div className="pl-card pl-coral flex flex-col gap-1.5" style={d(0.1)}>
+              <span className="pl-k">Ready to fund</span>
+              <span className="pl-big">
+                <CountUp value={s.openCount} /> {s.openCount === 1 ? "invoice" : "invoices"}
+              </span>
+              <span className="pl-chip">{formatAmount(s.openFace.toString())} face value</span>
+            </div>
+            <div className="pl-card pl-dark flex flex-col gap-1 sm:translate-y-5" style={d(0.25)}>
+              <span className="pl-k">Repaid on time</span>
+              <span className="pl-serif text-[44px] leading-none">{s.onTimePct == null ? "—" : <CountUp value={Math.round(s.onTimePct)} suffix="%" />}</span>
+              <span className="text-xs text-white/60">Of {s.settledCount} settled invoices</span>
+            </div>
+            <div className="pl-card pl-glass col-span-2 grid grid-cols-2 gap-3" style={d(0.4)}>
+              <span>
+                <span className="pl-k block">Average discount</span>
+                <span className="mt-1 block text-xl font-semibold">{s.avgDiscountPct == null ? "—" : <CountUp value={s.avgDiscountPct} decimals={1} suffix="%" />}</span>
+              </span>
+              <span>
+                <span className="pl-k block">Funded so far</span>
+                <span className="mt-1 block text-xl font-semibold">
+                  <CountUp value={hb(s.fundedVolume)} decimals={1} suffix=" HBAR" />
+                </span>
+              </span>
+            </div>
+          </div>
+        }
+      />
+
+      <BestReturns rows={rows} />
 
       <HowItWorks />
 
-      <MarketTable rows={rows} />
+      <div id="market" className="scroll-mt-24">
+        <MarketTable rows={rows} />
+      </div>
 
       <Section title={copy.market.overview} hint={copy.market.overviewHint}>
-      <div className="flex flex-col gap-4">
-      <section className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
-        <StatCard label="Open for funding" value={`${s.openCount} ${s.openCount === 1 ? "invoice" : "invoices"}`} sub={`${formatAmount(s.openFace.toString())} face value`} />
-        <StatCard label="Average discount" value={s.avgDiscountPct == null ? "—" : `${s.avgDiscountPct.toFixed(1)}%`} sub="Across open invoices" />
-        <StatCard label="Funded so far" value={formatAmount(s.fundedVolume.toString())} sub={`${s.fundedCount} invoices funded by investors`} />
-        <StatCard label="Repaid on time" value={s.onTimePct == null ? "—" : `${Math.round(s.onTimePct)}%`} sub={`Of ${s.settledCount} settled invoices`}>
-          {s.onTimePct != null && <Progress value={s.onTimePct} label="Share of settled invoices repaid on time" barClassName="bg-status-paid" />}
-        </StatCard>
-      </section>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Invoice value by status</CardTitle>
-          <span className="text-xs text-ink-muted">From on-chain invoices</span>
-        </CardHeader>
-        <CardContent>
-          <FaceByStatusChart data={faceByStatus(invoices)} />
-        </CardContent>
-      </Card>
-      </div>
+        <FaceByStatusChart data={faceByStatus(invoices)} />
       </Section>
     </div>
   );

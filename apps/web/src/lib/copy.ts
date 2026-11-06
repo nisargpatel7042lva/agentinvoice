@@ -1,14 +1,13 @@
 // Mirrors docs/design/copy.md. Change wording there first, then here.
-import type { ScoreBand, Status } from "@agentinvoice/shared";
+import type { ScoreBand, Status } from "@invoiceagent/shared";
 
 export const copy = {
   banner: {
     testnet: "Testnet prototype. Not financial advice.",
     cached: "Some values on this page are cached from our server and may be a few minutes old.",
-    mock: "Showing sample data (mock mode).",
   },
   onboarding: {
-    title: "New here? It takes three steps",
+    title: "New here? Start with your role",
     dismiss: "Got it",
     steps: [
       { title: "Pick an invoice", body: "Each one is money a buyer owes a supplier. Start with an A score: those buyers pay on time." },
@@ -36,13 +35,13 @@ export const copy = {
     permissions: "Who can change these values",
     details: "Show details",
   },
-  nav: { brand: "AgentInvoice", market: "Marketplace", supplier: "Create invoice", backMarket: "Back to marketplace" },
+  nav: { brand: "Invoice Agent", market: "Marketplace", supplier: "Create invoice", treasury: "USDC treasury", backMarket: "Back to marketplace" },
   wallet: { connect: "Connect wallet", connectToFund: "Connect a wallet to fund this invoice" },
   money: { where: "Where the money is" },
   sponsor: { accountable: "Sponsor (accountable for this buyer)" },
   market: {
-    title: "Fund an invoice, get paid back more",
-    subtitle: "Pay a supplier now. The buyer pays you the full amount on the due date.",
+    title: "Marketplace",
+    subtitle: "Fund an invoice today, get the full amount back on the due date.",
     overview: "Market overview",
     overviewHint: "Totals and charts for every invoice",
     filterAll: "All statuses",
@@ -122,7 +121,7 @@ export const copy = {
     labels: { vault: "addr", limit: "limit", threshold: "threshold", paid: "paid", late: "late", status: "status", expiresAt: "expires", name: "name" },
     permissionsTitle: "Who can change what",
     unreachable: "We cannot reach ENS right now, so these values are hidden rather than guessed. Try again in a minute.",
-    missing: "This name has no AgentInvoice records yet.",
+    missing: "This name has no Invoice Agent records yet.",
     expired: "This ENS name has expired. Treat this agent as unverified.",
     revoked: "This agent's name was revoked by its sponsor. Do not fund new invoices for it.",
   },

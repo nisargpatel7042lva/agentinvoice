@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import type { Amount, Approval } from "@agentinvoice/shared";
-import { decideApproval, payInvoice } from "@/app/actions";
-import { ActionButton, useAction } from "@/components/ActionButton";
+import type { Amount, Approval } from "@invoiceagent/shared";
+import { decideApproval } from "@/app/actions";
+import { useAction } from "@/components/ActionButton";
 import { ApprovalCard } from "@/components/ApprovalCard";
 import { buttonVariants } from "@/components/ui";
-import { isMock } from "@/lib/env";
 
 export function ApprovalActions({ approval, agentName, amount, threshold }: { approval: Approval; agentName: string; amount: Amount; threshold: Amount }) {
   const { run, toastEl } = useAction();
@@ -26,12 +25,6 @@ export function ApprovalActions({ approval, agentName, amount, threshold }: { ap
         }
         onReject={() => run(() => decideApproval(approval.id, false, approval.invoiceId))}
       />
-      {isMock && approval.state === "approved" && (
-        <div className="flex flex-wrap gap-2">
-          <ActionButton action={() => payInvoice(approval.invoiceId)}>Let the buyer agent pay now</ActionButton>
-          <Link href={`/invoice/${approval.invoiceId}`} className={buttonVariants({ variant: "outline" })}>View invoice</Link>
-        </div>
-      )}
       {approval.state === "rejected" && (
         <Link href={`/invoice/${approval.invoiceId}`} className={buttonVariants({ variant: "outline" })}>View invoice</Link>
       )}

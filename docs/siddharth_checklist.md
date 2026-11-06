@@ -20,7 +20,7 @@ World Agent Pass step-up (v2-S1, replaces old AgentKit Prompt 1; 90 min)
 - [x] 1.3 `src/world/stepup.ts`: `startStepUp(approvalId)` builds the authorization URL (state = approval id, random nonce, PKCE)
 - [x] 1.4 `handleCallback(code, state)`: exchange code, validate ID token (signature, issuer, audience, nonce, expiry, recent auth time), distinct error codes
 - [x] 1.5 Failure-path tests (cancel, expired approval, reused state, wrong nonce, stale auth time): protected action never happens; mocked key set in unit tests
-- [ ] 1.6 One real flow on the real portal
+- [x] 1.6 One real flow on the real portal (2026-11-06: step-up validated live via an ngrok callback, Orb acr, auth_time fresh; scripts/world-stepup-live.ts)
 - [x] 1.7 (draft started, finish after 1.6) Start `docs/FEEDBACK_WORLD.md` (time to first success, friction, doc gaps, top improvement)
 
 ENSv2 namespaces (Prompt 2 + v2-S2)
@@ -88,6 +88,23 @@ ENS publisher (Prompt 5 + v2-S4)
 - [x] 5.2 Remove dead code and unused dependencies
 - [ ] 5.3 Final `docs/FEEDBACK_WORLD.md` pass (integration debrief for the World prize)
 - [ ] 5.4 Reviewer duty: read contract and approval changes in a fresh chat before Nisarg merges
+
+## Phase 6: Hedera Tokenize prize (ATS bond per funded invoice) - branch `phase_9_tokenize_sidd`
+
+Prize: Tokenize Anything with Hedera Studios ($5,000: 1st $2,500, 2nd $1,500, 3rd $1,000). Needs ATS or Stablecoin Studio, deployed and demoed on Hedera testnet,
+a public repo (contracts verified on HashScan where applicable), and a demo video of 5 minutes or less showing issuance, configuration and one lifecycle operation.
+Extra points: compliance controls (KYC, freeze, transfer restrictions, pause), scheduled transactions, oracle/NAV feed, contributions back to ATS.
+Route is decided: T1b (see `docs/notes/ats.md`, spec section "Bond routes"). The funded invoice is tokenized as an ATS bond: the token is the investor's proof of the invoice, and repayment goes to the investor (`holder`).
+
+- [ ] 6.1 Create the ATS bond on testnet (admin app or `@hashgraph/asset-tokenization-sdk`): name, symbol, nominal value, maturity. Write the token address in `docs/notes/ats.md` and in `packages/shared/src/addresses.json`
+- [ ] 6.2 Backend issuer service (`IBondIssuer`): on `InvoiceFunded`, grant KYC to the investor and `issue` bond units to the holder; store the token address in the invoice's `bond` field; idempotent and retried (never issue twice)
+- [ ] 6.3 Settlement: when the invoice is Paid and the holder claims, `redeem` (burn) the units; show it as the lifecycle operation in the demo
+- [ ] 6.4 Compliance demo: KYC list for investors, transfer restriction or freeze/lock on default (ties to the ENS revoke), pause as a bonus
+- [ ] 6.5 Decide and write down who is paid if bond units move: the market contract pays the stored `holder`. Recommended: restrict bond transfers so units and `holder` can never diverge. Disclose the trusted off-chain issuer step
+- [ ] 6.6 Web: on the invoice page show "Your proof of ownership" (bond token, units, HashScan link) and who gets repaid; plain-language copy
+- [ ] 6.7 Verify contracts on HashScan (Sourcify), public repo, README prize map entry
+- [ ] 6.8 Demo video (5 minutes or less): issuance, configuration (KYC, restriction), funding issues the bond, repayment redeems it, one freeze or lock
+- [ ] Gate 6: a funded invoice on testnet has a bond token in the investor's wallet visible on HashScan, and repayment burns it
 
 ## Rules to keep
 

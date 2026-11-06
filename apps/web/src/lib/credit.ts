@@ -3,13 +3,29 @@ import { cache } from "react";
 import {
   buyerVaultAbi,
   computeCreditReport,
-  ensAgentFixture,
   hederaTestnet,
   type Address,
   type CreditReport,
-} from "@agentinvoice/shared";
+} from "@invoiceagent/shared";
 import { createPublicClient, http } from "viem";
-import { api, isMock } from "./api";
+import { api } from "./api";
+
+function hederaClient() {
+  const rpc = process.env.HEDERA_RPC_URL || process.env.HEDERA_TESTNET_RPC_URL || hederaTestnet.rpcUrl;
+  const chain = { id: hederaTestnet.id, name: hederaTestnet.name, nativeCurrency: hederaTestnet.nativeCurrency, rpcUrls: { default: { http: [rpc] } } } as const;
+  return createPublicClient({ chain, transport: http(rpc) });
+}
+
+/** BuyerVault.spentToday() straight from Hedera (tinybar as a decimal string), or null when it can't be read. */
+export const readSpentToday = cache(async (vault: string): Promise<string | null> => {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(vault)) return null;
+  try {
+    const spent = (await hederaClient().readContract({ address: vault as Address, abi: buyerVaultAbi, functionName: "spentToday" })) as bigint;
+    return spent.toString();
+  } catch {
+    return null;
+  }
+});
 
 // One read per request, shared by every credit report computation on the page.
 export const loadAllInvoices = cache(async () => {
@@ -36,23 +52,8 @@ export const loadEverLateIds = cache(async (): Promise<Set<string> | undefined> 
 });
 
 export const readDailyLimit = cache(async (vault: Address): Promise<bigint | undefined> => {
-  if (isMock) {
-    if (vault.toLowerCase() === ensAgentFixture.vault.toLowerCase()) {
-      return BigInt(ensAgentFixture.limit);
-    }
-    return undefined;
-  }
-
   try {
-    const rpc = process.env.HEDERA_RPC_URL || process.env.HEDERA_TESTNET_RPC_URL || hederaTestnet.rpcUrl;
-    const chain = {
-      id: hederaTestnet.id,
-      name: hederaTestnet.name,
-      nativeCurrency: hederaTestnet.nativeCurrency,
-      rpcUrls: { default: { http: [rpc] } },
-    } as const;
-    const client = createPublicClient({ chain, transport: http(rpc) });
-    const limit = (await client.readContract({
+    const limit = (await hederaClient().readContract({
       address: vault,
       abi: buyerVaultAbi,
       functionName: "dailyLimit",

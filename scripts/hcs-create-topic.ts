@@ -16,7 +16,7 @@ try {
 }
 const client = Client.forTestnet().setOperator(accountId, key);
 
-const tx = await new TopicCreateTransaction().setTopicMemo("AgentInvoice audit log").setSubmitKey(key.publicKey).execute(client);
+const tx = await new TopicCreateTransaction().setTopicMemo("Invoice Agent audit log").setSubmitKey(key.publicKey).execute(client);
 const receipt = await tx.getReceipt(client);
 const topicId = receipt.topicId?.toString();
 if (!topicId) throw new Error("topic id missing from receipt");

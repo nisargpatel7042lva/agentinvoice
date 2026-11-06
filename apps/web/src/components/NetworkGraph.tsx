@@ -1,11 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { HEALTH_COLOR, PartyDialog, ROLE_COLOR, ROLE_LABEL } from "./PartyDialog";
 import type { FGLink, FGNode, FGRef } from "./ForceGraphClient";
-import type { GraphLink, GraphNode, Health, LinkKind } from "@/lib/graph";
+import type { GraphLink, GraphNode, LinkKind } from "@/lib/graph";
 import { cn } from "@/lib/cn";
 import { formatHbar } from "@/lib/format";
 
@@ -15,12 +14,11 @@ const ForceGraph2D = dynamic(() => import("./ForceGraphClient"), { ssr: false })
 type N = FGNode;
 type L = FGLink;
 
-const ROLE_LABEL = { buyer: "Buyer agent", supplier: "Supplier", investor: "Investor", sponsor: "Sponsor" } as const;
 const KIND_LABEL: Record<LinkKind, string> = { owes: "Owes (invoices)", funded: "Funded", sponsors: "Vouches for" };
-const HEALTH_LABEL: Record<Health, string> = { good: "Paid on time", late: "Has late payments", default: "Has a default", open: "Not settled yet" };
 
-function readTheme() {
-  const css = getComputedStyle(document.documentElement);
+// Colours come from the graph's own container, so a section can force a theme with data-theme="dark".
+function readTheme(el: Element = document.documentElement) {
+  const css = getComputedStyle(el);
   const v = (name: string) => css.getPropertyValue(name).trim();
   return {
     ink: v("--color-ink"),
@@ -28,9 +26,9 @@ function readTheme() {
     line: v("--color-line"),
     surface: v("--color-surface"),
     canvas: v("--color-canvas"),
-    role: { buyer: v("--color-accent"), supplier: v("--color-status-open"), investor: v("--color-band-a"), sponsor: v("--color-ink-soft") },
-    health: { good: v("--color-accent"), late: v("--color-warn"), default: v("--color-danger"), open: v("--color-ink-faint") },
-    band: { A: v("--color-band-a"), B: v("--color-band-b"), C: v("--color-band-c"), New: v("--color-band-new") },
+    role: ROLE_COLOR,
+    health: HEALTH_COLOR,
+    band: { A: "#7cc488", B: "#ecc94b", C: "#f79a5e", New: "#8a867d" },
   };
 }
 
@@ -60,8 +58,8 @@ export function NetworkGraph({ nodes, links, height = 560, compact = false, focu
     if (!el) return;
     const ro = new ResizeObserver(([e]) => setWidth(Math.max(280, Math.floor(e.contentRect.width))));
     ro.observe(el);
-    setTheme(readTheme());
-    const mo = new MutationObserver(() => setTheme(readTheme()));
+    setTheme(readTheme(el));
+    const mo = new MutationObserver(() => setTheme(readTheme(el)));
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     return () => {
       ro.disconnect();
@@ -80,7 +78,7 @@ export function NetworkGraph({ nodes, links, height = 560, compact = false, focu
   const radius = (n: GraphNode) => 4 + 12 * Math.sqrt(n.volume / maxVol);
   const width_ = (l: GraphLink) => 0.8 + 5 * Math.sqrt(l.hbar / maxHbar);
 
-  const focus = hover ?? (compact ? null : selected);
+  const focus = hover ?? selected;
   const neighbours = useMemo(() => {
     if (!focus) return null;
     const s = new Set([focus]);
@@ -133,13 +131,7 @@ export function NetworkGraph({ nodes, links, height = 560, compact = false, focu
               nodeVal={(n) => radius(n)}
               nodeLabel={(n) => `${n.name} · ${ROLE_LABEL[n.role]} · ${formatHbar(n.volume)}`}
               onNodeHover={(n) => setHover(n ? String(n.id) : null)}
-              onNodeClick={(n) => {
-                if (compact) {
-                  if (n.role === "buyer") window.location.href = `/agent/${n.id}`;
-                  return;
-                }
-                setSelected(String(n.id));
-              }}
+              onNodeClick={(n) => setSelected(String(n.id))}
               onBackgroundClick={() => setSelected(null)}
               linkWidth={(l) => width_(l)}
               linkColor={(l) => {
@@ -180,8 +172,13 @@ export function NetworkGraph({ nodes, links, height = 560, compact = false, focu
                   ctx.font = `${n.role === "buyer" ? 600 : 400} ${fs}px Inter, sans-serif`;
                   ctx.textAlign = "center";
                   ctx.textBaseline = "top";
+                  const ly = (n.y ?? 0) + r + (isFocus ? 10 : 5);
+                  ctx.lineJoin = "round";
+                  ctx.lineWidth = Math.max(3 / scale, 1);
+                  ctx.strokeStyle = theme.canvas;
+                  ctx.strokeText(n.name, n.x ?? 0, ly);
                   ctx.fillStyle = theme.ink;
-                  ctx.fillText(n.name, n.x ?? 0, (n.y ?? 0) + r + 4);
+                  ctx.fillText(n.name, n.x ?? 0, ly);
                 }
                 ctx.globalAlpha = 1;
               }}
@@ -195,69 +192,30 @@ export function NetworkGraph({ nodes, links, height = 560, compact = false, focu
           )}
         </div>
 
-        {!compact && sel && (
-          <aside aria-label={`Details for ${sel.name}`} className="absolute top-3 right-3 bottom-3 flex w-72 max-w-[calc(100%-1.5rem)] flex-col rounded-xl border border-line bg-surface p-4 shadow-raised">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <div className="truncate font-semibold">{sel.name}</div>
-                <div className="text-xs text-ink-muted">{ROLE_LABEL[sel.role]}{sel.band ? ` · score ${sel.band}` : ""}</div>
-              </div>
-              <button type="button" aria-label="Close details" onClick={() => setSelected(null)} className="rounded-md p-1 text-ink-muted hover:bg-subtle">
-                <X aria-hidden="true" className="size-4" />
-              </button>
-            </div>
-            <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
-              <div className="rounded-lg bg-subtle p-2"><dt className="text-xs text-ink-muted">Volume</dt><dd className="m-0 font-semibold">{formatHbar(sel.volume)}</dd></div>
-              <div className="rounded-lg bg-subtle p-2"><dt className="text-xs text-ink-muted">Invoices</dt><dd className="m-0 font-semibold">{sel.invoices}</dd></div>
-            </dl>
-            <h3 className="mt-4 text-xs font-medium text-ink-muted">Connections ({selLinks.length})</h3>
-            <ul className="mt-2 flex-1 space-y-2 overflow-y-auto text-[13px]">
-              {selLinks.map((l) => {
-                const other = l.source === sel.id ? l.target : l.source;
-                const out = l.source === sel.id;
-                const verb = l.kind === "owes" ? (out ? "invoiced" : "owes") : l.kind === "funded" ? (out ? "funded" : "funded by") : out ? "vouches for" : "vouched for by";
-                return (
-                  <li key={l.id} className="flex items-start gap-2">
-                    <span aria-hidden="true" className="mt-1.5 size-2 flex-none rounded-full" style={{ background: theme?.health[l.health] }} />
-                    <span className="min-w-0">
-                      <span className="text-ink-muted">{verb} </span>
-                      <span className="font-medium">{nameOf(other)}</span>
-                      <span className="block text-xs text-ink-muted">{l.count} invoice{l.count === 1 ? "" : "s"} · {formatHbar(l.hbar)} · {HEALTH_LABEL[l.health]}</span>
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-            {sel.role === "buyer" && (
-              <Link href={`/agent/${sel.id}`} className="mt-3 rounded-lg bg-accent px-3 py-2 text-center text-sm font-medium text-on-accent hover:bg-accent-hover">
-                Open agent profile
-              </Link>
-            )}
-          </aside>
-        )}
+        {sel && <PartyDialog node={sel} links={selLinks} nameOf={nameOf} onClose={() => setSelected(null)} />}
       </div>
-      {!compact && <p className="text-xs text-ink-muted">Drag to move, scroll to zoom, hover to highlight, click a party for details.</p>}
+      {!compact && <p className="text-xs text-ink-muted">Drag to move, scroll to zoom, hover to highlight, click a party to verify it on ENS.</p>}
     </div>
   );
 }
 
 function Legend() {
-  const dot = (cls: string, label: string) => (
-    <span className="flex items-center gap-1.5"><span aria-hidden="true" className={cn("size-2.5 rounded-full", cls)} />{label}</span>
+  const dot = (color: string, label: string) => (
+    <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-full" style={{ background: color }} />{label}</span>
   );
-  const bar = (cls: string, label: string, dashed = false) => (
-    <span className="flex items-center gap-1.5"><span aria-hidden="true" className={cn("h-0 w-4 border-t-2", cls, dashed && "border-dashed")} />{label}</span>
+  const bar = (color: string, label: string, dashed = false) => (
+    <span className="flex items-center gap-1.5"><span aria-hidden="true" className={cn("h-0 w-4 border-t-2", dashed && "border-dashed")} style={{ borderColor: color }} />{label}</span>
   );
   return (
     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-soft">
-      {dot("bg-accent", "Buyer agent")}
-      {dot("bg-status-open", "Supplier")}
-      {dot("bg-band-a", "Investor")}
-      {dot("bg-ink-soft", "Sponsor")}
-      {bar("border-accent", "Paid on time")}
-      {bar("border-warn", "Late")}
-      {bar("border-danger", "Default")}
-      {bar("border-ink-soft", "Vouches for", true)}
+      {dot(ROLE_COLOR.buyer, "Buyer agent")}
+      {dot(ROLE_COLOR.supplier, "Supplier")}
+      {dot(ROLE_COLOR.investor, "Investor")}
+      {dot(ROLE_COLOR.sponsor, "Sponsor")}
+      {bar(HEALTH_COLOR.good, "Paid on time")}
+      {bar(HEALTH_COLOR.late, "Late")}
+      {bar(HEALTH_COLOR.default, "Default")}
+      {bar(HEALTH_COLOR.open, "Vouches for", true)}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 ## Overview
 
-AgentInvoice implements a deterministic, tamper-proof credit score (300–900 scale) for buyer agents participating in invoice financing.
+Invoice Agent implements a deterministic, tamper-proof credit score (300–900 scale) for buyer agents participating in invoice financing.
 
 Before funding an invoice, investors can inspect the buyer agent's credit score and an itemized 5-factor breakdown. Every factor links directly to verifiable on-chain events on Hedera. The score is identical everywhere it appears:
 1. Public Web UI (`apps/web` agent profile, invoice detail, and marketplace).
@@ -11,7 +11,7 @@ Before funding an invoice, investors can inspect the buyer agent's credit score 
 
 ## Model Specification
 
-- **Model Version**: `agentinvoice-credit-v1`
+- **Model Version**: `invoiceagent-credit-v1`
 - **Scale**: `300` to `900`
 - **Bands**:
   - **Band A**: `score >= 750` (Excellent / Strong payment track record)

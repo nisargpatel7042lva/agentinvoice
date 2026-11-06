@@ -1,4 +1,4 @@
-import type { Status } from "@agentinvoice/shared";
+import type { Status } from "@invoiceagent/shared";
 import { copy } from "@/lib/copy";
 
 const styles: Record<Status, { pill: string; dot: string }> = {

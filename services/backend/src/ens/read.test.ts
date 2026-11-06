@@ -1,4 +1,4 @@
-import { EnsAgentSchema } from "@agentinvoice/shared";
+import { EnsAgentSchema } from "@invoiceagent/shared";
 import { describe, expect, it } from "vitest";
 import { EnsReadError, isRevoked, readAgentFromEns, type EnsReader } from "./read.js";
 
