@@ -1,6 +1,7 @@
 import type Database from "better-sqlite3";
 import Fastify from "fastify";
 import { openDb } from "./db.js";
+import { invoiceRoutes } from "./routes/invoices.js";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -29,6 +30,8 @@ export function buildApp({ dbPath }: AppOptions) {
       return reply.code(503).send({ ok: false, db: "error" });
     }
   });
+
+  invoiceRoutes(app);
 
   return app;
 }
