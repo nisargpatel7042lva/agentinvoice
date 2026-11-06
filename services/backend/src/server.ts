@@ -6,11 +6,19 @@ import { hederaReader } from "./chain/reader.js";
 import { errorMessage } from "./errors.js";
 import { EnvError, loadEnv, type Config } from "./env.js";
 import { liveEnsDeps } from "./ens/live.js";
+import { liveMintDeps } from "./ens/liveMint.js";
 import { createEnsPublisher } from "./ens/publisher.js";
 import { createIndexer } from "./indexer.js";
 
 // Starts the API, the chain indexer, the ENS publisher, the approval sweeper and the HCS audit publisher
 // (each optional one only when its environment group is set), and shuts them down cleanly on SIGINT/SIGTERM.
+
+// Seller ENS minting is on only when the sponsor key, user registry, resolver and parent name are all set.
+function mintFromEnv() {
+  const e = process.env;
+  if (!e.SPONSOR_PRIVATE_KEY || !e.ENS_USER_REGISTRY_ADDRESS || !e.ENS_RESOLVER_ADDRESS || !e.ENS_PARENT_LABEL) return undefined;
+  return liveMintDeps({ sponsorKey: e.SPONSOR_PRIVATE_KEY as `0x${string}`, userRegistry: e.ENS_USER_REGISTRY_ADDRESS as `0x${string}`, resolver: e.ENS_RESOLVER_ADDRESS as `0x${string}`, parentLabel: e.ENS_PARENT_LABEL, rpcUrl: e.SEPOLIA_RPC_URL || undefined });
+}
 
 let config: Config;
 try {
@@ -33,6 +41,7 @@ const app = buildApp({
   world: config.world ? { ...config.world, appUrl: config.appUrl, ttlSeconds: config.approvalTtlSeconds } : null,
   audit: { topicId: config.hcs?.topicId },
   issuer: config.issuer && config.indexer ? hederaIssuer({ market: config.indexer.market, privateKey: config.issuer.privateKey, rpcUrl: config.indexer.rpcUrl }) : undefined,
+  minter: mintFromEnv(),
   features: { indexer: Boolean(config.indexer), ens: Boolean(config.ens), audit: Boolean(submit) },
   onAudit: (event: AuditInput) => {
     if (!submit) return;
