@@ -1,6 +1,6 @@
 // Entry point: bun run --cwd agents/investor-agent start
 // Env: BACKEND_URL, SCORE_API_URL, MARKET_ADDRESS, INVESTOR_PRIVATE_KEY, HEDERA_TESTNET_RPC_URL,
-//      MIN_BAND, MIN_DISCOUNT_BPS, MAX_PRICE, MAX_OPEN_EXPOSURE, DRY_RUN=1, LOOP_MS
+//      MIN_BAND, MIN_DISCOUNT_BPS, MAX_PRICE, MAX_OPEN_EXPOSURE, DRY_RUN=1, AGENT_LOOP_MS
 import * as shared from "@agentinvoice/shared";
 import { createPublicClient, createWalletClient, http, parseAbi, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -50,7 +50,7 @@ async function main() {
 
   process.on("SIGINT", () => { console.log("stopping after this loop"); agent.stop(); });
   console.log(`investor agent started dryRun=${dryRun}`);
-  await agent.run(Number(process.env.LOOP_MS ?? 20_000));
+  await agent.run(Number(process.env.AGENT_LOOP_MS ?? 20_000));
 }
 
 main().catch((e) => {
