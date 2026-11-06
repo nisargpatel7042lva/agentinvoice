@@ -33,6 +33,8 @@
       "name": "@agentinvoice/buyer-agent",
       "version": "0.0.0",
       "dependencies": {
+        "@agentinvoice/shared": "*",
+        "viem": "^2.57.16",
         "zod": "^4.6.7",
       },
       "devDependencies": {
