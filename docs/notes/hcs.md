@@ -1,0 +1,9 @@
+# HCS audit log: notes (v2-S3)
+
+- Mirror node path VERIFIED live on 2026-11-06: `GET https://testnet.mirrornode.hedera.com/api/v1/topics/<topicId>/messages?order=desc&limit=N` returns `{ messages: [{ consensus_timestamp: "secs.nanos", sequence_number, message: <base64>, topic_id, ... }] }`.
+- Code: `services/backend/src/audit/audit.ts` (`buildMessage`, `publishAudit`, `readAuditEvents`, `hederaSubmit`), `routes/audit.ts` (`GET /api/audit`, newest first, 503 without a topic, 502 if the mirror node fails), `scripts/hcs-create-topic.ts`.
+- Message: `{ type, invoiceId, data, ts, payloadHash }`; `payloadHash` is the sha256 of the canonical (key-sorted) JSON of `{ type, invoiceId, data, ts }`. Keys matching email, subject, token, secret, private, password, mnemonic or seed are refused, so no personal data or secrets go on chain.
+- Types: invoice.created / accepted / funded / paid / late / defaulted (from the indexer on every status change), approval.started / approved / rejected / expired, x402.payment, agent.decision. Spec v2 calls a refused approval "rejected", so the type is `approval.rejected` (the older plan said "denied").
+- `publishAudit` retries 3 times and returns false instead of throwing, so an HCS outage never blocks the main action.
+- UNVERIFIED: submitting through `@hashgraph/sdk` 2.81.0 (`TopicMessageSubmitTransaction`) and creating the topic. They need a funded Hedera testnet account (HEDERA_ACCOUNT_ID, HEDERA_PRIVATE_KEY, ECDSA hex or DER; the code tries ECDSA first). Nobody on the team has put one in .env yet; the Hedera portal faucet needs a login. Steps: fund an account, run `bunx tsx --env-file=.env scripts/hcs-create-topic.ts`, put the printed id in `.env` as HCS_TOPIC_ID.
+- Not wired: Mann's `payAndGet` `onAudit` callback (x402.payment, agent.decision). Spec v2 has no endpoint for it; use `publishAudit` directly from that code or ask Nisarg to add one.

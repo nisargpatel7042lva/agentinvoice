@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hederaTestnet } from "./index.js";
+import { hederaTestnet } from "./index";
 
 describe("hederaTestnet", () => {
   it("uses chain id 296", () => {

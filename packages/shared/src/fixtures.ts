@@ -8,8 +8,9 @@ import {
   type Invoice,
   type PayPolicy,
   type ReviewResult,
+  type BuyerScore,
   type Status,
-} from "./types.js";
+} from "./types";
 
 const SUPPLIER: Address = "0x1111111111111111111111111111111111111111";
 const VAULT: Address = "0x2222222222222222222222222222222222222222";
@@ -73,3 +74,11 @@ export const payPolicyFixture: PayPolicy = {
   allowedPayTo: [VAULT],
   allowedHosts: ["localhost", "testnet.hashio.io"],
 };
+
+/** Paid score API responses: bands A, B, C (scored) plus one New vault. VAULT itself is band A. */
+export const scoreFixtures: BuyerScore[] = [
+  { vault: VAULT, band: "A", onTimeRate: 92, paid: 12, late: 1, defaulted: 0, openExposure: "950000000", evidence: ["0.0.5005@1793900300.000000003"], asOf: 1_793_900_000 },
+  { vault: "0x5555555555555555555555555555555555555555", band: "B", onTimeRate: 78, paid: 7, late: 2, defaulted: 0, openExposure: "0", evidence: [], asOf: 1_793_900_000 },
+  { vault: "0x6666666666666666666666666666666666666666", band: "C", onTimeRate: 43, paid: 3, late: 4, defaulted: 1, openExposure: "0", evidence: [], asOf: 1_793_900_000 },
+  { vault: "0x7777777777777777777777777777777777777777", band: "New", onTimeRate: 0, paid: 0, late: 0, defaulted: 0, openExposure: "0", evidence: [], asOf: 1_793_900_000 },
+];
