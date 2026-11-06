@@ -35,7 +35,7 @@ function Row({ label, children, last }: { label: React.ReactNode; children: Reac
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const inv = await api.getInvoice(id).catch(() => null);
-  if (!inv) return <EmptyState message={copy.error.notFound} action={{ label: copy.nav.backMarket, href: "/" }} />;
+  if (!inv) return <EmptyState message={copy.error.notFound} action={{ label: copy.nav.backMarket, href: "/market" }} />;
   const [score, ens, audit] = await Promise.all([loadScore(inv.buyerVault), loadEnsByVault(inv.buyerVault), api.listAudit().catch(() => [])]);
   const agent = "agent" in ens ? ens.agent : undefined;
   const buyer = agent?.name ?? shortHex(inv.buyerVault);
@@ -50,7 +50,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-5">
-      <Link href="/" className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
+      <Link href="/market" className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
         <ChevronLeft aria-hidden="true" className="size-4" />
         {copy.nav.backMarket}
       </Link>
