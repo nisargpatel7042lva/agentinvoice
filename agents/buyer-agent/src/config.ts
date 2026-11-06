@@ -1,4 +1,4 @@
-import { hederaTestnet } from "@agentinvoice/shared";
+import { hederaTestnet, parseAgentAccountProvider, type AgentAccountProvider } from "@agentinvoice/shared";
 import { flattenError, z } from "zod";
 import addresses from "../../../packages/shared/src/addresses.json" with { type: "json" };
 
@@ -25,6 +25,7 @@ export const agentEnvSchema = z
     MARKET_ADDRESS: z.string().regex(address, "MARKET_ADDRESS must be a 0x address").default(addresses.invoiceMarket),
     HEDERA_TESTNET_RPC_URL: z.string().min(1, "HEDERA_TESTNET_RPC_URL is missing").default(hederaTestnet.rpcUrl),
     DRY_RUN: z.string().optional(),
+    AGENT_ACCOUNT_PROVIDER: z.enum(["buyer-vault", "hedera-agent-account"], { message: "AGENT_ACCOUNT_PROVIDER must be buyer-vault or hedera-agent-account" }).default("buyer-vault"),
   })
   .superRefine((value, ctx) => {
     if (value.DRY_RUN !== "1" && !value.BUYER_AGENT_PRIVATE_KEY) {
@@ -44,6 +45,7 @@ export type AgentConfig = {
   marketAddress: `0x${string}`;
   rpcUrl: string;
   dryRun: boolean;
+  accountProvider: AgentAccountProvider;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AgentConfig {
@@ -55,6 +57,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AgentConfig {
     MARKET_ADDRESS: blank(env.MARKET_ADDRESS),
     HEDERA_TESTNET_RPC_URL: blank(env.HEDERA_TESTNET_RPC_URL),
     DRY_RUN: blank(env.DRY_RUN),
+    AGENT_ACCOUNT_PROVIDER: blank(env.AGENT_ACCOUNT_PROVIDER),
   });
 
   if (!result.success) {
@@ -73,5 +76,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AgentConfig {
     marketAddress: result.data.MARKET_ADDRESS as `0x${string}`,
     rpcUrl: result.data.HEDERA_TESTNET_RPC_URL,
     dryRun,
+    accountProvider: parseAgentAccountProvider(result.data.AGENT_ACCOUNT_PROVIDER),
   };
 }
