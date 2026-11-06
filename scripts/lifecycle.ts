@@ -3,7 +3,6 @@ import {
   createWalletClient,
   defineChain,
   http,
-  parseEther,
   formatEther,
   keccak256,
   toHex,
@@ -46,8 +45,10 @@ async function main() {
   console.log(`Market address: ${marketAddress}`);
   console.log(`Vault address:  ${vaultAddress}`);
 
-  const faceAmount = parseEther("100");
-  const price = parseEther("95");
+  // Store amounts in tinybar, send value = tinybar × 10^10 (weibar)
+  const faceAmount = 100n * 10n ** 8n; // 100 HBAR in tinybars
+  const price = 95n * 10n ** 8n; // 95 HBAR in tinybars
+  const weibarPrice = price * 10n ** 10n; // 95 HBAR in weibar for msg.value
   const dueInSeconds = 180; // 3 minutes
   const dueDate = BigInt(Math.floor(Date.now() / 1000) + dueInSeconds);
   const evidenceHash = keccak256(toHex(`evidence-${Date.now()}`));
@@ -79,7 +80,7 @@ async function main() {
     abi: invoiceMarketArtifact,
     functionName: "buy",
     args: [invoiceId],
-    value: price,
+    value: weibarPrice,
   });
   console.log(`Invoice funded tx: https://hashscan.io/testnet/transaction/${buyTx}`);
 

@@ -25,6 +25,7 @@ contract InvoiceMarket is IInvoiceMarket {
 
     address public immutable owner;
     uint64 public immutable gracePeriod;
+    uint256 public constant WEIBAR_PER_TINYBAR = 1e10;
 
     address public bondIssuer;
     uint256 public nextInvoiceId = 1;
@@ -96,7 +97,7 @@ contract InvoiceMarket is IInvoiceMarket {
         Invoice storage inv = invoices[id];
         if (inv.status != Status.Open) revert InvoiceNotOpen();
         if (block.timestamp >= inv.dueDate) revert DueDatePassed();
-        if (msg.value != inv.price) revert InvalidPaymentAmount();
+        if (msg.value != inv.price * WEIBAR_PER_TINYBAR) revert InvalidPaymentAmount();
 
         inv.status = Status.Funded;
         inv.holder = msg.sender;
@@ -129,7 +130,7 @@ contract InvoiceMarket is IInvoiceMarket {
         Invoice storage inv = invoices[id];
         if (msg.sender != inv.buyerVault) revert OnlyBuyerVault();
         if (inv.status != Status.Funded && inv.status != Status.Late) revert InvoiceNotPayable();
-        if (msg.value != inv.faceAmount) revert InvalidPaymentAmount();
+        if (msg.value != inv.faceAmount * WEIBAR_PER_TINYBAR) revert InvalidPaymentAmount();
 
         inv.status = Status.Paid;
         claimable[inv.holder] += msg.value;

@@ -23,6 +23,7 @@ contract BuyerVault is IBuyerVault {
     bytes32 private immutable DOMAIN_SEPARATOR;
     bytes32 public constant LARGE_PAYMENT_TYPEHASH =
         keccak256("LargePayment(address vault,uint256 invoiceId,uint256 amount,uint256 nonce,uint256 expiry)");
+    uint256 public constant WEIBAR_PER_TINYBAR = 1e10;
 
     address public immutable owner;
     address public immutable agent;
@@ -89,8 +90,9 @@ contract BuyerVault is IBuyerVault {
     }
 
     function withdraw(uint256 amount) external override onlyOwner {
-        if (address(this).balance < amount) revert InsufficientBalance();
-        (bool success, ) = owner.call{value: amount}("");
+        uint256 weibarAmount = amount * WEIBAR_PER_TINYBAR;
+        if (address(this).balance < weibarAmount) revert InsufficientBalance();
+        (bool success, ) = owner.call{value: weibarAmount}("");
         if (!success) revert TransferFailed();
         emit Withdrawn(owner, amount);
     }
@@ -146,7 +148,8 @@ contract BuyerVault is IBuyerVault {
         Invoice memory inv = IInvoiceMarket(market).getInvoice(id);
         uint256 amount = inv.faceAmount;
 
-        if (address(this).balance < amount) revert InsufficientBalance();
+        uint256 weibarAmount = amount * WEIBAR_PER_TINYBAR;
+        if (address(this).balance < weibarAmount) revert InsufficientBalance();
 
         uint256 today = block.timestamp / 1 days;
         uint256 newSpend = (today == currentDayBucket) ? currentDaySpend + amount : amount;
@@ -159,7 +162,7 @@ contract BuyerVault is IBuyerVault {
         currentDayBucket = today;
         currentDaySpend = newSpend;
 
-        IInvoiceMarket(market).payInvoice{value: amount}(id);
+        IInvoiceMarket(market).payInvoice{value: weibarAmount}(id);
 
         emit Paid(market, id, amount);
     }

@@ -51,8 +51,8 @@ contract InvoiceMarketTest {
     function _createSampleInvoice(uint64 dueDate) internal returns (uint256) {
         return market.createInvoice(
             buyerVault,
-            100 ether,
-            95 ether,
+            100 * 1e8,
+            95 * 1e8,
             dueDate,
             keccak256("evidence-v1")
         );
@@ -68,8 +68,8 @@ contract InvoiceMarketTest {
         assert(inv.status == Status.Pending);
         assert(inv.supplier == address(this));
         assert(inv.buyerVault == buyerVault);
-        assert(inv.faceAmount == 100 ether);
-        assert(inv.price == 95 ether);
+        assert(inv.faceAmount == 100 * 1e8);
+        assert(inv.price == 95 * 1e8);
         assert(inv.dueDate == due);
         assert(inv.holder == address(0));
     }
@@ -134,7 +134,7 @@ contract InvoiceMarketTest {
         assert(!s2); // caller is this, not buyerVault
 
         // Let's create an invoice where buyerVault is address(this)
-        uint256 id2 = market.createInvoice(address(this), 100 ether, 95 ether, due, bytes32(0));
+        uint256 id2 = market.createInvoice(address(this), 100 * 1e8, 95 * 1e8, due, bytes32(0));
         market.acceptInvoice(id2);
 
         Invoice memory inv2 = market.getInvoice(id2);
@@ -150,7 +150,7 @@ contract InvoiceMarketTest {
     // 3. buy and fund, holder set, supplier paid
     function test_buy_success_and_holder_stored() public {
         uint64 due = uint64(block.timestamp + 1000);
-        uint256 id = market.createInvoice(address(this), 100 ether, 95 ether, due, bytes32(0));
+        uint256 id = market.createInvoice(address(this), 100 * 1e8, 95 * 1e8, due, bytes32(0));
         market.acceptInvoice(id);
 
         uint256 supplierBalBefore = address(this).balance;
@@ -166,7 +166,7 @@ contract InvoiceMarketTest {
     function test_payInvoice_credits_stored_holder() public {
         uint64 due = uint64(block.timestamp + 1000);
         // buyerVault is address(this)
-        uint256 id = market.createInvoice(address(this), 100 ether, 95 ether, due, bytes32(0));
+        uint256 id = market.createInvoice(address(this), 100 * 1e8, 95 * 1e8, due, bytes32(0));
         market.acceptInvoice(id);
         market.buy{value: 95 ether}(id);
 
@@ -190,7 +190,7 @@ contract InvoiceMarketTest {
     // 5. Late and Defaulted state flow
     function test_markLate_and_defaulted_reverts_before_due() public {
         uint64 due = uint64(block.timestamp + 1000);
-        uint256 id = market.createInvoice(address(this), 100 ether, 95 ether, due, bytes32(0));
+        uint256 id = market.createInvoice(address(this), 100 * 1e8, 95 * 1e8, due, bytes32(0));
         market.acceptInvoice(id);
         market.buy{value: 95 ether}(id);
 
