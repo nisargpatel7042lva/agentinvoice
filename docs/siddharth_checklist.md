@@ -21,7 +21,7 @@ World Agent Pass step-up (v2-S1, replaces old AgentKit Prompt 1; 90 min)
 - [x] 1.4 `handleCallback(code, state)`: exchange code, validate ID token (signature, issuer, audience, nonce, expiry, recent auth time), distinct error codes
 - [x] 1.5 Failure-path tests (cancel, expired approval, reused state, wrong nonce, stale auth time): protected action never happens; mocked key set in unit tests
 - [ ] 1.6 One real flow on the real portal
-- [ ] 1.7 Start `docs/FEEDBACK_WORLD.md` (time to first success, friction, doc gaps, top improvement)
+- [x] 1.7 (draft started, finish after 1.6) Start `docs/FEEDBACK_WORLD.md` (time to first success, friction, doc gaps, top improvement)
 
 ENSv2 namespaces (Prompt 2 + v2-S2)
 - [x] 1.8 Notes in `docs/notes/ensv2.md`: permissioned registry and resolver, roles, expiry and revocation, Sepolia addresses with sources (ask the ENS mentor)
