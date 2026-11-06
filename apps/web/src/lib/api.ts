@@ -1,9 +1,26 @@
+import "server-only";
 import { createApiClient } from "@agentinvoice/shared";
+import { isMock } from "./env";
+import { mockStore } from "./mockStore";
 
-// Literal process.env reads so Next inlines them at build time.
-export const isMock = process.env.NEXT_PUBLIC_MOCK === "1";
+export { isMock };
 
-export const api = createApiClient({
-  baseUrl: process.env.NEXT_PUBLIC_BACKEND_URL,
-  mock: isMock,
-});
+// Server-side reads. Mock mode reads the in-memory demo store (so button clicks show up);
+// otherwise the real backend at NEXT_PUBLIC_BACKEND_URL.
+const real = createApiClient({ baseUrl: process.env.NEXT_PUBLIC_BACKEND_URL });
+
+export const api = isMock
+  ? {
+      listInvoices: mockStore.listInvoices,
+      getInvoice: mockStore.getInvoice,
+      listAudit: mockStore.listAudit,
+      getApproval: mockStore.getApproval,
+      getScoreMock: mockStore.getScoreMock,
+    }
+  : {
+      listInvoices: real.listInvoices,
+      getInvoice: real.getInvoice,
+      listAudit: real.listAudit,
+      getApproval: real.getApproval,
+      getScoreMock: real.getScoreMock,
+    };

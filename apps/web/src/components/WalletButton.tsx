@@ -1,0 +1,120 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, Copy, ExternalLink, LogOut, TriangleAlert, Wallet } from "lucide-react";
+import { useAccount, useBalance, useConnect, useDisconnect, useSwitchChain } from "wagmi";
+import { formatUnits } from "viem";
+import { Button, buttonVariants } from "@/components/ui";
+import { toast } from "@/components/ToastHost";
+import { cn } from "@/lib/cn";
+import { copy } from "@/lib/copy";
+import { shortHex } from "@/lib/format";
+import { hederaTestnet } from "@/lib/wagmi";
+
+/** Real wallet connection: browser wallets on Hedera testnet. */
+export function WalletButton() {
+  const { address, chainId, isConnected, isConnecting, isReconnecting } = useAccount();
+  const { connectors, connect, isPending } = useConnect();
+  const { disconnect } = useDisconnect();
+  const { switchChain, isPending: switching } = useSwitchChain();
+  const { data: balance } = useBalance({ address, chainId: hederaTestnet.id, query: { enabled: !!address } });
+  const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const menu = useRef<HTMLDivElement>(null);
+
+  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => menu.current && !menu.current.contains(e.target as Node) && setOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+
+  // Wallet state only exists in the browser; render a stable placeholder on the server.
+  if (!mounted || isReconnecting) {
+    return <span aria-hidden="true" className="h-9 w-36 animate-pulse rounded-lg bg-subtle" />;
+  }
+
+  if (!isConnected || !address) {
+    // Prefer a discovered wallet (EIP-6963) over the generic "Injected" fallback.
+    const wallets = connectors.filter((c) => c.id !== "injected");
+    const target = wallets[0] ?? connectors[0];
+    const noWallet = typeof window !== "undefined" && !("ethereum" in window) && wallets.length === 0;
+    if (noWallet) {
+      return (
+        <a href="https://metamask.io/download/" target="_blank" rel="noreferrer" className={buttonVariants({ variant: "dark", size: "sm", className: "h-9" })}>
+          <Wallet aria-hidden="true" />
+          Get a wallet
+        </a>
+      );
+    }
+    return (
+      <Button
+        variant="dark"
+        size="sm"
+        className="h-9"
+        disabled={isPending || isConnecting}
+        onClick={() =>
+          connect(
+            { connector: target, chainId: hederaTestnet.id },
+            { onError: (e) => toast("error", e.message.includes("rejected") ? "You cancelled in your wallet." : `Could not connect: ${e.message.split("\n")[0]}`) },
+          )
+        }
+      >
+        <Wallet aria-hidden="true" />
+        {isPending || isConnecting ? "Check your wallet…" : copy.wallet.connect}
+      </Button>
+    );
+  }
+
+  if (chainId !== hederaTestnet.id) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-9 border-status-late text-status-late"
+        disabled={switching}
+        onClick={() => switchChain({ chainId: hederaTestnet.id }, { onError: (e) => toast("error", `Could not switch network: ${e.message.split("\n")[0]}`) })}
+      >
+        <TriangleAlert aria-hidden="true" />
+        {switching ? "Switching…" : "Switch to Hedera testnet"}
+      </Button>
+    );
+  }
+
+  return (
+    <div ref={menu} className="relative">
+      <Button variant="outline" size="sm" className="h-9 font-mono" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <span aria-hidden="true" className="size-1.5 rounded-full bg-good" />
+        {shortHex(address)}
+        <ChevronDown aria-hidden="true" className="text-ink-muted" />
+      </Button>
+      {open && (
+        <div role="menu" className="absolute right-0 z-30 mt-2 w-64 rounded-xl border border-line bg-surface p-2 shadow-raised">
+          <div className="px-3 py-2">
+            <div className="text-xs text-ink-muted">Connected on Hedera testnet</div>
+            <div className="mt-0.5 truncate font-mono text-sm">{address}</div>
+            {balance && <div className="mt-1 text-sm font-semibold">{Number(formatUnits(balance.value, balance.decimals)).toLocaleString("en-US", { maximumFractionDigits: 2 })} HBAR</div>}
+          </div>
+          <div className="my-1 border-t border-subtle" />
+          <button role="menuitem" type="button" onClick={() => { navigator.clipboard?.writeText(address); toast("success", "Address copied."); setOpen(false); }} className={item}>
+            <Copy aria-hidden="true" className="size-4" /> Copy address
+          </button>
+          <a role="menuitem" href={`${hederaTestnet.blockExplorers.default.url}/account/${address}`} target="_blank" rel="noreferrer" className={item}>
+            <ExternalLink aria-hidden="true" className="size-4" /> View on HashScan
+          </a>
+          <button role="menuitem" type="button" onClick={() => { disconnect(); setOpen(false); }} className={cn(item, "text-danger")}>
+            <LogOut aria-hidden="true" className="size-4" /> Disconnect
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const item = "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-ink-soft hover:bg-subtle hover:text-ink";

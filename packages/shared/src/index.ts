@@ -7,3 +7,4 @@ export * from "./ens";
 export * from "./api";
 export * from "./payAndGet";
 
+export * from "./contracts";
