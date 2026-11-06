@@ -3,13 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CircleCheck } from "lucide-react";
-import { ensAgentFixture, type Hash32 } from "@invoiceagent/shared";
+import type { Hash32 } from "@invoiceagent/shared";
 import { createInvoice, lookupBuyer } from "@/app/actions";
 import type { BuyerLookup } from "@/lib/ens";
 import { useAction } from "@/components/ActionButton";
 import { Button, Card } from "@/components/ui";
 import { copy } from "@/lib/copy";
-import { isMock } from "@/lib/env";
 import { formatAmount, shortHex } from "@/lib/format";
 import { InvoicePreview } from "./InvoicePreview";
 
@@ -56,14 +55,6 @@ export function SupplierForm({ aside }: { aside?: React.ReactNode }) {
   const resolved = current !== "loading" && current.kind === "ok" ? { vault: current.vault, status: current.agent?.status, limit: current.agent?.limit } : null;
   const ready = !!resolved && !!evidence && !!face && !!price && !!due && !!description.trim();
 
-  async function fillSample() {
-    setBuyer(ensAgentFixture.name);
-    setFace("12");
-    setPrice("11.4");
-    setDue(inDays(7));
-    setDescription("Sample: 40 hours of data labelling, October");
-    setEvidence(await sha256(new TextEncoder().encode("sample evidence").buffer as ArrayBuffer));
-  }
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -77,12 +68,6 @@ export function SupplierForm({ aside }: { aside?: React.ReactNode }) {
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
     <Card className="p-6">
-      {isMock && (
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-subtle px-4 py-3 text-[13px] text-ink-soft">
-          <span>Demo mode: the only known buyer is <span className="font-mono">{ensAgentFixture.name}</span>.</span>
-          <Button type="button" variant="outline" size="sm" onClick={fillSample}>Fill with sample values</Button>
-        </div>
-      )}
       <form onSubmit={submit} className="grid gap-5">
         <label className={label}>
           {copy.supplier.buyerLabel}

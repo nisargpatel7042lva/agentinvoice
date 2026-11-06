@@ -5,7 +5,6 @@ export const copy = {
   banner: {
     testnet: "Testnet prototype. Not financial advice.",
     cached: "Some values on this page are cached from our server and may be a few minutes old.",
-    mock: "Showing sample data (mock mode).",
   },
   onboarding: {
     title: "New here? Start with your role",

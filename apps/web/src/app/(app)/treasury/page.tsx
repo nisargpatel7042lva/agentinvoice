@@ -2,7 +2,7 @@ import { SAUCERSWAP_TESTNET_USDC } from "@invoiceagent/shared";
 import { ApiError } from "@invoiceagent/shared";
 import { Banner } from "@/components/Banner";
 import { Section } from "@/components/Section";
-import { api, isMock } from "@/lib/api";
+import { api } from "@/lib/api";
 import { formatAmount, formatUsdc } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -53,7 +53,7 @@ export default async function TreasuryPage() {
       {unavailable && (
         <p className="rounded-xl border border-line bg-surface px-5 py-4 text-sm text-ink-muted">
           SaucerSwap status is not configured on the backend yet. Set <code className="font-mono">SAUCERSWAP_STATUS=1</code> or{" "}
-          <code className="font-mono">SAUCERSWAP_OPERATOR_ACCOUNT_ID</code>, or run in mock mode ({isMock ? "on" : "off"}).
+          <code className="font-mono">SAUCERSWAP_OPERATOR_ACCOUNT_ID</code>.
         </p>
       )}
 

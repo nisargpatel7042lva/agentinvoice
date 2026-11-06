@@ -12,9 +12,8 @@ import { Term } from "@/components/Term";
 import { ProofCard } from "@/components/ProofCard";
 import { TxLink } from "@/components/TxLink";
 import { FundButton } from "@/components/FundButton";
-import { DemoControls } from "@/components/InvoiceActions";
 import { ChainActions } from "@/components/ChainActions";
-import { api, isMock } from "@/lib/api";
+import { api } from "@/lib/api";
 import { loadEnsByVault } from "@/lib/agents";
 import { loadCreditReport } from "@/lib/credit";
 import { cn } from "@/lib/cn";
@@ -92,7 +91,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
               {creditReport && <ScoreBadge band={creditReport.band} score={creditReport.score} />}
             </Link>
           </Card>
-          {isMock ? <DemoControls id={inv.id} status={inv.status} /> : <ChainActions id={inv.id} status={inv.status} dueDate={inv.dueDate} buyerVault={inv.buyerVault} />}
+          {<ChainActions id={inv.id} status={inv.status} dueDate={inv.dueDate} buyerVault={inv.buyerVault} />}
         </aside>
 
         <div className="flex min-w-0 flex-col gap-5 lg:col-start-1 lg:row-start-1">

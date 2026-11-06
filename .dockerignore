@@ -1,0 +1,16 @@
+# Never ship secrets or local state in an image.
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+*.db
+*.db-*
+.git
+node_modules
+**/node_modules
+apps/web/.next
+contracts/out
+contracts/cache
+coverage
