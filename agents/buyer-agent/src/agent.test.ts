@@ -56,6 +56,9 @@ function deps(invoices: Invoice[], extra: Partial<Parameters<typeof createBuyerA
     marketAddress: "0xb41048c7369d33d4e396ccb2e95e974b95a06d8b" as Address,
     readSupplier: vi.fn(async () => ({ allowed: true, limit: 1_000_000_000n })),
     readThreshold: vi.fn(async () => 1_000_000_000n),
+    readDailyLimit: vi.fn(async () => 10_000_000_000n),
+    readSpentToday: vi.fn(async () => 0n),
+    readBalance: vi.fn(async () => 10_000_000_000n),
     accept: vi.fn(async () => hash),
     pay: vi.fn(async () => hash),
     now: () => invoiceFixtures[0].dueDate - 10,
@@ -145,6 +148,39 @@ describe("buyer flow", () => {
     expect(wired.pay).not.toHaveBeenCalled();
     expect(lines.join("\n")).not.toContain("sk-ant-secret123");
     expect(lines.some((line) => line.includes("sponsor approval is needed"))).toBe(true);
+  });
+
+  it("does not pay when the vault balance is below the face amount", async () => {
+    const funded = invoiceFixtures.find((invoice) => invoice.status === "Funded")!;
+    const lines: string[] = [];
+    const model = reviewModel("accept", "delivery matches the evidence");
+    const wired = deps([funded], {
+      now: () => funded.dueDate,
+      model,
+      readBalance: async () => BigInt(funded.faceAmount) - 1n,
+      log: (line) => lines.push(line),
+    });
+    await createBuyerAgent(wired).tick();
+    expect(model.complete).not.toHaveBeenCalled();
+    expect(wired.pay).not.toHaveBeenCalled();
+    expect(lines.some((line) => line.includes("vault balance is too low"))).toBe(true);
+  });
+
+  it("does not pay when today's spend plus the invoice would pass the daily limit", async () => {
+    const funded = invoiceFixtures.find((invoice) => invoice.status === "Funded")!;
+    const lines: string[] = [];
+    const model = reviewModel("accept", "delivery matches the evidence");
+    const wired = deps([funded], {
+      now: () => funded.dueDate,
+      model,
+      readDailyLimit: async () => BigInt(funded.faceAmount),
+      readSpentToday: async () => 1n,
+      log: (line) => lines.push(line),
+    });
+    await createBuyerAgent(wired).tick();
+    expect(model.complete).not.toHaveBeenCalled();
+    expect(wired.pay).not.toHaveBeenCalled();
+    expect(lines.some((line) => line.includes("daily limit would be exceeded"))).toBe(true);
   });
 
   it("does not let an accept review override a vault rule", async () => {

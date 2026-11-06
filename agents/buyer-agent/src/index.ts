@@ -61,6 +61,9 @@ async function start(stop: { stopped: boolean }): Promise<void> {
       return { allowed: Boolean(allowed), limit: BigInt(limit as bigint) };
     },
     readThreshold: async () => BigInt(await reader.readContract({ address: vault, abi, functionName: "approvalThreshold" }) as bigint),
+    readDailyLimit: async () => BigInt(await reader.readContract({ address: vault, abi, functionName: "dailyLimit" }) as bigint),
+    readSpentToday: async () => BigInt(await reader.readContract({ address: vault, abi, functionName: "spentToday" }) as bigint),
+    readBalance: () => reader.getBalance({ address: vault }),
     accept: (id) => send("accept", id),
     pay: (id) => send("payInvoice", id),
   });

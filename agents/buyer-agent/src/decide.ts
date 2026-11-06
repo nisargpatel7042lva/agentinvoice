@@ -10,6 +10,9 @@ export interface DecideInput {
   supplierAllowed: boolean;
   supplierLimit: bigint;
   approvalThreshold: bigint;
+  dailyLimit: bigint;
+  spentToday: bigint;
+  balance: bigint;
   now: number;
   sponsorApprovalAvailable: boolean;
 }
@@ -28,6 +31,8 @@ export function decide(input: DecideInput): BuyerDecision {
 
   if (invoice.status === "Funded") {
     if (now < invoice.dueDate) return { action: "skip", reason: "not due yet" };
+    if (input.balance < face) return { action: "skip", reason: "vault balance is too low" };
+    if (input.spentToday + face > input.dailyLimit) return { action: "skip", reason: "daily limit would be exceeded" };
     if (face > input.approvalThreshold && !input.sponsorApprovalAvailable) {
       return { action: "skip", reason: "needs sponsor approval" };
     }

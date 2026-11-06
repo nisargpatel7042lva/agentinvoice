@@ -12,6 +12,7 @@
 - Pending acceptance is `BuyerVault.accept(market, id)`.
 - Payment ABI has `payInvoice(market, id)` and `payInvoice(market, id, approval)`.
 - Read `allowedSupplier`, `supplierLimit`, `dailyLimit`, `approvalThreshold`, and `spentToday` from the vault. Do not hardcode limits.
+- The vault has no `balance()` getter. `payInvoice` checks `address(this).balance`, so the agent reads that with `getBalance`. A payment is skipped when `spentToday + faceAmount > dailyLimit`. Sponsor approval does not raise the daily limit.
 - `POST /api/approvals` returns `{ approvalId, authorizationUrl }`. It does not return the `bytes approval` argument. Ask Mann before sending a sponsored payment.
 
 ## What already exists

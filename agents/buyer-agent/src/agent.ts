@@ -10,6 +10,9 @@ export interface BuyerDeps {
   marketAddress: Address;
   readSupplier: (supplier: Address) => Promise<{ allowed: boolean; limit: bigint }>;
   readThreshold: () => Promise<bigint>;
+  readDailyLimit: () => Promise<bigint>;
+  readSpentToday: () => Promise<bigint>;
+  readBalance: () => Promise<bigint>;
   accept: (id: bigint) => Promise<Hash32>;
   pay: (id: bigint) => Promise<Hash32>;
   model?: InvoiceModel;
@@ -33,7 +36,6 @@ export function createBuyerAgent(deps: BuyerDeps) {
     ]);
     const listed = [...pending, ...funded].filter(ours);
     if (listed.length === 0 || stopped) return;
-    const threshold = await deps.readThreshold();
     const now = deps.now?.() ?? Math.floor(Date.now() / 1000);
 
     for (const item of listed) {
@@ -41,12 +43,21 @@ export function createBuyerAgent(deps: BuyerDeps) {
       try {
         const invoice = await deps.api.getInvoice(item.id);
         if (!ours(invoice)) continue;
-        const supplier = await deps.readSupplier(invoice.supplier);
+        const [supplier, threshold, dailyLimit, spentToday, balance] = await Promise.all([
+          deps.readSupplier(invoice.supplier),
+          deps.readThreshold(),
+          deps.readDailyLimit(),
+          deps.readSpentToday(),
+          deps.readBalance(),
+        ]);
         const decision = decide({
           invoice,
           supplierAllowed: supplier.allowed,
           supplierLimit: supplier.limit,
           approvalThreshold: threshold,
+          dailyLimit,
+          spentToday,
+          balance,
           now,
           sponsorApprovalAvailable: false,
         });

@@ -25,6 +25,9 @@ function input(overrides: Partial<DecideInput> = {}): DecideInput {
     supplierAllowed: true,
     supplierLimit: 100n,
     approvalThreshold: 100n,
+    dailyLimit: 1_000n,
+    spentToday: 0n,
+    balance: 1_000n,
     now: 1_000,
     sponsorApprovalAvailable: false,
     ...overrides,
@@ -56,6 +59,39 @@ describe("buyer decide", () => {
     );
     expect(decision.action).toBe("pay");
     expect(decision.reason).toBe("due and below approval threshold");
+  });
+
+  it("pays when the face amount uses the last of the daily limit and the balance", () => {
+    const decision = decide(
+      input({
+        invoice: invoice({ status: "Funded", faceAmount: "100" }),
+        now: 2_000,
+        dailyLimit: 100n,
+        spentToday: 0n,
+        balance: 100n,
+      }),
+    );
+    expect(decision.action).toBe("pay");
+  });
+
+  it("skips a due payment the vault balance cannot cover", () => {
+    const decision = decide(
+      input({ invoice: invoice({ status: "Funded", faceAmount: "100" }), now: 2_000, balance: 99n }),
+    );
+    expect(decision).toEqual({ action: "skip", reason: "vault balance is too low" });
+  });
+
+  it("skips a due payment that would pass the daily limit even with sponsor approval", () => {
+    const decision = decide(
+      input({
+        invoice: invoice({ status: "Funded", faceAmount: "100" }),
+        now: 2_000,
+        dailyLimit: 100n,
+        spentToday: 1n,
+        sponsorApprovalAvailable: true,
+      }),
+    );
+    expect(decision).toEqual({ action: "skip", reason: "daily limit would be exceeded" });
   });
 
   it("skips a due payment above the threshold when sponsor approval is unavailable", () => {
