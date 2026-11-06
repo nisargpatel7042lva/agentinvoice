@@ -73,19 +73,19 @@ ENS publisher (Prompt 5 + v2-S4)
 
 ## Phase 4: scoreboard and hardening (hours 26 to 32) - branch `phase_4_hardening_sidd`
 
-- [ ] 4.1 `scripts/e2e.ts` prints E1 to E10 table, exits non-zero on failure; `e2e:local` and `e2e:testnet`
-- [ ] 4.2 Env validation with zod at boot, complete `.env.example` (names only)
-- [ ] 4.3 `dev:backend` starts API, indexer, sweeper, ENS publisher; graceful shutdown; `/health` shows db, mirror lag, last ENS publish
-- [ ] 4.4 Rate limits and body size limits on approval routes
-- [ ] 4.5 Secrets scan across repo and git history
+- [ ] 4.1 (NOT STARTED: scripts/e2e.ts is still Nisarg's placeholder; needs the deployed contracts) `scripts/e2e.ts` prints E1 to E10 table, exits non-zero on failure; `e2e:local` and `e2e:testnet`
+- [x] 4.2 Env validation with zod at boot, complete `.env.example` (names only)
+- [x] 4.3 (`bun run dev:backend`) `dev:backend` starts API, indexer, sweeper, ENS publisher; graceful shutdown; `/health` shows db, mirror lag, last ENS publish
+- [x] 4.4 Rate limits and body size limits on approval routes
+- [x] 4.5 Secrets scan across repo and git history
 - [ ] 4.6 Fresh-chat security review of the approval service (replay, wrong subject, races, key logging, demo controls)
 - [ ] 4.7 Fix review findings
 - [ ] Gate 4: E1 to E10 pass twice in a row on testnet, secrets scan clean
 
 ## Phase 5: submission (hours 32 to 36) - branch `phase_5_submission_sidd`
 
-- [ ] 5.1 README section "ENS integration": agent subnames, roles, expiry and revocation, how to verify in the ENS app, one honest sentence on the ENS requirement
-- [ ] 5.2 Remove dead code and unused dependencies
+- [x] 5.1 README section "ENS integration": agent subnames, roles, expiry and revocation, how to verify in the ENS app, one honest sentence on the ENS requirement
+- [x] 5.2 Remove dead code and unused dependencies
 - [ ] 5.3 Final `docs/FEEDBACK_WORLD.md` pass (integration debrief for the World prize)
 - [ ] 5.4 Reviewer duty: read contract and approval changes in a fresh chat before Nisarg merges
 
