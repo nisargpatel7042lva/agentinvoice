@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { ArrowRight, Search } from "lucide-react";
 import type { Invoice, ScoreBand } from "@agentinvoice/shared";
 import { buttonVariants, Table, TableBox, Td, Th } from "@/components/ui";
 import { ScoreBadge } from "@/components/ScoreBadge";
@@ -19,6 +19,9 @@ export interface MarketRow {
   band?: ScoreBand;
   score?: number | null;
 }
+
+// Initial tiles in the landing hues, so buyers are easy to tell apart.
+const TILE = ["bg-[#f9cba9]", "bg-[#f4ebc6]", "bg-[#dfe9d4]", "bg-[#ecd6e2]"];
 
 // Open first: that is what a new visitor can act on. Everything else is one click away.
 const FILTERS = ["Open", "All", "Funded", "Paid", "Late", "Defaulted"] as const;
@@ -100,10 +103,10 @@ export function MarketTable({ rows }: { rows: MarketRow[] }) {
               </thead>
               <tbody>
                 {shown.map(({ invoice: inv, buyerName, band, score }) => (
-                  <tr key={inv.id} className="hover:bg-canvas">
+                  <tr key={inv.id} className="group transition-colors hover:bg-accent-soft/40">
                     <Td>
                       <Link href={`/agent/${inv.buyerVault}`} className="flex items-center gap-2.5">
-                        <span aria-hidden="true" className="flex size-7 items-center justify-center rounded-full bg-subtle text-[11px] font-semibold text-ink-soft">
+                        <span aria-hidden="true" className={cn("flex size-8 items-center justify-center rounded-lg text-[11px] font-semibold text-[#161513]", TILE[(buyerName ?? inv.buyerVault).charCodeAt(2) % TILE.length])}>
                           {(buyerName ?? inv.buyerVault.slice(2)).slice(0, 2).toUpperCase()}
                         </span>
                         <span className="font-medium text-ink">{buyerName ?? shortHex(inv.buyerVault)}</span>
@@ -112,12 +115,13 @@ export function MarketTable({ rows }: { rows: MarketRow[] }) {
                     <Td>{band && <ScoreBadge band={band} score={score} />}</Td>
                     <Td className="text-right font-semibold">{formatAmount(inv.price)}</Td>
                     <Td className="text-right">{formatAmount(inv.faceAmount)}</Td>
-                    <Td className="text-right font-medium text-status-paid">{returnPct(inv)}</Td>
+                    <Td className="text-right"><span className="rounded-full bg-accent-soft px-2 py-0.5 text-[13px] font-semibold text-accent">{returnPct(inv)}</span></Td>
                     <Td className="text-ink-soft">{formatDate(inv.dueDate)}</Td>
                     {showStatus && <Td><StatusBadge status={inv.status} /></Td>}
                     <Td className="text-right">
-                      <Link href={`/invoice/${inv.id}`} className={buttonVariants({ variant: inv.status === "Open" ? "outline-accent" : "ghost", size: "sm" })}>
+                      <Link href={`/invoice/${inv.id}`} className={buttonVariants({ variant: inv.status === "Open" ? "default" : "ghost", size: "sm" })}>
                         {inv.status === "Open" ? "Fund" : "View"}
+                        <ArrowRight aria-hidden="true" className="transition-transform group-hover:translate-x-0.5" />
                       </Link>
                     </Td>
                   </tr>

@@ -19,8 +19,9 @@ const ROLE_LABEL = { buyer: "Buyer agent", supplier: "Supplier", investor: "Inve
 const KIND_LABEL: Record<LinkKind, string> = { owes: "Owes (invoices)", funded: "Funded", sponsors: "Vouches for" };
 const HEALTH_LABEL: Record<Health, string> = { good: "Paid on time", late: "Has late payments", default: "Has a default", open: "Not settled yet" };
 
-function readTheme() {
-  const css = getComputedStyle(document.documentElement);
+// Colours come from the graph's own container, so a section can force a theme with data-theme="dark".
+function readTheme(el: Element = document.documentElement) {
+  const css = getComputedStyle(el);
   const v = (name: string) => css.getPropertyValue(name).trim();
   return {
     ink: v("--color-ink"),
@@ -60,8 +61,8 @@ export function NetworkGraph({ nodes, links, height = 560, compact = false, focu
     if (!el) return;
     const ro = new ResizeObserver(([e]) => setWidth(Math.max(280, Math.floor(e.contentRect.width))));
     ro.observe(el);
-    setTheme(readTheme());
-    const mo = new MutationObserver(() => setTheme(readTheme()));
+    setTheme(readTheme(el));
+    const mo = new MutationObserver(() => setTheme(readTheme(el)));
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     return () => {
       ro.disconnect();

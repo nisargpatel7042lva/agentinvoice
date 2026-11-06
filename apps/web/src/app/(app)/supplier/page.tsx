@@ -1,5 +1,4 @@
-import { PageHeader } from "@/components/PageHeader";
-import { copy } from "@/lib/copy";
+import { Banner } from "@/components/Banner";
 import { SupplierForm } from "./SupplierForm";
 
 const NEXT = [
@@ -10,25 +9,31 @@ const NEXT = [
 
 export default function SupplierPage() {
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader title={copy.supplier.title} sub="Sell an invoice a buyer agent owes you and get paid before the due date." />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
-        <SupplierForm />
-        <aside aria-labelledby="next-title" className="rounded-xl border border-line bg-sidebar p-5 lg:sticky lg:top-24">
-          <h2 id="next-title" className="text-sm font-semibold">What happens next</h2>
-          <ol className="mt-4 flex flex-col gap-4">
+    <div className="flex flex-col gap-8">
+      <Banner
+        hue="lemon"
+        eyebrow="Create invoice"
+        title={
+          <>
+            Sell an invoice,
+            <br />
+            <em>get paid today.</em>
+          </>
+        }
+        sub="A buyer agent owes you money. List the invoice, set your price, and an investor pays you now instead of in 30 days."
+        cards={
+          <ol className="grid gap-3 sm:grid-cols-3">
             {NEXT.map((s, i) => (
-              <li key={s.title} className="flex gap-3">
-                <span aria-hidden="true" className="font-serif text-2xl leading-none text-accent italic">{i + 1}</span>
-                <span>
-                  <span className="block text-sm font-medium">{s.title}</span>
-                  <span className="mt-0.5 block text-[13px] leading-relaxed text-ink-muted">{s.body}</span>
-                </span>
+              <li key={s.title} className={i === 1 ? "pl-card pl-dark sm:translate-y-4" : "pl-card pl-glass"} style={{ ["--d" as string]: 0.1 + i * 0.12 + "s" }}>
+                <span className="pl-serif text-3xl leading-none">{i + 1}</span>
+                <span className="mt-3 block text-sm font-semibold">{s.title}</span>
+                <span className={"mt-1 block text-[12.5px] leading-relaxed " + (i === 1 ? "text-white/65" : "text-[#161513]/65")}>{s.body}</span>
               </li>
             ))}
           </ol>
-        </aside>
-      </div>
+        }
+      />
+      <SupplierForm />
     </div>
   );
 }
