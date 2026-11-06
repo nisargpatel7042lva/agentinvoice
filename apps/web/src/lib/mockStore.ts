@@ -15,8 +15,13 @@ import {
   type Invoice,
   type Status,
 } from "@agentinvoice/shared";
+import { sampleNetworkInvoices } from "./directory";
+
+// Bump when the seed data changes, so a running dev server reseeds instead of keeping stale demo data.
+const SEED_VERSION = 2;
 
 interface State {
+  version: number;
   invoices: Invoice[];
   audit: AuditEvent[]; // newest first, like GET /api/audit
   approvals: Approval[];
@@ -25,7 +30,8 @@ interface State {
 }
 
 const fresh = (): State => ({
-  invoices: structuredClone(invoiceFixtures),
+  version: SEED_VERSION,
+  invoices: structuredClone([...invoiceFixtures, ...sampleNetworkInvoices]),
   audit: structuredClone(auditFixtures),
   approvals: [structuredClone(approvalFixture)],
   nextId: 100,
@@ -34,7 +40,10 @@ const fresh = (): State => ({
 
 // Kept on globalThis so Next dev hot-reload does not wipe the demo state on every edit.
 const g = globalThis as unknown as { __aiMock?: State };
-const s = (): State => (g.__aiMock ??= fresh());
+const s = (): State => {
+  if (!g.__aiMock || g.__aiMock.version !== SEED_VERSION) g.__aiMock = fresh();
+  return g.__aiMock;
+};
 
 export class MockError extends Error {}
 

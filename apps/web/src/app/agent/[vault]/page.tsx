@@ -2,6 +2,10 @@ import Link from "next/link";
 import { payPolicyFixture, type Address } from "@agentinvoice/shared";
 import { Legend, RepaymentChart } from "@/components/charts";
 import { EnsPanel, PermissionsPanel } from "@/components/EnsPanel";
+import { NetworkGraph } from "@/components/NetworkGraph";
+import { egoGraph } from "@/lib/graph";
+import { loadNetwork } from "@/lib/network";
+import { partyOf } from "@/lib/directory";
 import { PolicyPanel } from "@/components/PolicyPanel";
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { Section } from "@/components/Section";
@@ -22,8 +26,11 @@ const MOCK_SPENT_TODAY = "1200000000";
 
 export default async function AgentPage({ params }: { params: Promise<{ vault: string }> }) {
   const { vault } = await params;
-  const [ens, score, invoices] = await Promise.all([loadEnsByVault(vault), loadScore(vault), api.listInvoices().catch(() => [])]);
+  const [ens, score, invoices, network] = await Promise.all([loadEnsByVault(vault), loadScore(vault), api.listInvoices().catch(() => []), loadNetwork()]);
+  const ego = egoGraph(network, vault);
   const agent = "agent" in ens ? ens.agent : undefined;
+  // ENS name when published; in demo mode fall back to the sample directory.
+  const displayName = agent?.name ?? (isMock ? partyOf(vault)?.name : undefined);
   const mine = invoices.filter((i) => i.buyerVault.toLowerCase() === vault.toLowerCase());
   const weekly = repaymentsByWeek(mine);
   const settled = score ? score.paid + score.late + score.defaulted : 0;
@@ -35,11 +42,11 @@ export default async function AgentPage({ params }: { params: Promise<{ vault: s
     <div className="mx-auto flex max-w-5xl flex-col gap-5">
       <section className="flex flex-wrap items-center gap-4">
         <span aria-hidden="true" className="flex size-14 items-center justify-center rounded-[14px] bg-accent-soft text-xl font-bold text-accent">
-          {(agent?.name ?? vault.slice(2)).slice(0, 2).toUpperCase()}
+          {(displayName ?? vault.slice(2)).slice(0, 2).toUpperCase()}
         </span>
         <div className="min-w-60 flex-1">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-[28px] leading-9 font-semibold tracking-tight">{agent?.name ?? shortHex(vault)}</h1>
+            <h1 className="text-[28px] leading-9 font-semibold tracking-tight">{displayName ?? shortHex(vault)}</h1>
             {score && <Term explain="score"><ScoreBadge band={score.band} value={score.band === "New" ? null : score.onTimeRate} /></Term>}
           </div>
           <p className="mt-1 text-[15px] text-ink-soft">{summary}</p>
@@ -57,6 +64,16 @@ export default async function AgentPage({ params }: { params: Promise<{ vault: s
       </section>
 
       <EnsPanel state={ens} vaultOnChain={vault as Address} />
+
+      {ego.links.length > 0 && (
+        <section aria-labelledby="conn-title" className="flex flex-col gap-2">
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 id="conn-title" className="text-base font-semibold">Connections</h2>
+            <Link href="/network" className="text-sm text-accent">Open full network</Link>
+          </div>
+          <NetworkGraph nodes={ego.nodes} links={ego.links} height={300} compact focusId={vault} />
+        </section>
+      )}
 
       <Section title={copy.sections.permissions} hint="Sponsor, publisher and registry each control different values">
         <PermissionsPanel />
