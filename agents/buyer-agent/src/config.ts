@@ -1,4 +1,4 @@
-import { hederaTestnet, parseAgentAccountProvider, type AgentAccountProvider } from "@agentinvoice/shared";
+import { hederaTestnet, parseAgentAccountProvider, type AgentAccountProvider } from "@invoiceagent/shared";
 import { flattenError, z } from "zod";
 import addresses from "../../../packages/shared/src/addresses.json" with { type: "json" };
 

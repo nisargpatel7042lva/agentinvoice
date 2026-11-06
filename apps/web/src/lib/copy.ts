@@ -1,5 +1,5 @@
 // Mirrors docs/design/copy.md. Change wording there first, then here.
-import type { ScoreBand, Status } from "@agentinvoice/shared";
+import type { ScoreBand, Status } from "@invoiceagent/shared";
 
 export const copy = {
   banner: {
@@ -8,7 +8,7 @@ export const copy = {
     mock: "Showing sample data (mock mode).",
   },
   onboarding: {
-    title: "New here? It takes three steps",
+    title: "New here? Start with your role",
     dismiss: "Got it",
     steps: [
       { title: "Pick an invoice", body: "Each one is money a buyer owes a supplier. Start with an A score: those buyers pay on time." },
@@ -36,16 +36,20 @@ export const copy = {
     permissions: "Who can change these values",
     details: "Show details",
   },
-  nav: { brand: "AgentInvoice", market: "Marketplace", supplier: "Create invoice", backMarket: "Back to marketplace" },
+  nav: { brand: "Invoice Agent", market: "Marketplace", supplier: "Create invoice", backMarket: "Back to marketplace" },
   wallet: { connect: "Connect wallet", connectToFund: "Connect a wallet to fund this invoice" },
   money: { where: "Where the money is" },
   sponsor: { accountable: "Sponsor (accountable for this buyer)" },
   market: {
-    title: "Fund an invoice, get paid back more",
-    subtitle: "Pay a supplier now. The buyer pays you the full amount on the due date.",
+    title: "Marketplace",
+    subtitle: "Fund an invoice today, get the full amount back on the due date.",
     overview: "Market overview",
     overviewHint: "Totals and charts for every invoice",
     filterAll: "All statuses",
+    filterScore: "Minimum score",
+    filterScoreAny: "Any score",
+    filterScore650: "650+ (Band B/A)",
+    filterScore750: "750+ (Band A)",
     col: { invoice: "Invoice", buyer: "Buyer", sponsor: "Sponsor", face: "Face amount", price: "Price", due: "Due", score: "Score", status: "Status" },
   },
   empty: {
@@ -118,7 +122,7 @@ export const copy = {
     labels: { vault: "addr", limit: "limit", threshold: "threshold", paid: "paid", late: "late", status: "status", expiresAt: "expires", name: "name" },
     permissionsTitle: "Who can change what",
     unreachable: "We cannot reach ENS right now, so these values are hidden rather than guessed. Try again in a minute.",
-    missing: "This name has no AgentInvoice records yet.",
+    missing: "This name has no Invoice Agent records yet.",
     expired: "This ENS name has expired. Treat this agent as unverified.",
     revoked: "This agent's name was revoked by its sponsor. Do not fund new invoices for it.",
   },
@@ -134,6 +138,48 @@ export const copy = {
     expired: "This request expired. The agent will ask again if it still needs to pay.",
   },
   toast: { pending: "Waiting for the network to confirm…", success: "Done.", viewTx: "View transaction" },
+  creditScore: {
+    title: "Credit score",
+    scale: "300–900",
+    minScoreFilter: "Minimum score",
+    filterAny: "Any score",
+    filter650: "650+ (Good)",
+    filter750: "750+ (Excellent)",
+    noScore: "—",
+    newChip: "New",
+    asOf: (date: string) => `As of ${date}`,
+    points: (pts: number) => `+${pts} pts`,
+    factors: {
+      payment: "Payment history",
+      defaults: "Defaults & recency",
+      exposure: "Exposure vs limit",
+      history: "History length",
+      volume: "Track record size",
+    },
+    evidence: {
+      show: "Show invoices",
+      hide: "Hide invoices",
+      empty: "No invoices associated with this factor.",
+    },
+    howItWorks: {
+      title: "How this score works",
+      description:
+        "The credit score ranges from 300 to 900 and is computed deterministically from on-chain invoice history. It is tamper-proof: every input is verified from smart contract events on Hedera, with zero off-chain opinion.",
+      factorsIntro: "The score is calculated across 5 weighted factors:",
+      factor1:
+        "Payment history (35%): Rewards invoices paid on time, discounts late payments, and heavily penalizes missed payments.",
+      factor2:
+        "Defaults & recency (20%): Evaluates unfulfilled obligations, with recent defaults penalized twice as heavily as older ones.",
+      factor3:
+        "Exposure vs limit (20%): Measures current open exposure against the vault's daily spending limit.",
+      factor4:
+        "History length (15%): Tracks the time elapsed since the buyer's first invoice (180 days for full score).",
+      factor5:
+        "Track record size (10%): Measures the total count of settled invoices (20 needed for full score).",
+      newRule:
+        "Agents with fewer than 3 settled invoices receive a 'New' band until sufficient history is established.",
+    },
+  },
   error: {
     generic: "Something went wrong. Nothing was charged. Please try again.",
     notFound: "We could not find this invoice.",

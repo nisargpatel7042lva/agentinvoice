@@ -5,7 +5,7 @@ import { HowItWorks } from "./HowItWorks";
 import { Section } from "./Section";
 import { Term } from "./Term";
 import { THEME_KEY, ThemeToggle } from "./ThemeToggle";
-import { STATUSES, approvalFixture, ensAgentFixture, invoiceFixtures, payPolicyFixture } from "@agentinvoice/shared";
+import { STATUSES, approvalFixture, ensAgentFixture, invoiceFixtures, payPolicyFixture } from "@invoiceagent/shared";
 import { ApprovalCard } from "./ApprovalCard";
 import { EmptyState } from "./EmptyState";
 import { EnsPanel, PermissionsPanel } from "./EnsPanel";
@@ -13,14 +13,37 @@ import { Stepper } from "./Stepper";
 import { InvoiceCard } from "./InvoiceCard";
 import { PolicyPanel } from "./PolicyPanel";
 import { ScoreBadge } from "./ScoreBadge";
+import { CreditScoreCard } from "./CreditScoreCard";
+import { PartyDialog } from "./PartyDialog";
 import { StatusBadge } from "./StatusBadge";
 import { Toast } from "./Toast";
 import { TxLink } from "./TxLink";
 import { copy } from "@/lib/copy";
+import { computeCreditReport } from "@invoiceagent/shared";
 
 afterEach(cleanup);
 
 describe("components render", () => {
+  it("PartyDialog links the ENS name and address to public verifiers and closes on Escape", () => {
+    const vault = "0x2222222222222222222222222222222222222222";
+    let closed = false;
+    render(
+      <PartyDialog
+        node={{ id: vault, name: "buyer.agentinvoicenf71.eth", role: "buyer", band: "A", volume: 42, invoices: 3 }}
+        links={[{ id: "owes:a->b", source: "0x1111111111111111111111111111111111111111", target: vault, kind: "owes", count: 2, hbar: 20, health: "good" }]}
+        nameOf={(id) => (id === vault ? "buyer" : "acme.eth")}
+        onClose={() => (closed = true)}
+      />,
+    );
+    const hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
+    expect(hrefs).toContain("https://sepolia.app.ens.domains/buyer.agentinvoicenf71.eth");
+    expect(hrefs).toContain("https://sepolia.etherscan.io/address/" + vault);
+    expect(hrefs).toContain("/agent/" + vault);
+    expect(screen.getByRole("dialog").textContent).toContain("acme.eth");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(closed).toBe(true);
+  });
+
   it("StatusBadge shows every status as text", () => {
     for (const s of STATUSES) render(<StatusBadge status={s} />);
     for (const s of STATUSES) expect(screen.getByText(s)).toBeTruthy();
@@ -31,6 +54,29 @@ describe("components render", () => {
     render(<ScoreBadge band="New" value={null} />);
     expect(screen.getByText("A · 86")).toBeTruthy();
     expect(screen.getByText("New")).toBeTruthy();
+  });
+
+  it("ScoreBadge supports score prop", () => {
+    render(<ScoreBadge band="A" score={782} />);
+    render(<ScoreBadge band="New" score={null} />);
+    expect(screen.getByText("782 · A")).toBeTruthy();
+    expect(screen.getByText("— · New")).toBeTruthy();
+  });
+
+  it("CreditScoreCard renders gauge, score, factors, and proof links", () => {
+    const report = computeCreditReport({
+      vault: ensAgentFixture.vault,
+      invoices: invoiceFixtures,
+      now: 1_794_500_000,
+    });
+    render(<CreditScoreCard report={report} />);
+    expect(screen.getByRole("region", { name: "Buyer credit score" })).toBeTruthy();
+    expect(screen.getByText("Payment history")).toBeTruthy();
+    expect(screen.getByText("Defaults & recency")).toBeTruthy();
+    expect(screen.getByText("Exposure vs limit")).toBeTruthy();
+    expect(screen.getByText("History length")).toBeTruthy();
+    expect(screen.getByText("Track record size")).toBeTruthy();
+    expect(screen.getByText(copy.creditScore.howItWorks.title)).toBeTruthy();
   });
 
   it("InvoiceCard, PolicyPanel, TxLink, EmptyState, Toast", () => {

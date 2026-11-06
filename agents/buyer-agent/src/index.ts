@@ -1,5 +1,5 @@
 import { pathToFileURL } from "node:url";
-import { createAgentAccount, createApiClient, hederaTestnet } from "@agentinvoice/shared";
+import { createAgentAccount, createApiClient, hederaTestnet } from "@invoiceagent/shared";
 import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { createBuyerAgent } from "./agent.js";

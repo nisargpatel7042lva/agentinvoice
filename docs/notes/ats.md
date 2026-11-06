@@ -31,7 +31,7 @@ npm run ats:web:start
 ## 2. Bond Creation Workflow (Admin App vs. SDK Script)
 - **Admin App Route (Works First):**
   - Navigate to Bonds section in ATS Web App (`http://localhost:4173/`).
-  - Input parameters: Name (`AgentInvoice Bond`), Symbol (`INV-BOND`), Nominal Value (100 HBAR), Currency (`HBAR`/`USD`), Maturity Date (Unix timestamp).
+  - Input parameters: Name (`Invoice Agent Bond`), Symbol (`INV-BOND`), Nominal Value (100 HBAR), Currency (`HBAR`/`USD`), Maturity Date (Unix timestamp).
   - Admin App uses pre-wired factory and resolver contracts on Hedera Testnet, deploying the Diamond proxy contract directly.
 - **SDK Script Route:**
   - Uses `@hashgraph/asset-tokenization-sdk` with `Network.TESTNET`, `resolverAddress`, and `factoryAddress`.

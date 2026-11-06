@@ -5,8 +5,9 @@ export * from "./schemas";
 export * from "./fixtures";
 export * from "./ens";
 export * from "./api";
-// payAndGet is imported from "@agentinvoice/shared/payAndGet" (agents only; it pulls in the Hedera SDK).
+// payAndGet is imported from "@invoiceagent/shared/payAndGet" (agents only; it pulls in the Hedera SDK).
 
 export * from "./contracts";
 export * from "./agentAccount";
+export * from "./creditScore";
 export * from "./score";

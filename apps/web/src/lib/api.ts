@@ -1,5 +1,5 @@
 import "server-only";
-import { createApiClient } from "@agentinvoice/shared";
+import { createApiClient } from "@invoiceagent/shared";
 import { isMock } from "./env";
 import { mockStore } from "./mockStore";
 

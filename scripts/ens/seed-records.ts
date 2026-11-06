@@ -1,6 +1,6 @@
 // Writes the initial text records (spec v2 keys) on the demo agent subname, using the right wallet for each key:
 // sponsor writes limit/threshold/sponsor, the ens-publisher writes paid/late/status (real transactions).
-// Usage: bun scripts/ens/seed-records.ts
+// Usage: bun scripts/ens/seed-records.ts   (ENS_LIMIT and ENS_THRESHOLD override the defaults; the vault uses tinybar, 1 HBAR = 1e8)
 import { toHex, type Address } from "viem";
 import { normalize, packetToBytes } from "viem/ens";
 import { abis, publicClient, requireEnv, txLink, walletFor } from "./lib.js";
@@ -11,8 +11,8 @@ const sponsor = walletFor("SPONSOR_PRIVATE_KEY");
 const publisher = walletFor("ENS_PUBLISHER_KEY");
 
 const records: [string, string, typeof sponsor][] = [
-  ["limit", "100", sponsor],
-  ["threshold", "10", sponsor],
+  ["limit", process.env.ENS_LIMIT ?? "100", sponsor],
+  ["threshold", process.env.ENS_THRESHOLD ?? "10", sponsor],
   ["paid", "0", publisher],
   ["late", "0", publisher],
   ["status", "active", publisher],

@@ -1,9 +1,9 @@
-import { payAndGet } from "@agentinvoice/shared/payAndGet";
+import { payAndGet } from "@invoiceagent/shared/payAndGet";
 
 async function main() {
   const paidApiUrl = process.env.PAID_API_URL || "http://localhost:4020/score";
   // Default: the deployed BuyerVault from addresses.json. Payer: HEDERA_ACCOUNT_ID + HEDERA_PRIVATE_KEY (ECDSA).
-  const { contracts } = await import("@agentinvoice/shared");
+  const { contracts } = await import("@invoiceagent/shared");
   const targetVault = (process.env.TARGET_VAULT || contracts.buyerVault) as `0x${string}`;
 
   const queryUrl = `${paidApiUrl}?vault=${targetVault}`;

@@ -6,11 +6,21 @@ import { hederaReader } from "./chain/reader.js";
 import { errorMessage } from "./errors.js";
 import { EnvError, loadEnv, type Config } from "./env.js";
 import { liveEnsDeps } from "./ens/live.js";
+import { liveMintDeps } from "./ens/liveMint.js";
 import { createEnsPublisher } from "./ens/publisher.js";
+import { atsIssuer } from "./bond/ats.js";
+import { createBondService } from "./bond/service.js";
 import { createIndexer } from "./indexer.js";
 
 // Starts the API, the chain indexer, the ENS publisher, the approval sweeper and the HCS audit publisher
 // (each optional one only when its environment group is set), and shuts them down cleanly on SIGINT/SIGTERM.
+
+// Seller ENS minting is on only when the sponsor key, user registry, resolver and parent name are all set.
+function mintFromEnv() {
+  const e = process.env;
+  if (!e.SPONSOR_PRIVATE_KEY || !e.ENS_USER_REGISTRY_ADDRESS || !e.ENS_RESOLVER_ADDRESS || !e.ENS_PARENT_LABEL) return undefined;
+  return liveMintDeps({ sponsorKey: e.SPONSOR_PRIVATE_KEY as `0x${string}`, userRegistry: e.ENS_USER_REGISTRY_ADDRESS as `0x${string}`, resolver: e.ENS_RESOLVER_ADDRESS as `0x${string}`, parentLabel: e.ENS_PARENT_LABEL, rpcUrl: e.SEPOLIA_RPC_URL || undefined });
+}
 
 let config: Config;
 try {
@@ -33,6 +43,7 @@ const app = buildApp({
   world: config.world ? { ...config.world, appUrl: config.appUrl, ttlSeconds: config.approvalTtlSeconds } : null,
   audit: { topicId: config.hcs?.topicId },
   issuer: config.issuer && config.indexer ? hederaIssuer({ market: config.indexer.market, privateKey: config.issuer.privateKey, rpcUrl: config.indexer.rpcUrl }) : undefined,
+  minter: mintFromEnv(),
   features: { indexer: Boolean(config.indexer), ens: Boolean(config.ens), audit: Boolean(submit) },
   onAudit: (event: AuditInput) => {
     if (!submit) return;
@@ -57,6 +68,16 @@ if (publisher) {
   app.addHook("onClose", async () => publisher.stop());
 }
 
+// Hedera Tokenize: mirror funded invoices as ATS bond units. On only when ATS_BOND_ADDRESS is set and an issuer wallet exists.
+const bondService =
+  process.env.ATS_BOND_ADDRESS && config.issuer
+    ? createBondService({ db: app.db, ats: atsIssuer(config.issuer.privateKey), bond: process.env.ATS_BOND_ADDRESS as `0x${string}`, onError: (err, id) => app.log.warn({ message: errorMessage(err), invoiceId: id }, "bond step failed, will retry") })
+    : undefined;
+if (bondService) {
+  const timer = setInterval(() => void bondService.reconcile(), 20_000);
+  app.addHook("onClose", async () => clearInterval(timer));
+}
+
 if (config.indexer) {
   const indexer = createIndexer({
     db: app.db,
@@ -65,6 +86,7 @@ if (config.indexer) {
     onError: (err) => app.log.error({ err }, "indexer poll failed"),
     onChange: (changes) => {
       publisher?.trigger();
+      void bondService?.reconcile();
       for (const c of changes) {
         if (c.from !== c.to) app.audit({ type: auditEventForStatus(c.to), invoiceId: c.invoiceId, data: { from: c.from, to: c.to } });
       }

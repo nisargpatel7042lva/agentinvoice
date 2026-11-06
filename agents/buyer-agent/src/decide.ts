@@ -1,4 +1,4 @@
-import type { Invoice } from "@agentinvoice/shared";
+import type { Invoice } from "@invoiceagent/shared";
 
 export type BuyerDecision =
   | { action: "accept"; reason: string }

@@ -1,4 +1,4 @@
-import type { Approval } from "@agentinvoice/shared";
+import type { Approval } from "@invoiceagent/shared";
 import type Database from "better-sqlite3";
 import { transition, type ApprovalEvent, type ApprovalState } from "./machine.js";
 import type { PendingStepUp } from "../world/callback.js";

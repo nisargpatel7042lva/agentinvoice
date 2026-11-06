@@ -1,4 +1,4 @@
-import type { Status } from "@agentinvoice/shared";
+import type { Status } from "@invoiceagent/shared";
 
 // Payment-history score for a buyer vault, computed from its invoices.
 // Bands: New (fewer than 3 settled), A (95% or more on time), B (80% to 94%), C (below 80%).

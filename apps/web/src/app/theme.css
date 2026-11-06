@@ -1,23 +1,30 @@
-/* Design tokens. Source: docs/design/tokens.md. Light by default; dark overrides live in globals.css under [data-theme="dark"]. */
+/* Design tokens (warm redesign v3). Source: docs/design/tokens.md. Light by default; dark overrides live in
+   globals.css under [data-theme="dark"]. Primary buttons are ink; coral is the one accent. */
 @theme {
   --color-*: initial;
   --color-on-accent: #ffffff;
-  --color-accent: #0f766e;
-  --color-accent-hover: #115e59;
-  --color-accent-soft: #f0fdfa;
-  --color-ink: #09090b;
-  --color-ink-soft: #3f3f46;
-  --color-ink-muted: #71717a;
-  --color-ink-faint: #a1a1aa;
-  --color-line: #e4e4e7;
-  --color-subtle: #f4f4f5;
-  --color-surface: #ffffff;
-  --color-canvas: #fafafa;
+  --color-accent: #c2410c; /* links, focus, small accent text (5.2:1 on white) */
+  --color-accent-hover: #9a3412;
+  --color-accent-soft: #fdf0e8;
+  --color-accent-200: #f6d3bf;
+  --color-hot: #f26b3a; /* coral fills: landing CTA, scanner, highlights (dark text on it) */
+  --color-highlight: #c2410c;
+  --color-dot: #f26b3a;
+  --color-glow: #f8c9a8;
+  --color-panel: #1c1b19; /* dark split / closing section */
+  --color-ink: #161513;
+  --color-ink-soft: #2e2c28;
+  --color-ink-muted: #6b6860;
+  --color-ink-faint: #a29e94;
+  --color-line: #e6e1d7;
+  --color-subtle: #f1ede5;
+  --color-surface: #fffdf9;
+  --color-canvas: #f7f4ee;
+  --color-sidebar: #f0ece4;
   --color-danger: #b91c1c;
-  --color-warn: #d97706;
-  --color-good: #16a34a;
+  --color-warn: #b45309;
+  --color-good: #15803d;
   --color-white: #ffffff;
-  --color-accent-200: #ccfbf1;
 
   --color-status-pending: #475569;
   --color-status-pending-bg: #f1f5f9;
@@ -41,7 +48,8 @@
   --color-band-new: #475569;
   --color-band-new-bg: #f1f5f9;
 
-  --font-sans: var(--font-inter), Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter-tight), "Inter Tight", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-instrument-serif), "Instrument Serif", Georgia, serif;
   --font-mono: var(--font-mono-jb), "JetBrains Mono", ui-monospace, monospace;
 
   --text-xs: 0.75rem;
@@ -64,9 +72,12 @@
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
-  --radius-xl: 12px;
+  --radius-xl: 14px;
+  --radius-2xl: 20px;
   --radius-full: 9999px;
 
-  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.06), 0 1px 3px rgb(15 23 42 / 0.08);
-  --shadow-raised: 0 4px 12px rgb(15 23 42 / 0.12);
+  --shadow-card: 0 1px 2px rgb(22 21 19 / 0.04);
+  --shadow-raised: 0 24px 48px -20px rgb(22 21 19 / 0.28);
+
+  --ease-out-soft: cubic-bezier(0.22, 0.7, 0.2, 1);
 }

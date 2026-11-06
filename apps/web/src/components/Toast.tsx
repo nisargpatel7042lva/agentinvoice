@@ -1,4 +1,4 @@
-import type { Hash32 } from "@agentinvoice/shared";
+import type { Hash32 } from "@invoiceagent/shared";
 import { copy } from "@/lib/copy";
 import { TxLink } from "./TxLink";
 

@@ -1,6 +1,6 @@
 // Who is who: display names for addresses. Mock mode uses this sample directory.
 // Real mode: names come from ENS (reverse records), and unknown addresses fall back to a short hex.
-import type { Address, Invoice } from "@agentinvoice/shared";
+import type { Address, Invoice } from "@invoiceagent/shared";
 
 export type Role = "buyer" | "supplier" | "investor" | "sponsor";
 
@@ -47,7 +47,7 @@ const HBAR = (n: number) => String(Math.round(n * 1e8));
 
 type Seed = [id: number, supplier: string, buyer: string, face: number, price: number, due: number, status: Invoice["status"], holder?: string, desc?: string];
 
-// 16 extra SAMPLE invoices so the network has shape: an A buyer that pays, a C buyer that slips, a New buyer just starting.
+// Sample network invoices so the network has shape: an A buyer that pays, a B buyer, a C buyer that slips, a New buyer just starting.
 const seeds: Seed[] = [
   [11, "0x1212", "0x2222", 40, 38, 1793100000, "Paid", "0x3333", "Brand illustrations, September"],
   [12, "0x1313", "0x2222", 120, 114, 1793300000, "Paid", "0x3333", "GPU hours, September"],
@@ -65,6 +65,18 @@ const seeds: Seed[] = [
   [24, "0x1414", "0x7777", 22, 20.6, 1795000000, "Open", undefined, "Starter dataset"],
   [25, "0x1212", "0x2222", 55, 52.3, 1795100000, "Open", undefined, "Product photography"],
   [26, "0x1313", "0x7777", 18, 16.9, 1795200000, "Pending", undefined, "Trial GPU hours"],
+  [27, "0x1414", "0x5555", 50, 47.5, 1792500000, "Paid", undefined, "Dataset licence 2"],
+  [28, "0x1414", "0x5555", 40, 38, 1792800000, "Paid", undefined, "Dataset licence 3"],
+  [31, "0x1212", "0x2222", 10, 9.5, 1777000000, "Paid", undefined, "Historical job #1"],
+  [32, "0x1212", "0x2222", 10, 9.5, 1778296000, "Paid", undefined, "Historical job #2"],
+  [33, "0x1212", "0x2222", 10, 9.5, 1779592000, "Paid", undefined, "Historical job #3"],
+  [34, "0x1212", "0x2222", 10, 9.5, 1780888000, "Paid", undefined, "Historical job #4"],
+  [35, "0x1212", "0x2222", 10, 9.5, 1782184000, "Paid", undefined, "Historical job #5"],
+  [36, "0x1212", "0x2222", 10, 9.5, 1783480000, "Paid", undefined, "Historical job #6"],
+  [37, "0x1212", "0x2222", 10, 9.5, 1784776000, "Paid", undefined, "Historical job #7"],
+  [38, "0x1212", "0x2222", 10, 9.5, 1786072000, "Paid", undefined, "Historical job #8"],
+  [39, "0x1212", "0x2222", 10, 9.5, 1787368000, "Paid", undefined, "Historical job #9"],
+  [40, "0x1212", "0x2222", 10, 9.5, 1788664000, "Paid", undefined, "Historical job #10"],
 ];
 
 const full = (short: string) => sampleParties.find((p) => p.address.startsWith(short.toLowerCase()))!.address;

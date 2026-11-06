@@ -1,4 +1,4 @@
-import { formatUnits, type Address, type ApiClient, type Hash32, type Invoice } from "@agentinvoice/shared";
+import { formatUnits, type Address, type ApiClient, type Hash32, type Invoice } from "@invoiceagent/shared";
 import { decide, decisionLine } from "./decide.js";
 import { reviewInvoice, type InvoiceModel, type InvoiceReview } from "./review.js";
 

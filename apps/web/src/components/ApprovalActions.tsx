@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { Amount, Approval } from "@agentinvoice/shared";
+import type { Amount, Approval } from "@invoiceagent/shared";
 import { decideApproval, payInvoice } from "@/app/actions";
 import { ActionButton, useAction } from "@/components/ActionButton";
 import { ApprovalCard } from "@/components/ApprovalCard";

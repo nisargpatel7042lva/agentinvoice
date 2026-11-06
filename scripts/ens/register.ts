@@ -49,7 +49,7 @@ if (!resolver) {
 console.log("resolver:", addrLink(resolver));
 
 // 2. Parent name on the .eth registry via the commit-reveal registrar, paid in MockUSDC.
-const parentLabel = process.env.ENS_PARENT_LABEL ?? `agentinvoice${Math.random().toString(36).slice(2, 6)}`;
+const parentLabel = process.env.ENS_PARENT_LABEL ?? `invoiceagent${Math.random().toString(36).slice(2, 6)}`;
 const parentId = labelId(parentLabel);
 const existingOwner = await publicClient.readContract({
   address: ENS.ethRegistry,

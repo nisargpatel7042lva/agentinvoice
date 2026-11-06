@@ -1,27 +1,35 @@
 import { describe, expect, it, vi } from "vitest";
-import { invoiceFixtures, scoreFixtures, type Invoice, type BuyerScore } from "@agentinvoice/shared";
+import { invoiceFixtures, scoreFixtures, type Invoice, type BuyerScore } from "@invoiceagent/shared";
 import { createInvestorAgent, MAX_RETRIES } from "./agent.js";
 import { decide, rulesFromEnv, type Rules } from "./decide.js";
 import { createScoreReader, SCORE_TTL_MS } from "./score.js";
 
 const [A, B, C, NEW] = scoreFixtures;
 const open = invoiceFixtures.find((i) => i.status === "Open")!; // face 10 HBAR, price 9.5 HBAR (500 bps)
-const rules: Rules = { minBand: "B", minDiscountBps: 100, maxPrice: 2_000_000_000n, maxOpenExposure: 2_000_000_000n };
+const rules: Rules = { minScore: 650, minBand: "B", minDiscountBps: 100, maxPrice: 2_000_000_000n, maxOpenExposure: 2_000_000_000n };
 const forVault = (s: BuyerScore): Invoice => ({ ...open, buyerVault: s.vault });
 
 describe("decide", () => {
-  it("buys band A and band B at minimum B", () => {
+  it("buys band A and band B at minimum B and minimum score 650", () => {
     expect(decide(forVault(A), A, rules).action).toBe("buy");
     expect(decide(forVault(B), B, rules).action).toBe("buy");
   });
-  it("skips band C", () => {
-    expect(decide(forVault(C), C, rules)).toEqual({ action: "skip", reason: "band C below minimum B" });
+  it("skips when creditScore is null with 'no credit history yet'", () => {
+    expect(decide(forVault(NEW), NEW, rules)).toEqual({ action: "skip", reason: "no credit history yet" });
+    const withNull: BuyerScore = { ...A, creditScore: null };
+    expect(decide(forVault(withNull), withNull, rules)).toEqual({ action: "skip", reason: "no credit history yet" });
   });
-  it("skips band New", () => {
-    expect(decide(forVault(NEW), NEW, rules)).toEqual({ action: "skip", reason: "band New: no payment history" });
+  it("skips when creditScore is below MIN_SCORE", () => {
+    const below: BuyerScore = { ...B, creditScore: 612 };
+    expect(decide(forVault(below), below, rules)).toEqual({ action: "skip", reason: "credit score 612 below minimum 650" });
   });
-  it("buys band C only when MIN_BAND=C", () => {
-    expect(decide(forVault(C), C, { ...rules, minBand: "C" }).action).toBe("buy");
+  it("skips band C even if creditScore passes when MIN_BAND is B", () => {
+    const highCreditLowBand: BuyerScore = { ...C, creditScore: 700 };
+    expect(decide(forVault(highCreditLowBand), highCreditLowBand, rules)).toEqual({ action: "skip", reason: "band C below minimum B" });
+  });
+  it("buys band C only when both MIN_BAND=C and creditScore >= MIN_SCORE", () => {
+    const scorePassC: BuyerScore = { ...C, creditScore: 650 };
+    expect(decide(forVault(scorePassC), scorePassC, { ...rules, minBand: "C" }).action).toBe("buy");
   });
   it("skips non-Open, missing score, low discount, high price, over exposure", () => {
     const funded = invoiceFixtures.find((i) => i.status === "Funded")!;
@@ -31,10 +39,15 @@ describe("decide", () => {
     expect(decide(open, A, { ...rules, maxPrice: 1n }).reason).toMatch(/above max/);
     expect(decide(open, A, rules, 1_500_000_000n).reason).toMatch(/exceed max/);
   });
-  it("reads rules from env with MIN_BAND default B", () => {
+  it("reads rules from env with MIN_BAND default B and MIN_SCORE default 650", () => {
     expect(rulesFromEnv({}).minBand).toBe("B");
+    expect(rulesFromEnv({}).minScore).toBe(650);
+    expect(rulesFromEnv({ MIN_SCORE: "750" }).minScore).toBe(750);
     expect(rulesFromEnv({ MAX_PRICE: "1.5" }).maxPrice).toBe(150_000_000n);
     expect(() => rulesFromEnv({ MIN_BAND: "D" })).toThrow();
+    expect(() => rulesFromEnv({ MIN_SCORE: "299" })).toThrow(/MIN_SCORE/);
+    expect(() => rulesFromEnv({ MIN_SCORE: "901" })).toThrow(/MIN_SCORE/);
+    expect(() => rulesFromEnv({ MIN_SCORE: "invalid" })).toThrow(/MIN_SCORE/);
   });
 });
 
@@ -79,8 +92,8 @@ describe("agent loop", () => {
     const { agent, lines, buy } = setup([c, a]);
     expect(await agent.tick()).toBe("11");
     expect(buy).toHaveBeenCalledWith(11n, 950_000_000n * 10n ** 10n);
-    expect(lines[0]).toMatch(/^invoice=10 band=C discount=500bps skipped reason="band C below minimum B"$/);
-    expect(lines[1]).toMatch(/^invoice=11 band=A discount=500bps bought tx=0xabc/);
+    expect(lines[0]).toMatch(/^invoice=10 score=480 band=C discount=500bps skipped reason="credit score 480 below minimum 650"$/);
+    expect(lines[1]).toMatch(/^invoice=11 score=782 band=A discount=500bps bought tx=0xabc/);
   });
 
   it("buys at most one invoice per loop", async () => {

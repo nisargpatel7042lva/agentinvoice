@@ -1,5 +1,5 @@
 import { Check, TriangleAlert } from "lucide-react";
-import { ENS_ROLES, type Address, type EnsAgent, type EnsSetter } from "@agentinvoice/shared";
+import { ENS_ROLES, type Address, type EnsAgent, type EnsSetter } from "@invoiceagent/shared";
 import { Card, CardContent, CardHeader, CardTitle, Badge } from "@/components/ui";
 import { copy } from "@/lib/copy";
 import { formatAmount, formatDate, shortHex } from "@/lib/format";
@@ -86,7 +86,7 @@ const ROLE_STYLE: Record<EnsSetter, string> = {
 };
 const ROLE_NAME: Record<EnsSetter, string> = { sponsor: "Sponsor", publisher: "Publisher", registry: "Registry" };
 
-/** Built from ENS_ROLES in @agentinvoice/shared, never typed by hand. */
+/** Built from ENS_ROLES in @invoiceagent/shared, never typed by hand. */
 export function PermissionsPanel() {
   const bySetter = (Object.keys(ROLE_NAME) as EnsSetter[]).map((s) => ({
     setter: s,

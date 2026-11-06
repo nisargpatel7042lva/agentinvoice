@@ -1,5 +1,5 @@
 {
-  "name": "@agentinvoice/investor-agent",
+  "name": "@invoiceagent/investor-agent",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -7,7 +7,7 @@
     "start": "tsx src/main.ts"
   },
   "dependencies": {
-    "@agentinvoice/shared": "*",
+    "@invoiceagent/shared": "*",
     "viem": "^2.57.16"
   }
 }

@@ -32,7 +32,7 @@ const STATUS = ["Pending", "Open", "Funded", "Paid", "Late", "Defaulted"] as con
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
-  console.log(`=== AgentInvoice lifecycle (${isDefaultMode ? "DEFAULT path" : "HAPPY path"}, ${target}) ===`);
+  console.log(`=== Invoice Agent lifecycle (${isDefaultMode ? "DEFAULT path" : "HAPPY path"}, ${target}) ===`);
   const key = process.env.DEPLOYER_PRIVATE_KEY;
   if (!key || !/^0x[0-9a-fA-F]{64}$/.test(key)) throw new Error("Missing or invalid env: DEPLOYER_PRIVATE_KEY");
   const account = privateKeyToAccount(key as Hex);
