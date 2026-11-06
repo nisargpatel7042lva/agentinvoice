@@ -4,7 +4,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { STATUSES, approvalFixture, ensAgentFixture, invoiceFixtures, payPolicyFixture } from "@agentinvoice/shared";
 import { ApprovalCard } from "./ApprovalCard";
 import { EmptyState } from "./EmptyState";
-import { EnsPanel } from "./EnsPanel";
+import { EnsPanel, PermissionsPanel } from "./EnsPanel";
+import { Stepper } from "./Stepper";
 import { InvoiceCard } from "./InvoiceCard";
 import { PolicyPanel } from "./PolicyPanel";
 import { ScoreBadge } from "./ScoreBadge";
@@ -57,6 +58,19 @@ describe("components render", () => {
       expect(screen.getByText(text)).toBeTruthy();
       r.unmount();
     }
+  });
+
+  it("PermissionsPanel is built from ENS_ROLES", () => {
+    render(<PermissionsPanel />);
+    expect(screen.getByText("addr, limit, threshold")).toBeTruthy();
+    expect(screen.getByText("paid, late, status")).toBeTruthy();
+    expect(screen.getByText("expires")).toBeTruthy();
+  });
+
+  it("Stepper marks Late in place of Paid", () => {
+    render(<Stepper status="Late" />);
+    expect(screen.getByText("Late")).toBeTruthy();
+    expect(screen.queryByText("Paid")).toBeNull();
   });
 
   it("ApprovalCard shows buttons only while pending", () => {
