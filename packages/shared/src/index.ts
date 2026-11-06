@@ -8,3 +8,4 @@ export * from "./api";
 export * from "./payAndGet";
 
 export * from "./contracts";
+export * from "./agentAccount";
