@@ -24,3 +24,14 @@ describe("names routes", () => {
     await app.close();
   });
 });
+
+describe("rate limits behind a proxy", () => {
+  it("limits per visitor when trustProxy is on", async () => {
+    const app = buildApp({ dbPath: ":memory:", world: null, minter, trustProxy: true, limits: { nameMintPerMinute: 1 } });
+    const post = (ip: string) => app.inject({ method: "POST", url: "/api/names", headers: { "x-forwarded-for": ip }, payload: { label: "ab", owner: acct.address, signature: "0x12" } });
+    expect((await post("1.1.1.1")).statusCode).toBe(400);
+    expect((await post("1.1.1.1")).statusCode).toBe(429);
+    expect((await post("2.2.2.2")).statusCode).toBe(400); // a different visitor is not blocked
+    await app.close();
+  });
+});

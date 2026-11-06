@@ -1,6 +1,6 @@
-# Mentor demo script (local, about 5 minutes)
+# Mentor demo script (about 5 minutes)
 
-Everything runs on this laptop against Hedera testnet and Sepolia. All money is testnet money.
+The backend runs on AWS and the web app on Vercel (see docs/DEPLOY.md for addresses and setup); the steps below also work with everything local. Hedera testnet and Sepolia only. All money is testnet money.
 
 ## One-line pitch
 A small business gets paid early on an invoice owed by an AI agent. An investor funds it at a discount, the agent repays at maturity under on-chain limits, a World-verified human approves large payments, and the agent's public record lives on ENS.
@@ -21,7 +21,7 @@ A small business gets paid early on an invoice owed by an AI agent. An investor 
 
 ## The story, step by step
 
-**1. The problem (30 s)** Home page. Say: "A freelancer sells to an AI agent and waits 30 to 90 days. We let them sell the invoice today." Point at the three role cards.
+**1. The problem (30 s)** Landing page, then **/market** (the app). Say: "A freelancer sells to an AI agent and waits 30 to 90 days. We let them sell the invoice today." Point at the three role cards.
 
 **2. Supplier: identity and invoice (60 s)**
 - Connect wallet (Connect wallet shows every installed wallet). Open **Profile**, type a name, sign, and the name appears as `<name>.agentinvoicenf71.eth` on Sepolia (about 25 s). Say: "Free, one per wallet, we pay the gas, the signature proves the wallet is theirs."

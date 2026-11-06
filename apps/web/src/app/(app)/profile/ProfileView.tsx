@@ -50,12 +50,20 @@ export function ProfileView() {
       const clean = label.trim().toLowerCase();
       const msg = await nameClaimMessage(clean, address);
       if (!msg.ok || !msg.data) return toast("error", msg.message);
-      const signature = await signMessageAsync({ message: msg.data.message });
-      const r = await mintName(clean, address, signature);
-      toast(r.ok ? "success" : "error", r.message);
-      if (r.ok) await refresh();
-    } catch {
-      toast("error", "Signing was cancelled. Nothing was registered.");
+      let signature: string;
+      try {
+        signature = await signMessageAsync({ message: msg.data.message });
+      } catch {
+        return toast("error", "Signing was cancelled. Nothing was registered.");
+      }
+      try {
+        const r = await mintName(clean, address, signature);
+        toast(r.ok ? "success" : "error", r.message);
+      } catch {
+        // The server may have been cut off while the registration still finished, so check before saying it failed.
+        toast("error", "The registration took too long to confirm. Checking your profile now…");
+      }
+      await refresh();
     } finally {
       setBusy(false);
     }
