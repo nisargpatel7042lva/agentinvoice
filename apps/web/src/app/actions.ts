@@ -79,14 +79,19 @@ async function messageFrom(path: string): Promise<ActionResult<{ message: string
   }
 }
 
-export const roleMessage = (role: Role, owner: string) => messageFrom(`/api/roles/message?role=${role}&owner=${owner}`);
-export const setRole = (role: Role, owner: string, signature: string) =>
-  signedPost<{ role: Role }>("/api/roles", { role, owner, signature }, (j) => `You are a ${j.role}.`, "Could not save your role.");
+export async function roleMessage(role: Role, owner: string): Promise<ActionResult<{ message: string }>> {
+  return messageFrom(`/api/roles/message?role=${role}&owner=${owner}`);
+}
+export async function setRole(role: Role, owner: string, signature: string): Promise<ActionResult<{ role: Role }>> {
+  return signedPost<{ role: Role }>("/api/roles", { role, owner, signature }, (j) => `You are a ${j.role}.`, "Could not save your role.");
+}
 
-export const buyerNameMessage = (label: string, owner: string, vault: string) =>
-  messageFrom(`/api/buyers/message?label=${encodeURIComponent(label)}&owner=${owner}&vault=${vault}`);
-export const mintBuyerName = (label: string, owner: string, vault: string, signature: string) =>
-  signedPost<{ name: string; vault: string; txHash: string }>("/api/buyers", { label, owner, vault, signature }, (j) => `Registered ${j.name} for your vault on Sepolia.`, "Could not register the name.");
+export async function buyerNameMessage(label: string, owner: string, vault: string): Promise<ActionResult<{ message: string }>> {
+  return messageFrom(`/api/buyers/message?label=${encodeURIComponent(label)}&owner=${owner}&vault=${vault}`);
+}
+export async function mintBuyerName(label: string, owner: string, vault: string, signature: string): Promise<ActionResult<{ name: string; vault: string; txHash: string }>> {
+  return signedPost<{ name: string; vault: string; txHash: string }>("/api/buyers", { label, owner, vault, signature }, (j) => `Registered ${j.name} for your vault on Sepolia.`, "Could not register the name.");
+}
 
 export async function nameClaimMessage(label: string, owner: string): Promise<ActionResult<{ message: string }>> {
   try {
