@@ -1,8 +1,8 @@
 import { pathToFileURL } from "node:url";
-import { createAgentAccount, createApiClient, hederaTestnet } from "@invoiceagent/shared";
+import { buyerVaultAbi, createAgentAccount, createApiClient, hederaTestnet, type Address } from "@invoiceagent/shared";
 import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { createBuyerAgent } from "./agent.js";
+import { createBuyerAgent, type VaultOps } from "./agent.js";
 import { loadConfig } from "./config.js";
 import { log } from "./logger.js";
 
@@ -47,8 +47,31 @@ async function start(stop: { stopped: boolean }): Promise<void> {
     },
   });
 
+  const api = createApiClient({ baseUrl: config.backendUrl });
+  // Vaults buyers registered on the website. This agent serves one only if it is that vault's on-chain agent, so a stranger's vault is never spent from.
+  const opsCache = new Map<string, VaultOps>();
+  const opsFor = async (vault: Address): Promise<VaultOps | null> => {
+    const cached = opsCache.get(vault.toLowerCase());
+    if (cached) return cached;
+    if (account) {
+      const onChainAgent = (await reader.readContract({ address: vault, abi: buyerVaultAbi, functionName: "agent" })) as Address;
+      if (onChainAgent.toLowerCase() !== account.address.toLowerCase()) return null;
+    }
+    const extra = createAgentAccount({ provider: "buyer-vault", vault, reader, writer: wallet });
+    const ops: VaultOps = {
+      readSupplier: (supplier) => extra.recipient(supplier),
+      readThreshold: async () => (await extra.rules()).approvalThreshold,
+      accept: (id) => extra.accept(market, id),
+      pay: (id) => extra.pay(market, id),
+    };
+    opsCache.set(vault.toLowerCase(), ops);
+    return ops;
+  };
+
   const agent = createBuyerAgent({
-    api: createApiClient({ baseUrl: config.backendUrl }),
+    api,
+    extraVaults: async () => (await api.listAgents()).agents.map((a) => a.vault),
+    opsFor,
     vaultAddress: spender.address,
     marketAddress: market,
     dryRun: config.dryRun,
