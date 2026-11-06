@@ -1,5 +1,6 @@
 import { formatUnits, type Address, type ApiClient, type Hash32, type Invoice } from "@agentinvoice/shared";
 import { decide, decisionLine } from "./decide.js";
+import { reviewInvoice, type InvoiceModel } from "./review.js";
 
 export const MAX_RETRIES = 3;
 
@@ -11,6 +12,7 @@ export interface BuyerDeps {
   readThreshold: () => Promise<bigint>;
   accept: (id: bigint) => Promise<Hash32>;
   pay: (id: bigint) => Promise<Hash32>;
+  model?: InvoiceModel;
   dryRun?: boolean;
   log?: (line: string) => void;
   now?: () => number;
@@ -19,6 +21,7 @@ export interface BuyerDeps {
 export function createBuyerAgent(deps: BuyerDeps) {
   const log = deps.log ?? console.log;
   const failures = new Map<string, number>();
+  const paid = new Set<string>();
   let stopped = false;
 
   const ours = (invoice: Invoice) => invoice.buyerVault.toLowerCase() === deps.vaultAddress.toLowerCase();
@@ -53,12 +56,33 @@ export function createBuyerAgent(deps: BuyerDeps) {
           log(`${decisionLine(invoice.id, { action: "skip", reason: `gave up after ${MAX_RETRIES} failed tries` })} face=${face}`);
           continue;
         }
-        if (decision.action === "skip" || deps.dryRun) {
-          const dry = deps.dryRun && decision.action !== "skip" ? " dry-run" : "";
-          log(`${decisionLine(invoice.id, decision)}${dry} face=${face}`);
+        if (decision.action === "skip") {
+          log(`${decisionLine(invoice.id, decision)} face=${face}`);
+          continue;
+        }
+        if (decision.action === "pay") {
+          if (paid.has(invoice.id)) {
+            log(`${decisionLine(invoice.id, { action: "skip", reason: "already paid in this run" })} face=${face}`);
+            continue;
+          }
+          const review = deps.model
+            ? await reviewInvoice(invoice, invoice.description, invoice.evidenceHash, deps.model)
+            : { action: "escalate" as const, reason: "model is not configured" };
+          if (review.action === "dispute") {
+            log(`invoice=${invoice.id} action=dispute reason="${review.reason}" face=${face}`);
+            continue;
+          }
+          if (review.action !== "accept") {
+            log(`invoice=${invoice.id} action=escalate reason="sponsor approval is needed" face=${face}`);
+            continue;
+          }
+        }
+        if (deps.dryRun) {
+          log(`${decisionLine(invoice.id, decision)} dry-run face=${face}`);
           continue;
         }
         const hash = decision.action === "accept" ? await deps.accept(BigInt(invoice.id)) : await deps.pay(BigInt(invoice.id));
+        if (decision.action === "pay") paid.add(invoice.id);
         log(`${decisionLine(invoice.id, decision)} tx=${hash} face=${face}`);
       } catch (error) {
         const n = (failures.get(item.id) ?? 0) + 1;

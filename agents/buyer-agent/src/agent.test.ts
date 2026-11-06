@@ -3,6 +3,7 @@ import { invoiceFixtures, type Address, type Hash32, type Invoice } from "@agent
 import { createBuyerAgent, MAX_RETRIES } from "./agent.js";
 import { loadConfig } from "./config.js";
 import { log } from "./logger.js";
+import type { InvoiceModel } from "./review.js";
 
 describe("buyer-agent", () => {
   const previous = new Map<string, string | undefined>();
@@ -36,6 +37,10 @@ describe("buyer-agent", () => {
 
 const VAULT = invoiceFixtures[0].buyerVault;
 const hash = `0x${"11".repeat(32)}` as Hash32;
+
+function reviewModel(action: "accept" | "dispute" | "escalate", reason: string): InvoiceModel & { complete: ReturnType<typeof vi.fn> } {
+  return { complete: vi.fn(async () => JSON.stringify({ action, reason })) };
+}
 
 function deps(invoices: Invoice[], extra: Partial<Parameters<typeof createBuyerAgent>[0]> = {}) {
   return {
@@ -77,7 +82,7 @@ describe("buyer flow", () => {
 
   it("pays a due funded invoice below the threshold with no sponsor bytes", async () => {
     const funded = invoiceFixtures.find((invoice) => invoice.status === "Funded")!;
-    const wired = deps([funded], { now: () => funded.dueDate });
+    const wired = deps([funded], { now: () => funded.dueDate, model: reviewModel("accept", "delivery matches the evidence") });
     await createBuyerAgent(wired).tick();
     expect(wired.pay).toHaveBeenCalledWith(BigInt(funded.id));
     expect(wired.accept).not.toHaveBeenCalled();
@@ -100,6 +105,74 @@ describe("buyer flow", () => {
     const wired = deps([invoiceFixtures[0]], { dryRun: true });
     await createBuyerAgent(wired).tick();
     expect(wired.accept).not.toHaveBeenCalled();
+  });
+
+  it("does not pay when the model disputes the invoice", async () => {
+    const funded = invoiceFixtures.find((invoice) => invoice.status === "Funded")!;
+    const lines: string[] = [];
+    const wired = deps([funded], {
+      now: () => funded.dueDate,
+      model: reviewModel("dispute", "delivery does not match"),
+      log: (line) => lines.push(line),
+    });
+    await createBuyerAgent(wired).tick();
+    expect(wired.pay).not.toHaveBeenCalled();
+    expect(lines.some((line) => line.includes("action=dispute") && line.includes("delivery does not match"))).toBe(true);
+  });
+
+  it("does not pay when the model escalates", async () => {
+    const funded = invoiceFixtures.find((invoice) => invoice.status === "Funded")!;
+    const lines: string[] = [];
+    const wired = deps([funded], {
+      now: () => funded.dueDate,
+      model: reviewModel("escalate", "a person should check this"),
+      log: (line) => lines.push(line),
+    });
+    await createBuyerAgent(wired).tick();
+    expect(wired.pay).not.toHaveBeenCalled();
+    expect(lines.some((line) => line.includes("sponsor approval is needed"))).toBe(true);
+  });
+
+  it("does not pay when the model call fails", async () => {
+    const funded = invoiceFixtures.find((invoice) => invoice.status === "Funded")!;
+    const lines: string[] = [];
+    const wired = deps([funded], {
+      now: () => funded.dueDate,
+      model: { complete: vi.fn(async () => { throw new Error("sk-ant-secret123"); }) },
+      log: (line) => lines.push(line),
+    });
+    await createBuyerAgent(wired).tick();
+    expect(wired.pay).not.toHaveBeenCalled();
+    expect(lines.join("\n")).not.toContain("sk-ant-secret123");
+    expect(lines.some((line) => line.includes("sponsor approval is needed"))).toBe(true);
+  });
+
+  it("does not let an accept review override a vault rule", async () => {
+    const funded = invoiceFixtures.find((invoice) => invoice.status === "Funded")!;
+    const model = reviewModel("accept", "delivery matches the evidence");
+    const wired = deps([funded], { now: () => funded.dueDate, readThreshold: async () => 1n, model });
+    await createBuyerAgent(wired).tick();
+    expect(model.complete).not.toHaveBeenCalled();
+    expect(wired.pay).not.toHaveBeenCalled();
+  });
+
+  it("does not ask the model before accepting a pending invoice", async () => {
+    const model = reviewModel("dispute", "delivery does not match");
+    const wired = deps([invoiceFixtures[0]], { model });
+    await createBuyerAgent(wired).tick();
+    expect(model.complete).not.toHaveBeenCalled();
+    expect(wired.accept).toHaveBeenCalledWith(1n);
+  });
+
+  it("does not pay the same invoice twice in one run", async () => {
+    const funded = invoiceFixtures.find((invoice) => invoice.status === "Funded")!;
+    const model = reviewModel("accept", "delivery matches the evidence");
+    const wired = deps([funded], { now: () => funded.dueDate, model });
+    const agent = createBuyerAgent(wired);
+    await agent.tick();
+    await agent.tick();
+    expect(wired.pay).toHaveBeenCalledTimes(1);
+    expect(model.complete).toHaveBeenCalledTimes(1);
   });
 
   it("stops retrying after three failed transactions", async () => {
