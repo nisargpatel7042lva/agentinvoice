@@ -41,10 +41,10 @@ export function WalletButton() {
   }
 
   if (!isConnected || !address) {
-    // Prefer a discovered wallet (EIP-6963) over the generic "Injected" fallback.
-    const wallets = connectors.filter((c) => c.id !== "injected");
-    const target = wallets[0] ?? connectors[0];
-    const noWallet = typeof window !== "undefined" && !("ethereum" in window) && wallets.length === 0;
+    // Every wallet found through EIP-6963 is offered; the generic "Injected" entry is only a fallback.
+    const discovered = connectors.filter((c) => c.id !== "injected");
+    const wallets = discovered.length > 0 ? discovered : connectors;
+    const noWallet = typeof window !== "undefined" && !("ethereum" in window) && discovered.length === 0;
     if (noWallet) {
       return (
         <a href="https://metamask.io/download/" target="_blank" rel="noreferrer" className={buttonVariants({ variant: "dark", size: "sm", className: "h-9" })}>
@@ -54,21 +54,35 @@ export function WalletButton() {
       );
     }
     return (
-      <Button
-        variant="dark"
-        size="sm"
-        className="h-9"
-        disabled={isPending || isConnecting}
-        onClick={() =>
-          connect(
-            { connector: target, chainId: hederaTestnet.id },
-            { onError: (e) => toast("error", e.message.includes("rejected") ? "You cancelled in your wallet." : `Could not connect: ${e.message.split("\n")[0]}`) },
-          )
-        }
-      >
-        <Wallet aria-hidden="true" />
-        {isPending || isConnecting ? "Check your wallet…" : copy.wallet.connect}
-      </Button>
+      <div ref={menu} className="relative">
+        <Button variant="dark" size="sm" className="h-9" aria-haspopup="menu" aria-expanded={open} disabled={isPending || isConnecting} onClick={() => setOpen((o) => !o)}>
+          <Wallet aria-hidden="true" />
+          {isPending || isConnecting ? "Check your wallet…" : copy.wallet.connect}
+        </Button>
+        {open && (
+          <div role="menu" className="absolute right-0 z-30 mt-2 w-64 rounded-xl border border-line bg-surface p-2 shadow-raised">
+            <div className="px-3 py-2 text-xs text-ink-muted">Choose a wallet</div>
+            {wallets.map((c) => (
+              <button
+                key={c.uid}
+                role="menuitem"
+                type="button"
+                className={item}
+                onClick={() => {
+                  setOpen(false);
+                  connect(
+                    { connector: c, chainId: hederaTestnet.id },
+                    { onError: (e) => toast("error", e.message.includes("rejected") ? "You cancelled in your wallet." : `Could not connect: ${e.message.split("\n")[0]}`) },
+                  );
+                }}
+              >
+                {c.icon ? <img src={c.icon} alt="" className="size-5 rounded" /> : <Wallet aria-hidden="true" className="size-4" />}
+                {c.id === "injected" ? "Browser wallet" : c.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     );
   }
 

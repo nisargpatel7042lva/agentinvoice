@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { ensAgentFixture, readAgentFromEns, scoreFromInvoices, type Address, type EnsAgent, type BuyerScore } from "@agentinvoice/shared";
+import { EnsReadError, ensAgentFixture, readAgentFromEns, scoreFromInvoices, type Address, type EnsAgent, type BuyerScore } from "@agentinvoice/shared";
 import type { EnsState } from "@/components/EnsPanel";
 import { api, isMock } from "./api";
 
@@ -15,7 +15,15 @@ export async function loadEnsByName(name: string): Promise<EnsState> {
 
 export async function loadEnsByVault(vault: string): Promise<EnsState> {
   if (isMock) return vault.toLowerCase() === ensAgentFixture.vault.toLowerCase() ? toState(ensAgentFixture) : { kind: "missing" };
-  return { kind: "unreachable" }; // reverse lookup lands with the ENS step
+  // No reverse lookup yet: ask ENS for the configured demo name and accept it only if it points at this vault.
+  const name = process.env.NEXT_PUBLIC_BUYER_ENS_NAME;
+  if (!name) return { kind: "unreachable" };
+  try {
+    const agent = await readAgentFromEns(name);
+    return agent.vault.toLowerCase() === vault.toLowerCase() ? toState(agent) : { kind: "missing" };
+  } catch (e) {
+    return e instanceof EnsReadError ? { kind: "missing" } : { kind: "unreachable" };
+  }
 }
 
 export function toState(agent: EnsAgent, now = Date.now() / 1000): EnsState {

@@ -3,20 +3,16 @@
 // mock mode changes the in-memory demo store; real mode is where each owner wires their piece.
 // See docs/notes/frontend-actions.md.
 import { revalidatePath } from "next/cache";
-import { ApiError, contracts, createApiClient, ensAgentFixture, parseUnits, type Address, type Hash32 } from "@agentinvoice/shared";
+import { ApiError, createApiClient, parseUnits, type Address, type Hash32 } from "@agentinvoice/shared";
 import { isMock } from "@/lib/env";
+import { lookupBuyer as lookupBuyerName, type BuyerLookup } from "@/lib/ens";
 import { MockError, mockStore } from "@/lib/mockStore";
 
 const backend = createApiClient({ baseUrl: process.env.NEXT_PUBLIC_BACKEND_URL });
 
-/** The buyer name people type. Demo: the sample ENS name. Real: NEXT_PUBLIC_BUYER_ENS_NAME maps to the deployed BuyerVault. */
-const knownBuyerName = () => (isMock ? ensAgentFixture.name : process.env.NEXT_PUBLIC_BUYER_ENS_NAME || "buyer-agent.eth");
-
-function resolveBuyer(input: string): Address | null {
-  const v = input.trim();
-  if (/^0x[0-9a-fA-F]{40}$/.test(v)) return v as Address;
-  if (v.toLowerCase() !== knownBuyerName().toLowerCase()) return null;
-  return isMock ? ensAgentFixture.vault : contracts.buyerVault;
+/** Live buyer lookup for the create form: a 0x vault address, or an ENS name read from Sepolia. */
+export async function lookupBuyer(input: string): Promise<BuyerLookup> {
+  return lookupBuyerName(input);
 }
 
 export type ActionResult<T = undefined> = { ok: true; message: string; data?: T } | { ok: false; message: string };
@@ -69,8 +65,10 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<ActionRe
   const due = Math.floor(new Date(`${input.dueDate}T12:00:00Z`).getTime() / 1000);
   if (!Number.isFinite(due) || due * 1000 < Date.now()) return { ok: false, message: "Pick a due date in the future." };
   if (!input.description.trim()) return { ok: false, message: "Add a short description." };
-  const vault = resolveBuyer(input.buyerName);
-  if (!vault) return { ok: false, message: `Unknown buyer "${input.buyerName}". Use ${knownBuyerName()} or the buyer vault's 0x address.` };
+  const buyer = await lookupBuyerName(input.buyerName);
+  if (buyer.kind === "unreachable") return { ok: false, message: "ENS is not reachable right now, so we cannot check this buyer. Try again, or use the buyer vault's 0x address." };
+  if (buyer.kind !== "ok") return { ok: false, message: `We could not find an agent named "${input.buyerName}". Use its ENS name or the buyer vault's 0x address.` };
+  const vault = buyer.vault;
   const body = { buyerVault: vault, faceAmount: face.toString(), price: price.toString(), dueDate: due, description: input.description.trim(), evidenceHash: input.evidenceHash };
 
   if (isMock) {
