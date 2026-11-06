@@ -27,7 +27,6 @@ export const ENS = {
 // Role bitmaps (docs.ens.domains/ensv2/permissioned-registry and -resolver).
 export const ALL_ROLES = 0x1111111111111111111111111111111111111111111111111111111111111111n;
 export const ROLE_SET_TEXT = 1n << 4n;
-export const ROLE_SET_ADDRESS = 1n << 0n;
 
 // Record keys from the frozen spec v2 (packages/shared/spec.md section 4): the publisher may write only
 // paid, late and status; the sponsor owns limit and threshold (and addr).
@@ -62,9 +61,7 @@ export const abis = {
     "function setAddress(bytes name, uint256 coinType, bytes addressBytes)",
     "function setText(bytes name, string key, string value)",
     "function grantSetterRoles(bytes setter, address account)",
-    "function grantRootRoles(uint256 roleBitmap, address account) returns (bool)",
     "function revokeRoles(uint256 resource, uint256 roleBitmap, address account) returns (bool)",
-    "function revokeRootRoles(uint256 roleBitmap, address account) returns (bool)",
     "function hasRoles(uint256 resource, uint256 roleBitmap, address account) view returns (bool)",
   ]),
   registry: parseAbi([
@@ -72,10 +69,7 @@ export const abis = {
     "function setSubregistry(uint256 anyId, address registry)",
     "function getExpiry(uint256 anyId) view returns (uint64)",
     "function findOwner(string label) view returns (address)",
-    "function getResolver(string label) view returns (address)",
     "function getSubregistry(string label) view returns (address)",
-    "function grantRoles(uint256 anyId, uint256 roleBitmap, address account) returns (bool)",
-    "function revokeRoles(uint256 anyId, uint256 roleBitmap, address account) returns (bool)",
     "function unregister(uint256 anyId)",
   ]),
 };

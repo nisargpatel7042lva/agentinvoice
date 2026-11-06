@@ -88,3 +88,12 @@ export function openDb(path: string): Database.Database {
   migrate(db);
   return db;
 }
+
+export function getMeta(db: Database.Database, key: string): string | null {
+  const row = db.prepare("SELECT value FROM meta WHERE key = ?").get(key) as { value: string } | undefined;
+  return row ? row.value : null;
+}
+
+export function setMeta(db: Database.Database, key: string, value: string): void {
+  db.prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value").run(key, value);
+}

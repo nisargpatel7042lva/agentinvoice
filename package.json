@@ -17,7 +17,8 @@
     "verify": "bun run verify:fast && bun run e2e:local",
     "e2e:local": "tsx scripts/e2e.ts --local",
     "e2e:testnet": "tsx scripts/e2e.ts --testnet",
-    "dev": "bun run --cwd apps/web dev"
+    "dev": "bun run --cwd apps/web dev",
+    "dev:backend": "tsx --env-file-if-exists=.env services/backend/src/server.ts"
   },
   "engines": {
     "node": ">=20"
