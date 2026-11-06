@@ -83,6 +83,8 @@
       "name": "@agentinvoice/shared",
       "version": "0.0.0",
       "dependencies": {
+        "@x402/core": "^2.30.0",
+        "@x402/hedera": "^2.30.0",
         "zod": "^4.6.7",
       },
     },

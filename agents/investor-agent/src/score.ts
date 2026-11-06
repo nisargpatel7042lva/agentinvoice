@@ -1,4 +1,5 @@
-import { BuyerScoreSchema, type BuyerScore, type PayAndGetResult } from "@agentinvoice/shared";
+import { BuyerScoreSchema, type BuyerScore } from "@agentinvoice/shared";
+import type { PayAndGetResult } from "@agentinvoice/shared/payAndGet";
 
 /**
  * Mann's x402 helper, already bound to our key and spending policy (see main.ts).
