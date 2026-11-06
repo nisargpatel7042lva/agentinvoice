@@ -1,3 +1,4 @@
+import rateLimit from "@fastify/rate-limit";
 import type Database from "better-sqlite3";
 import Fastify from "fastify";
 import { getMeta, openDb, SCHEMA_VERSION } from "./db.js";
@@ -14,18 +15,28 @@ declare module "fastify" {
   }
 }
 
+// Requests per minute per client IP. Behind a proxy or tunnel every client shares the proxy's IP unless trustProxy is configured.
+export interface ApprovalLimits {
+  approvalStartPerMinute: number; // POST /api/approvals
+  callbackPerMinute: number; // GET /api/world/callback
+  approvalReadPerMinute: number; // GET /api/approvals/:id
+}
+export const DEFAULT_LIMITS: ApprovalLimits = { approvalStartPerMinute: 10, callbackPerMinute: 30, approvalReadPerMinute: 120 };
+const MAX_BODY_BYTES = 16 * 1024;
+
 export interface AppOptions {
   dbPath: string;
   world?: WorldOptions | null; // null = not configured; undefined = read from env
   audit?: AuditOptions; // undefined = read HCS_TOPIC_ID from env
   onAudit?: (event: AuditInput) => void; // the HCS publisher; default is a no-op
   features?: { indexer?: boolean; ens?: boolean; audit?: boolean }; // which background jobs run, for /health
+  limits?: Partial<ApprovalLimits>; // per-client requests per minute on the approval endpoints
 }
 
-export function buildApp({ dbPath, world, audit, onAudit, features = {} }: AppOptions) {
+export function buildApp({ dbPath, world, audit, onAudit, features = {}, limits }: AppOptions) {
   const db = openDb(dbPath);
 
-  const app = Fastify({ logger: process.env.NODE_ENV !== "test" && !process.env.VITEST });
+  const app = Fastify({ logger: process.env.NODE_ENV !== "test" && !process.env.VITEST, bodyLimit: MAX_BODY_BYTES });
   app.decorate("db", db);
   app.decorate("audit", (event: AuditInput) => {
     try {
@@ -68,7 +79,13 @@ export function buildApp({ dbPath, world, audit, onAudit, features = {} }: AppOp
 
   invoiceRoutes(app);
   auditRoutes(app, audit ?? { topicId: process.env.HCS_TOPIC_ID || undefined });
-  approvalRoutes(app, world === null ? undefined : (world ?? worldFromEnv()));
+  // Rate limiting is opt-in per route (global: false), so only the approval endpoints are limited. The plugin must finish
+  // loading before the routes are added, so they are registered inside this scope.
+  const approvalWorld = world === null ? undefined : (world ?? worldFromEnv());
+  void app.register(async (scope) => {
+    await scope.register(rateLimit, { global: false });
+    approvalRoutes(scope, approvalWorld, { ...DEFAULT_LIMITS, ...limits });
+  });
 
   return app;
 }

@@ -2,6 +2,7 @@ import { ApprovalSchema, ApprovalStartSchema } from "@agentinvoice/shared";
 import type { FastifyInstance } from "fastify";
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
+import type { ApprovalLimits } from "../app.js";
 import { createApproval, decide, getApproval, markStepUpUsed, pendingForStepUp } from "../approval/store.js";
 import { handleCallback, remoteWorldKeys, StepUpError, type StepUpErrorCode } from "../world/callback.js";
 import type { CallbackContext } from "../world/callback.js";
@@ -51,11 +52,12 @@ const REJECTING: ReadonlySet<StepUpErrorCode> = new Set([
   "insufficient_acr",
 ]);
 
-export function approvalRoutes(app: FastifyInstance, world: WorldOptions | undefined) {
+export function approvalRoutes(app: FastifyInstance, world: WorldOptions | undefined, limits: ApprovalLimits) {
+  const limit = (max: number) => ({ rateLimit: { max, timeWindow: "1 minute" } });
   const now = () => world?.now?.() ?? Math.floor(Date.now() / 1000);
   const keys = world?.getKey ?? remoteWorldKeys();
 
-  app.post("/api/approvals", async (req, reply) => {
+  app.post("/api/approvals", { config: limit(limits.approvalStartPerMinute) }, async (req, reply) => {
     if (!world) return reply.code(503).send({ error: "world_not_configured" });
     const body = startBody.safeParse(req.body);
     if (!body.success) return reply.code(400).send({ error: "invalid_body", issues: body.error.issues });
@@ -83,7 +85,7 @@ export function approvalRoutes(app: FastifyInstance, world: WorldOptions | undef
     return reply.code(201).send(ApprovalStartSchema.parse({ approvalId, authorizationUrl: start.url }));
   });
 
-  app.get("/api/approvals/:id", async (req, reply) => {
+  app.get("/api/approvals/:id", { config: limit(limits.approvalReadPerMinute) }, async (req, reply) => {
     const p = idParams.safeParse(req.params);
     if (!p.success) return reply.code(400).send({ error: "invalid_id" });
     const approval = getApproval(app.db, p.data.id, now());
@@ -91,7 +93,7 @@ export function approvalRoutes(app: FastifyInstance, world: WorldOptions | undef
     return ApprovalSchema.parse(approval);
   });
 
-  app.get("/api/world/callback", async (req, reply) => {
+  app.get("/api/world/callback", { config: limit(limits.callbackPerMinute) }, async (req, reply) => {
     if (!world) return reply.code(503).send({ error: "world_not_configured" });
     const q = callbackQuery.safeParse(req.query);
     if (!q.success) return reply.code(400).send({ error: "invalid_query" });
