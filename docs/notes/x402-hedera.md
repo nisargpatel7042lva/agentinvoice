@@ -168,3 +168,4 @@ Using `@x402/hedera` (`createClientHederaSigner` or manual transaction creation)
   }
   ```
 - **HashScan Link**: `https://hashscan.io/testnet/transaction/<transaction>`
+
