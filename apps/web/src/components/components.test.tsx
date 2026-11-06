@@ -1,10 +1,15 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { HowItWorks } from "./HowItWorks";
+import { Section } from "./Section";
+import { Term } from "./Term";
+import { THEME_KEY, ThemeToggle } from "./ThemeToggle";
 import { STATUSES, approvalFixture, ensAgentFixture, invoiceFixtures, payPolicyFixture } from "@agentinvoice/shared";
 import { ApprovalCard } from "./ApprovalCard";
 import { EmptyState } from "./EmptyState";
-import { EnsPanel } from "./EnsPanel";
+import { EnsPanel, PermissionsPanel } from "./EnsPanel";
+import { Stepper } from "./Stepper";
 import { InvoiceCard } from "./InvoiceCard";
 import { PolicyPanel } from "./PolicyPanel";
 import { ScoreBadge } from "./ScoreBadge";
@@ -57,6 +62,46 @@ describe("components render", () => {
       expect(screen.getByText(text)).toBeTruthy();
       r.unmount();
     }
+  });
+
+  it("PermissionsPanel is built from ENS_ROLES", () => {
+    render(<PermissionsPanel />);
+    expect(screen.getByText("addr, limit, threshold")).toBeTruthy();
+    expect(screen.getByText("paid, late, status")).toBeTruthy();
+    expect(screen.getByText("expires")).toBeTruthy();
+  });
+
+  it("HowItWorks shows three steps and hides once dismissed", async () => {
+    localStorage.clear();
+    render(<HowItWorks />);
+    expect(await screen.findByText(copy.onboarding.steps[0].title)).toBeTruthy();
+    fireEvent.click(screen.getByText(copy.onboarding.dismiss));
+    expect(screen.queryByText(copy.onboarding.title)).toBeNull();
+    expect(localStorage.getItem("ai.onboarding.dismissed")).toBe("1");
+  });
+
+  it("Section starts closed and Term explains jargon", () => {
+    render(<Section title="Details">hidden body</Section>);
+    expect(screen.getByText("Details").closest("details")?.open).toBe(false);
+    render(<Term explain="sponsor">Sponsor</Term>);
+    expect(screen.getByRole("tooltip").textContent).toBe(copy.glossary.sponsor);
+  });
+
+  it("ThemeToggle flips data-theme and remembers the choice", async () => {
+    localStorage.clear();
+    document.documentElement.dataset.theme = "light";
+    render(<ThemeToggle />);
+    fireEvent.click(await screen.findByRole("button", { name: "Switch to dark mode" }));
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(localStorage.getItem(THEME_KEY)).toBe("dark");
+    fireEvent.click(screen.getByRole("button", { name: "Switch to light mode" }));
+    expect(document.documentElement.dataset.theme).toBe("light");
+  });
+
+  it("Stepper marks Late in place of Paid", () => {
+    render(<Stepper status="Late" />);
+    expect(screen.getByText("Late")).toBeTruthy();
+    expect(screen.queryByText("Paid")).toBeNull();
   });
 
   it("ApprovalCard shows buttons only while pending", () => {

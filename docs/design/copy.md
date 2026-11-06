@@ -132,3 +132,19 @@ Every on-screen string, written once. The code imports `apps/web/src/lib/copy.ts
 | `error.ens_not_found` | We could not find this ENS name. Check the spelling. |
 | `error.backend_down` | Our server is not responding. Chain data is still live. |
 | `error.not_found` | We could not find this invoice. |
+
+## Onboarding and plain-language layer (added 2026-11-06)
+Principle: each screen leads with **one action**; everything else sits in a closed section people can open. Jargon gets a `?` explanation instead of being avoided.
+
+| Key | Text |
+| --- | --- |
+| `market.title` | Fund an invoice, get paid back more |
+| `market.subtitle` | Pay a supplier now. The buyer pays you the full amount on the due date. |
+| `onboarding.title` | New here? It takes three steps |
+| `onboarding.steps` | Pick an invoice · Pay the supplier now · Get paid back (see copy.ts for the body lines) |
+| `deal.youPay` / `deal.youGet` / `deal.return` | You pay now · You get back · Your return |
+| `glossary.score` | How reliably this buyer has paid before. A is best, New means no history yet. |
+| `glossary.sponsor` | The real person, verified with World ID, who is responsible for this buyer agent. |
+| `glossary.ens` | A public name like buyer.eth. It shows who the agent is and its limits, and anyone can check it. |
+| `glossary.agent` | Software that buys and pays invoices on someone's behalf, within limits set by its sponsor. |
+| `sections.*` | Who's involved · Buyer's track record · Where the money is · Activity · Who can change these values |

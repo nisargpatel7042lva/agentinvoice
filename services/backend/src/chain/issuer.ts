@@ -53,7 +53,15 @@ export function hederaIssuer(opts: { market: Address; privateKey: Hex; rpcUrl?: 
         functionName: "createInvoice",
         args: [args.buyerVault, args.faceAmount, args.price, args.dueDate, args.evidenceHash],
       });
-      const txHash = await wallet.writeContract(request);
+      // Hedera's gas estimate can come out too low (a claim ran out of gas on testnet), so give the call twice the estimate, at least 100,000.
+      const estimate = await client.estimateContractGas({
+        account,
+        address: opts.market,
+        abi: marketAbi,
+        functionName: "createInvoice",
+        args: [args.buyerVault, args.faceAmount, args.price, args.dueDate, args.evidenceHash],
+      });
+      const txHash = await wallet.writeContract({ ...request, gas: estimate * 2n > 100_000n ? estimate * 2n : 100_000n });
       const receipt = await client.waitForTransactionReceipt({ hash: txHash });
       if (receipt.status !== "success") throw new IssuerError("reverted", `createInvoice reverted: ${txHash}`);
 
