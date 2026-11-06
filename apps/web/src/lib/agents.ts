@@ -2,7 +2,7 @@ import { EnsReadError, readAgentFromEns, scoreFromInvoices, type Address, type E
 import type { EnsState } from "@/components/EnsPanel";
 import { loadAllInvoices, loadEverLateIds, readDailyLimit } from "./credit";
 
-/** Mock: the fixture agent is the only known name. Real: live ENS read; any failure is "unreachable", never a guess. */
+/** Live ENS read on Sepolia (Sidd's ENSv2 records); any failure is "unreachable", never a guess. */
 export async function loadEnsByName(name: string): Promise<EnsState> {
   try {
     return toState(await readAgentFromEns(name));
