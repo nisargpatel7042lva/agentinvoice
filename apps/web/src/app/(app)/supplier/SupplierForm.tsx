@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CircleCheck } from "lucide-react";
-import { ensAgentFixture, type Hash32 } from "@agentinvoice/shared";
+import { ensAgentFixture, type Hash32 } from "@invoiceagent/shared";
 import { createInvoice, lookupBuyer } from "@/app/actions";
 import type { BuyerLookup } from "@/lib/ens";
 import { useAction } from "@/components/ActionButton";

@@ -1,4 +1,4 @@
-import { EnsReadError, ensAgentFixture, readAgentFromEns, scoreFromInvoices, type Address, type EnsAgent, type BuyerScore } from "@agentinvoice/shared";
+import { EnsReadError, ensAgentFixture, readAgentFromEns, scoreFromInvoices, type Address, type EnsAgent, type BuyerScore } from "@invoiceagent/shared";
 import type { EnsState } from "@/components/EnsPanel";
 import { isMock } from "./api";
 import { loadAllInvoices, loadEverLateIds, readDailyLimit } from "./credit";

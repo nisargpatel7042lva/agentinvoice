@@ -13,7 +13,7 @@ Sources: [Introducing Hedera Agent Accounts](https://hedera.com/blog/introducing
 ## Availability
 Limited-partner testnet in Q4 2026 (early access: hedera.com/agent-accounts/#early-access, ai-studio@hashgraph.com). Public testnet Q1 2027, mainnet targeted Q2 2027. **No public SDK, REST or MCP reference yet**, so nothing can be built against it today.
 
-## How AgentInvoice uses it: the `AgentAccount` adapter
+## How Invoice Agent uses it: the `AgentAccount` adapter
 `packages/shared/src/agentAccount.ts` is the one interface agents spend through:
 
 | AgentAccount method | BuyerVault (live today) | Hedera Agent Accounts (when the API ships) |
@@ -28,4 +28,4 @@ Limited-partner testnet in Q4 2026 (early access: hedera.com/agent-accounts/#ear
 - When access arrives: implement `HederaAgentAccount` against their API, add tests, and switch the env var. No agent or UI changes.
 
 ## How to pitch it honestly
-"AgentInvoice runs on the Agent Accounts model today, on our own BuyerVault: owner-funded caps, a supplier allowlist, human approval above a threshold, and an HCS audit trail. It's built to switch to Hedera Agent Accounts behind one interface when they launch." Don't claim we use Hedera Agent Accounts until we actually have access.
+"Invoice Agent runs on the Agent Accounts model today, on our own BuyerVault: owner-funded caps, a supplier allowlist, human approval above a threshold, and an HCS audit trail. It's built to switch to Hedera Agent Accounts behind one interface when they launch." Don't claim we use Hedera Agent Accounts until we actually have access.

@@ -12,7 +12,7 @@ const serif = Instrument_Serif({ subsets: ["latin"], weight: "400", style: ["nor
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono-jb" });
 
 export const metadata: Metadata = {
-  title: "AgentInvoice",
+  title: "Invoice Agent",
   description: "Get paid today for invoices due next month. AI buyer agents repay on time, with a verified human accountable for each one.",
 };
 

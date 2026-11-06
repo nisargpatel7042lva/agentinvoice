@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { decodePaymentRequiredHeader } from "@x402/core/http";
 import type { FacilitatorClient } from "@x402/core/server";
 import type { SettleResponse, SupportedResponse, VerifyResponse } from "@x402/core/types";
-import { invoiceFixtures, type BuyerScore } from "@agentinvoice/shared";
+import { invoiceFixtures, type BuyerScore } from "@invoiceagent/shared";
 import { buildPaidExpressApp, computeBand } from "./app.js";
 import { dispatch, makeMockReq, makeMockRes } from "./testUtils.js";
 

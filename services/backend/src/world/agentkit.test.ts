@@ -3,13 +3,13 @@ import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { describe, expect, it } from "vitest";
 import { NonceStore, verifyAgentRequest, type AgentKitDeps } from "./agentkit.js";
 
-const RESOURCE = "https://api.agentinvoice.test/api/approval/start";
+const RESOURCE = "https://api.invoiceagent.test/api/approval/start";
 const account = privateKeyToAccount(generatePrivateKey());
 
 // Builds a real signed AgentKit header (base64 JSON payload), signed with a real key.
 async function makeHeader(overrides: Partial<AgentkitPayload> = {}, tamper?: (p: AgentkitPayload) => void) {
   const info = {
-    domain: "api.agentinvoice.test",
+    domain: "api.invoiceagent.test",
     uri: RESOURCE,
     version: "1",
     nonce: `nonce${Math.random().toString(36).slice(2, 12)}abcd`,

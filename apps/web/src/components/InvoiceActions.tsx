@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { FlaskConical } from "lucide-react";
-import type { Status } from "@agentinvoice/shared";
+import type { Status } from "@invoiceagent/shared";
 import { acceptInvoice, markDefaulted, markLate, payInvoice, resetDemo } from "@/app/actions";
 import { ActionButton } from "@/components/ActionButton";
 import { buttonVariants } from "@/components/ui";

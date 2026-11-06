@@ -7,7 +7,7 @@ Every on-screen string, written once. The code imports `apps/web/src/lib/copy.ts
 | --- | --- |
 | `banner.testnet` | Testnet prototype. Not financial advice. |
 | `banner.cached` | Some values on this page are cached from our server and may be a few minutes old. |
-| `nav.brand` | AgentInvoice |
+| `nav.brand` | Invoice Agent |
 | `nav.market` | Marketplace |
 | `nav.supplier` | Create invoice |
 | `nav.back_market` | Back to marketplace |
@@ -102,7 +102,7 @@ Every on-screen string, written once. The code imports `apps/web/src/lib/copy.ts
 | `ens.set_by_registry` | From the ENS registry |
 | `ens.permissions_title` | Who can change what |
 | `ens.unreachable` | We cannot reach ENS right now, so these values are hidden rather than guessed. Try again in a minute. |
-| `ens.missing` | This name has no AgentInvoice records yet. |
+| `ens.missing` | This name has no Invoice Agent records yet. |
 | `ens.expired` | This ENS name has expired. Treat this agent as unverified. |
 | `ens.revoked` | This agent's name was revoked by its sponsor. Do not fund new invoices for it. |
 | `empty.agent_history` | This buyer has no invoices yet. |

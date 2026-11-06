@@ -1,7 +1,7 @@
 // Real x402 on Hedera: request → 402 challenge → check our spending policy → sign an HBAR transfer → retry → settled.
 // Follows Hedera's x402 guide (native-services-js/x402-payments): amounts in tinybars, asset "0.0.0", payTo is a 0.0.x
 // account id, and a facilitator (e.g. Blocky402) co-signs as fee payer and submits.
-// Import from "@agentinvoice/shared/payAndGet" (agents and scripts only): it pulls in the Hedera SDK, which the
+// Import from "@invoiceagent/shared/payAndGet" (agents and scripts only): it pulls in the Hedera SDK, which the
 // website must not bundle.
 import { x402Client, x402HTTPClient } from "@x402/core/client";
 import { createClientHederaSigner, PrivateKey } from "@x402/hedera";

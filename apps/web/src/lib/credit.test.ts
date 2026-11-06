@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { computeCreditReport } from "@agentinvoice/shared";
+import { computeCreditReport } from "@invoiceagent/shared";
 import { mockStore } from "./mockStore";
 import { sampleParties } from "./directory";
 

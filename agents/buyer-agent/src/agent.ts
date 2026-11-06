@@ -1,4 +1,4 @@
-import { formatUnits, type Address, type ApiClient, type Hash32, type Invoice } from "@agentinvoice/shared";
+import { formatUnits, type Address, type ApiClient, type Hash32, type Invoice } from "@invoiceagent/shared";
 import { decide, decisionLine } from "./decide.js";
 
 export const MAX_RETRIES = 3;

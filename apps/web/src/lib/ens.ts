@@ -1,4 +1,4 @@
-import { EnsReadError, ensAgentFixture, readAgentFromEns, type Address, type EnsAgent } from "@agentinvoice/shared";
+import { EnsReadError, ensAgentFixture, readAgentFromEns, type Address, type EnsAgent } from "@invoiceagent/shared";
 import { isMock } from "./env";
 
 /** What the create form learns about the buyer the supplier typed. Never a guess: a failed read is "unreachable". */

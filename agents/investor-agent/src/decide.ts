@@ -1,4 +1,4 @@
-import { parseUnits, type Invoice, type ScoreBand, type BuyerScore } from "@agentinvoice/shared";
+import { parseUnits, type Invoice, type ScoreBand, type BuyerScore } from "@invoiceagent/shared";
 
 export interface Rules {
   minScore: number; // MIN_SCORE, default 650

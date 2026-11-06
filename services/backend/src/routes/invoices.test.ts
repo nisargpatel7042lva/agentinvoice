@@ -1,4 +1,4 @@
-import { InvoiceListSchema, InvoiceSchema } from "@agentinvoice/shared";
+import { InvoiceListSchema, InvoiceSchema } from "@invoiceagent/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { buildApp } from "../app.js";
 

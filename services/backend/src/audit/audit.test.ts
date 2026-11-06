@@ -1,4 +1,4 @@
-import { AuditListSchema } from "@agentinvoice/shared";
+import { AuditListSchema } from "@invoiceagent/shared";
 import { describe, expect, it } from "vitest";
 import { buildApp } from "../app.js";
 import { auditEventForStatus, buildMessage, hashPayload, publishAudit, readAuditEvents } from "./audit.js";

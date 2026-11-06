@@ -2,7 +2,7 @@ import express, { type Express } from "express";
 import { paymentMiddleware, x402ResourceServer } from "@x402/express";
 import { ExactHederaScheme } from "@x402/hedera/exact/server";
 import { HTTPFacilitatorClient, type FacilitatorClient } from "@x402/core/server";
-import { AddressSchema, createApiClient, scoreFromInvoices, type Address, type AuditEvent, type Invoice } from "@agentinvoice/shared";
+import { AddressSchema, createApiClient, scoreFromInvoices, type Address, type AuditEvent, type Invoice } from "@invoiceagent/shared";
 
 export interface PaidExpressConfig {
   /** Hedera account id that receives payments, e.g. 0.0.1234 (required: no silent default). */

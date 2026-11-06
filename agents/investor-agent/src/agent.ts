@@ -1,4 +1,4 @@
-import { tinybarToWeibar, type ApiClient, type Hash32, type Invoice, type BuyerScore } from "@agentinvoice/shared";
+import { tinybarToWeibar, type ApiClient, type Hash32, type Invoice, type BuyerScore } from "@invoiceagent/shared";
 import { decide, discountBps, type Decision, type Rules } from "./decide.js";
 
 /** Buys an invoice on-chain. Implemented with viem in main.ts; faked in tests. `value` is msg.value in weibar. */

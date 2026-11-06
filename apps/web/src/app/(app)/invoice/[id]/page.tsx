@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
-import { formatUnits } from "@agentinvoice/shared";
+import { formatUnits } from "@invoiceagent/shared";
 import { Card } from "@/components/ui";
 import { Legend } from "@/components/charts";
 import { EmptyState } from "@/components/EmptyState";

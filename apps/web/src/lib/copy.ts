@@ -1,5 +1,5 @@
 // Mirrors docs/design/copy.md. Change wording there first, then here.
-import type { ScoreBand, Status } from "@agentinvoice/shared";
+import type { ScoreBand, Status } from "@invoiceagent/shared";
 
 export const copy = {
   banner: {
@@ -36,7 +36,7 @@ export const copy = {
     permissions: "Who can change these values",
     details: "Show details",
   },
-  nav: { brand: "AgentInvoice", market: "Marketplace", supplier: "Create invoice", backMarket: "Back to marketplace" },
+  nav: { brand: "Invoice Agent", market: "Marketplace", supplier: "Create invoice", backMarket: "Back to marketplace" },
   wallet: { connect: "Connect wallet", connectToFund: "Connect a wallet to fund this invoice" },
   money: { where: "Where the money is" },
   sponsor: { accountable: "Sponsor (accountable for this buyer)" },
@@ -122,7 +122,7 @@ export const copy = {
     labels: { vault: "addr", limit: "limit", threshold: "threshold", paid: "paid", late: "late", status: "status", expiresAt: "expires", name: "name" },
     permissionsTitle: "Who can change what",
     unreachable: "We cannot reach ENS right now, so these values are hidden rather than guessed. Try again in a minute.",
-    missing: "This name has no AgentInvoice records yet.",
+    missing: "This name has no Invoice Agent records yet.",
     expired: "This ENS name has expired. Treat this agent as unverified.",
     revoked: "This agent's name was revoked by its sponsor. Do not fund new invoices for it.",
   },

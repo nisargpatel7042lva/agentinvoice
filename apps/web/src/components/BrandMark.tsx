@@ -1,4 +1,4 @@
-/** AgentInvoice mark: an ink tile with two invoice lines and a coral tick (invoice → paid). */
+/** Invoice Agent mark: an ink tile with two invoice lines and a coral tick (invoice → paid). */
 export function BrandMark({ size = 22 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 22 22" aria-hidden="true">

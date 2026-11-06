@@ -1,4 +1,4 @@
-import { ApprovalSchema, ApprovalStartSchema } from "@agentinvoice/shared";
+import { ApprovalSchema, ApprovalStartSchema } from "@invoiceagent/shared";
 import type { FastifyInstance } from "fastify";
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";

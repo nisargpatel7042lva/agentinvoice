@@ -1,4 +1,4 @@
-import type { Amount, PayPolicy } from "@agentinvoice/shared";
+import type { Amount, PayPolicy } from "@invoiceagent/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
 import { copy } from "@/lib/copy";
 import { formatAmount } from "@/lib/format";

@@ -3,7 +3,7 @@
 // mock mode changes the in-memory demo store; real mode is where each owner wires their piece.
 // See docs/notes/frontend-actions.md.
 import { revalidatePath } from "next/cache";
-import { ApiError, createApiClient, parseUnits, type Address, type Hash32, type Invoice } from "@agentinvoice/shared";
+import { ApiError, createApiClient, parseUnits, type Address, type Hash32, type Invoice } from "@invoiceagent/shared";
 import { isMock } from "@/lib/env";
 import { lookupBuyer as lookupBuyerName, type BuyerLookup } from "@/lib/ens";
 import { MockError, mockStore } from "@/lib/mockStore";

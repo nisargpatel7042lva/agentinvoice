@@ -1,5 +1,5 @@
 // Pure figures derived from real invoice data. Never invent numbers: empty input gives null, and the UI shows "—".
-import { STATUSES, formatUnits, type Invoice, type Status } from "@agentinvoice/shared";
+import { STATUSES, formatUnits, type Invoice, type Status } from "@invoiceagent/shared";
 
 const hbar = (amount: string | bigint) => Number(formatUnits(amount));
 const sum = (xs: Invoice[], f: (i: Invoice) => string) => xs.reduce((a, i) => a + BigInt(f(i)), 0n);

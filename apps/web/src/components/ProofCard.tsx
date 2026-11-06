@@ -1,4 +1,4 @@
-import type { Invoice } from "@agentinvoice/shared";
+import type { Invoice } from "@invoiceagent/shared";
 import { Card } from "@/components/ui";
 import { TxLink } from "@/components/TxLink";
 import { formatAmount, formatDate } from "@/lib/format";
