@@ -2,13 +2,17 @@
 
 The loop: seller creates an invoice, the buyer agent accepts it, an investor funds it, the agent repays at the due date, the investor claims. ENS shows the agent's record, the bond is the receipt, a World-verified human approves large payments.
 
-`[x]` done and checked, `[~]` built but not checked live, `[ ]` not done. Owner in brackets.
+`[x]` done and checked, `[~]` built / merged but not checked live (or only partially), `[ ]` not done. Owner in brackets.
+
+**How to read prize items:** **code on `main`** is not the same as **live verified** on the hosted stack. Tick live boxes only after a human run.
+
+Docs map: [README.md](README.md) (this folder’s index).
 
 ## 1. Make it live
 
 - [x] Backend on AWS behind HTTPS, healthy (schema v5) [Sidd]
 - [x] Buyer or seller role, buyer vault deploy, vault to name lookup merged (PR #55)
-- [ ] Merge PR #56 (buyer agent serves every registered vault) [Nisarg or Sidd]
+- [x] Buyer agent serves every registered vault where it is the on-chain agent — **merged** (PR #56)
 - [ ] AWS server follows `main`, restart `ai-backend ai-paid-api ai-buyer-agent` [Sidd]
 - [ ] Vercel env: `NEXT_PUBLIC_BACKEND_URL=https://52.63.226.208.sslip.io`
 - [ ] Vercel env: `NEXT_PUBLIC_AGENT_ADDRESS=0xd2B87eFbfd542eA386cBD1724A2E8DAEb31E0fA3`
@@ -28,27 +32,36 @@ Backend half checked live on 2026-11-07 with a throwaway seller (role 201, chang
 
 ## 3. Product gaps
 
-- [~] Seller signs `createInvoice` from their own wallet, so the seller is the on-chain supplier (code merged on phase_13, untested with a wallet; falls back to the platform issuer when no wallet is connected). Contract check: any wallet may call `createInvoice`.
+- [~] Seller signs `createInvoice` from their own wallet, so the seller is the on-chain supplier (code merged; falls back to the platform issuer when no wallet is connected). Contract check: any wallet may call `createInvoice`. Wallet click-through still open.
 - [~] Description attached with a supplier-signed `PUT /api/invoices/:id/description` (backend tests pass)
 - [ ] Profile "Invoices you created" works for a real seller wallet (needs the wallet test above)
-- [~] Buyer vault panel on the profile: balance, deposit, allow a seller (code on phase_13, untested with a wallet)
+- [~] Buyer vault panel on the profile: balance, deposit, allow a seller (code merged; untested with a wallet in this checklist)
 - [~] Create form warns when the buyer has not allowed the seller's wallet (the agent skips unallowed suppliers)
 - [ ] Buyer allows the seller, the agent accepts the seller's invoice, the investor funds it, the agent repays (the whole loop with new wallets)
 - [ ] ENS records (limit, threshold, paid, late, status) published for every registered buyer, not just the demo one. Blocked on a design choice: records are guarded per name and key by resolver roles, so the publisher and sponsor wallets need grants on each new name, which the name's owner (the buyer) controls. Needs a Sepolia experiment
-- [~] "Agent wallet" field when a buyer deploys a vault (default: ours; code on phase_13)
+- [~] "Agent wallet" field when a buyer deploys a vault (default: ours; code merged)
 - [x] Self-hosting guide for the buyer and investor agents (`docs/SELF_HOSTING.md`)
 - [ ] Expose the paid score API (port 4020) so an outside investor agent can fetch scores
 
 ## 4. Prize tracks
 
-- [ ] World: signed approval so the vault releases a payment above the threshold (issue #31)
-- [ ] World: fill the TBD numbers in `docs/FEEDBACK_WORLD.md` (your own numbers)
-- [ ] Tokenize: create the ATS bond with the deployer account (`0.0.11326618`) in the ATS admin app, send the bond address [Sidd]
-- [ ] Tokenize: set `ATS_BOND_ADDRESS` on the server, restart `ai-backend`, fund a small invoice, see units and the bond link on the proof card
-- [ ] Tokenize: redeem on payment and freeze on default checked live
+### World ID
+
+- [x] **Code on `main`:** World step-up → EIP-712 `LargePayment` approval signature for payments above the vault threshold (PRs #59 / #60; `approvalSignature` routes)
+- [ ] **Live verified:** full path on the hosted stack (approval link → Orb → agent pays; payment without approval must revert)
+- [ ] Fill the measured numbers in `docs/FEEDBACK_WORLD.md` (your own timings — do not invent)
+
+### Tokenize (ATS)
+
+- [ ] Create the ATS bond with the deployer account (`0.0.11326618`) in the ATS admin app, send the bond address [Sidd]
+- [ ] Set `ATS_BOND_ADDRESS` on the server, restart `ai-backend`, fund a small invoice, see units and the bond link on the proof card
+- [ ] Redeem on payment and freeze on default checked live
+
+### Other
+
 - [ ] ENS: seller control of their own resolver records (today the sponsor sets them)
-- [ ] x402: paid score API reachable and used by the investor agent
-- [ ] README prize entries
+- [ ] x402: paid score API reachable and used by the investor agent on the hosted stack
+- [x] README prize track write-ups (ENS / ATS / World sections on root README after docs refresh)
 
 ## 5. Paths nobody has run live
 
@@ -62,16 +75,38 @@ Backend half checked live on 2026-11-07 with a throwaway seller (role 201, chang
 - [ ] Demo investor agent on AWS (systemd service, funded wallet, rules in env)
 - [ ] Paid API (port 4020) exposed or reachable by that agent
 
-## 7. Before the demo
+## 7. Tech verify
 
-- [ ] Pre-create an invoice a few minutes ahead, due in a few days, under 50 HBAR
+- [ ] `bun run typecheck`
+- [ ] `bun run lint`
+- [ ] `bun run test`
+- [ ] `bun run forge`
+- [ ] `bun run verify:fast` (matches CI `verify-fast`)
+- [ ] Optional: `bun run verify` when e2e env is available
+- [ ] CI green on the branch you will demo from
+
+## 8. Docs freshness
+
+- [ ] [DEMO_SCRIPT.md](DEMO_SCRIPT.md) matches what is live (roles, hosting, threshold, honest “not done” list)
+- [ ] [RUNBOOK-testnet.md](RUNBOOK-testnet.md) and [DEPLOY.md](DEPLOY.md) match current env and flows
+- [ ] [docs/README.md](README.md) index links still resolve
+- [ ] Root README Documentation section points at the right docs
+
+## 9. Screenshots / video
+
+- [ ] 5-minute demo video recorded (add link here only after it exists — do not invent a URL)
+- [ ] Optional stills for marketplace, invoice fund, ENS agent page, World approval (store or link only after capture)
+
+## 10. Before the demo
+
+- [ ] Pre-create an invoice a few minutes ahead, due in a few days, **below the vault approval threshold** (demo vault often 50 HBAR)
 - [ ] Vault holds at least 50 HBAR; the agent wallet has gas
 - [ ] `/health` is `ok: true, degraded: false`; buyer agent log shows polling
-- [ ] Demo script (`docs/DEMO_SCRIPT.md`) matches what is live
-- [ ] 5-minute demo video recorded
+- [ ] World / ATS / HCS beats only if those env vars are configured
 
-## 8. After the demo
+## 11. Repo hygiene (after the demo / before public reuse)
 
 - [ ] Rotate the deployer and sponsor keys, the World client secret and the SSH key (all were exposed in chat)
 - [ ] Redeploy contracts with new keys if they will be reused
 - [ ] Delete the AWS key pair and Elastic IP if the server is stopped
+- [ ] Confirm no secrets in git history before making the repo more public (see internal `docs/notes/secrets-scan.md` for prior scan notes)
