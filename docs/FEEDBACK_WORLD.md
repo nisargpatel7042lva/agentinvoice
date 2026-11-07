@@ -2,9 +2,11 @@
 
 Required by the prize: time to first success, friction, missing capability or documentation, and the one improvement with the greatest impact. Updated as we build.
 
+**Status:** draft. Fill the TBD fields only after a **measured live** Orb step-up on the real portal (or the hosted callback). Do not invent timings or ACR values. `scripts/world-stepup-live.ts` prints elapsed seconds from start to a validated result when you run it.
+
 ## Time to first success
 
-TBD. The real step-up flow (task 1.6) has not run yet. `scripts/world-stepup-live.ts` prints the seconds from start to a validated result.
+TBD — record after a real live run (your own stopwatch or the script output). Leave blank until then.
 
 ## Friction so far
 
@@ -22,7 +24,7 @@ TBD. The real step-up flow (task 1.6) has not run yet. `scripts/world-stepup-liv
 
 ## Highest-impact improvement
 
-TBD after the real flow runs. Current candidate: one runnable end-to-end example of step-up for an agent action, including the `acr` a test account receives.
+TBD after the real live flow you will cite for the prize. Current candidate (until replaced with your measured takeaway): one runnable end-to-end example of step-up for an agent action, including the `acr` a test account receives.
 
 ## What the approval does on chain
 

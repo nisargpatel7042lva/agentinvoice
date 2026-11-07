@@ -27,9 +27,10 @@
 6. [More under the hood](#more-under-the-hood)
 7. [Deployed addresses](#deployed-addresses)
 8. [Run it yourself](#run-it-yourself)
-9. [Repository layout](#repository-layout)
-10. [Status and honest notes](#status-and-honest-notes)
-11. [Team](#team)
+9. [Documentation](#documentation)
+10. [Repository layout](#repository-layout)
+11. [Status and honest notes](#status-and-honest-notes)
+12. [Team](#team)
 
 ---
 
@@ -336,19 +337,35 @@ The backend checks `.env` at boot and lists any half-configured feature by varia
 
 ---
 
+## Documentation
+
+Full map (submission vs design vs internal notes): **[docs/README.md](docs/README.md)**.
+
+| Doc | For |
+|---|---|
+| [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | Mentor / judge walkthrough (~5 minutes) |
+| [docs/END_TO_END_CHECKLIST.md](docs/END_TO_END_CHECKLIST.md) | Merged vs live-verified, demo and hygiene checklist |
+| [docs/DEPLOY.md](docs/DEPLOY.md) | Vercel + AWS + ATS bond setup |
+| [docs/RUNBOOK-testnet.md](docs/RUNBOOK-testnet.md) | Local testnet transactions |
+| [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md) | Run your own buyer or investor agent |
+| [docs/FEEDBACK_WORLD.md](docs/FEEDBACK_WORLD.md) | World ID prize debrief |
+| [docs/notes/saucerswap.md](docs/notes/saucerswap.md) | HBAR→USDC treasury helpers |
+
+---
+
 ## Repository layout
 
 | Path | What it is |
 |---|---|
-| `apps/web` | Next.js app: landing, marketplace, invoice, create, network, agent, profile, approval |
+| `apps/web` | Next.js app: landing, marketplace, create invoice, **USDC treasury**, network, agent, profile, approval |
 | `services/backend` | Fastify + SQLite: API, chain indexer, ENS publisher and name mint, ATS bond issuer, World ID approvals, HCS audit |
 | `services/paid-api` | x402 paid credit-score API on Hedera |
 | `agents/buyer-agent` | Accepts and pays invoices from BuyerVaults within on-chain rules |
 | `agents/investor-agent` | Funds invoices that meet its rules; pays x402 for scores |
-| `packages/shared` | Types, schemas, ABIs, addresses, ENS reader, credit score, x402 client, AgentAccount adapter |
+| `packages/shared` | Types, schemas, ABIs, addresses, ENS reader, credit score, x402 client, AgentAccount adapter, SaucerSwap helpers |
 | `contracts` | Foundry: `InvoiceMarket`, `BuyerVault`, `BuyerEscrow`, with security, fuzz and invariant tests |
-| `scripts` | Deploy, ENS (register, grant, refusal, revoke, check), ATS bond, end-to-end checks |
-| `docs` | Notes per integration, demo script, deploy and self-hosting guides, World feedback |
+| `scripts` | Deploy, ENS (register, grant, refusal, revoke, check), ATS bond, SaucerSwap CLI, end-to-end checks |
+| `docs` | Index in [docs/README.md](docs/README.md): demo, deploy, runbooks, checklists, design, internal notes |
 
 ---
 
