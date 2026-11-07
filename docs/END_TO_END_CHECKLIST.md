@@ -2,20 +2,20 @@
 
 The loop: seller creates an invoice, the buyer agent accepts it, an investor funds it, the agent repays at the due date, the investor claims. ENS shows the agent's record, the bond is the receipt, a World-verified human approves large payments.
 
-`[x]` done and checked, `[~]` built but not checked live, `[ ]` not done. Owner in brackets.
+`[x]` done and checked, `[~]` built but not checked live, `[ ]` not done. Owner in brackets. Last updated 2026-11-07 after the live World approval and ATS bond tests.
 
 ## 1. Make it live
 
 - [x] Backend on AWS behind HTTPS, healthy (schema v5) [Sidd]
 - [x] Buyer or seller role, buyer vault deploy, vault to name lookup merged (PR #55)
-- [ ] Merge PR #56 (buyer agent serves every registered vault) [Nisarg or Sidd]
-- [ ] AWS server follows `main`, restart `ai-backend ai-paid-api ai-buyer-agent` [Sidd]
-- [ ] Vercel env: `NEXT_PUBLIC_BACKEND_URL=https://52.63.226.208.sslip.io`
+- [x] PR #56 (buyer agent serves every registered vault) merged; checked live: the agent accepted invoice 15 on a registered vault
+- [ ] Merge PRs #61 (World diagnostics) and #62 (ATS configure and KYC fixes), then put the AWS server back on `main` with the DEPLOY update command. It runs the #62 branch today [Sidd]
+- [x] Vercel env: `NEXT_PUBLIC_BACKEND_URL=https://52.63.226.208.sslip.io` (the live site shows market data and invoices)
 - [ ] Vercel env: `NEXT_PUBLIC_AGENT_ADDRESS=0xd2B87eFbfd542eA386cBD1724A2E8DAEb31E0fA3`
 - [ ] Vercel env: `NEXT_PUBLIC_VERIFIER_ADDRESS=0x27a3c43158AC762F57B3aBe459a98e67659738EE`
 - [ ] Vercel env: `NEXT_PUBLIC_BUYER_ENS_NAME=buyer.agentinvoicenf71.eth`
-- [ ] Redeploy Vercel without the build cache; `/market` shows invoices
-- [ ] Server `.env`: `APP_URL` = the Vercel address, `TRUST_PROXY=1`
+- [x] Redeploy Vercel; `/market` and `/invoice/15` load with data
+- [x] Server `.env`: `APP_URL` is the Vercel address, `TRUST_PROXY=1`, `ATS_BOND_ADDRESS`, World client id, secret and redirect (checked 2026-11-07). A pasted secret was once doubled to 132 characters; the correct one is 66
 
 ## 2. Click through the role flow with a wallet
 
@@ -41,11 +41,14 @@ Backend half checked live on 2026-11-07 with a throwaway seller (role 201, chang
 
 ## 4. Prize tracks
 
-- [ ] World: signed approval so the vault releases a payment above the threshold (issue #31)
+- [x] World: signed approval so the vault releases a payment above the threshold (issue #31). Verified live 2026-11-07: invoice 15 (3 HBAR, vault threshold 1 HBAR) showed Human approval needed, a World Orb approval, the agent logged `due and sponsor approval is available`, and the invoice went Paid
 - [ ] World: fill the TBD numbers in `docs/FEEDBACK_WORLD.md` (your own numbers)
-- [ ] Tokenize: create the ATS bond with the deployer account (`0.0.11326618`) in the ATS admin app, send the bond address [Sidd]
-- [ ] Tokenize: set `ATS_BOND_ADDRESS` on the server, restart `ai-backend`, fund a small invoice, see units and the bond link on the proof card
-- [ ] Tokenize: redeem on payment and freeze on default checked live
+- [x] Tokenize: ATS bond created with the deployer account (`0xf2FF0B14d1C1492289e63F95bC4f9Ef965C8F413`, Hedera `0.0.11348010`). The wizard used its defaults, so it is named "Demo Bond 2026" (`DCB2026`, 6 decimals), not `AINV`. Cosmetic
+- [x] Tokenize: `scripts/ats/configure-bond.ts` (PR #62) grants the deployer the roles, turns on internal KYC and lists it as a trusted issuer (without that `grantKyc` reverts). Run once per bond
+- [x] Tokenize: `ATS_BOND_ADDRESS` set on the server; units issued live for invoices 8, 13 and 14 (the investor wallet holds the 200M + 100M units of 8 and 13)
+- [x] Tokenize: a holder's second invoice works (the service skips the KYC grant when it already exists); an issuance interrupted by a restart is settled against the chain instead of sticking (PR #62)
+- [ ] Tokenize: redeem on payment checked live (needs an invoice funded after the bond existed, then paid; invoice 15 was paid before)
+- [ ] Tokenize: freeze on default checked live
 - [ ] ENS: seller control of their own resolver records (today the sponsor sets them)
 - [ ] x402: paid score API reachable and used by the investor agent
 - [ ] README prize entries
@@ -54,8 +57,8 @@ Backend half checked live on 2026-11-07 with a throwaway seller (role 201, chang
 
 - [ ] Early repayment by the agent wallet, then investor claim, on a registered (non-demo) vault
 - [ ] Late invoice, then default, then what the investor sees
-- [ ] Invoice above the approval threshold with no approval: it must not pay
-- [ ] Buyer agent skips a vault that names a different agent (log shows it once)
+- [x] Invoice above the approval threshold with no approval does not pay (checked live: the agent logged `needs sponsor approval` repeatedly until the approval existed)
+- [ ] Buyer agent skips a vault that names a different agent (log shows it once). Covered by a unit test, not run live
 
 ## 6. Investor side (optional for the demo)
 
