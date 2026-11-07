@@ -174,3 +174,11 @@ export const SaucerSwapQuoteSchema = z.object({
 
 /** GET /api/agents: the vault -> ENS name pairs buyers registered on the website. */
 export const AgentListSchema = z.object({ agents: z.array(z.object({ vault: AddressSchema, name: z.string(), owner: AddressSchema })) });
+
+/** GET /api/invoices/:id/approval: the World-approved, verifier-signed payment approval for BuyerVault.payInvoice. */
+export const InvoiceApprovalSchema = z.object({
+  approvalId: z.string(),
+  approval: z.custom<`0x${string}`>((v) => typeof v === "string" && /^0x[0-9a-fA-F]*$/.test(v), "expected hex bytes"),
+  expiry: z.number(),
+  verifier: AddressSchema,
+});

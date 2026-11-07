@@ -24,6 +24,10 @@ TBD. The real step-up flow (task 1.6) has not run yet. `scripts/world-stepup-liv
 
 TBD after the real flow runs. Current candidate: one runnable end-to-end example of step-up for an agent action, including the `acr` a test account receives.
 
+## What the approval does on chain
+
+After World proves a fresh human, the backend signs an EIP-712 `LargePayment` message (vault, invoice, amount, one-time nonce, expiry) with the vault's verifier key. The buyer agent attaches it to `payInvoice`, and `BuyerVault` verifies the signature, the expiry and the nonce itself. A payment above the threshold without it reverts, so the human check is enforced by the contract, not only by our software. Optionally `WORLD_ALLOWED_SUBJECT_HASHES` limits approval to the sponsor's own World identity.
+
 ## Honest note
 
 World proves a fresh human authentication. Our server binds it to one agent, action, amount, expiry and single use. Test proofs use fake identities, so we do not claim production security.

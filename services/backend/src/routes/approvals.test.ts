@@ -1,7 +1,9 @@
 import { ApprovalSchema, ApprovalStartSchema } from "@invoiceagent/shared";
 import { generateKeyPair, SignJWT, type CryptoKey } from "jose";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { createHash } from "node:crypto";
 import { buildApp } from "../app.js";
+import { createApprovalSigner } from "../approval/sign.js";
 import { consumeApproval, ApprovalUseError } from "../approval/store.js";
 import { WORLD_ACR_ORB, WORLD_ISSUER } from "../world/stepup.js";
 import type { WorldOptions } from "./approvals.js";
@@ -190,5 +192,33 @@ describe("audit events", () => {
 describe("GET /api/approvals/:id", () => {
   it("returns 404 for an unknown approval", async () => {
     expect((await app.inject({ method: "GET", url: "/api/approvals/nope" })).statusCode).toBe(404);
+  });
+});
+
+describe("only the sponsor's World identity may approve", () => {
+  const subjectHash = (sub: string) => createHash("sha256").update(`${WORLD_ISSUER}:${sub}`).digest("hex");
+  const rebuild = (allowed: string[]) => {
+    app.close();
+    app = buildApp({ dbPath: ":memory:", world: { ...world(), allowedSubjects: allowed }, approvalSigner: createApprovalSigner(`0x${"59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"}`, 296) });
+    app.db
+      .prepare(`INSERT INTO invoices (id, supplier, buyer_vault, face_amount, price, due_date, status, evidence_hash, source, updated_at) VALUES ('7', '0x1111111111111111111111111111111111111111', ?, '500', '475', 2000000000, 'Funded', ?, 'chain', 0)`)
+      .run(VAULT, EVIDENCE);
+  };
+
+  it("approves the listed person, and the signed payment approval becomes available only then", async () => {
+    rebuild([subjectHash("sub-1")]);
+    const { id } = await start();
+    expect((await app.inject({ url: "/api/invoices/7/approval" })).statusCode).toBe(404); // nobody approved yet
+    expect(resultOf(await callback({ code: "c", state: id, iss: WORLD_ISSUER }))).toBe("approved");
+    expect((await app.inject({ url: "/api/invoices/7/approval" })).statusCode).toBe(200);
+  });
+
+  it("rejects another verified human, and no payment approval is ever signed", async () => {
+    rebuild([subjectHash("someone-else")]);
+    const { id } = await start();
+    const res = await callback({ code: "c", state: id, iss: WORLD_ISSUER });
+    expect(resultOf(res)).toBe("rejected");
+    expect(await stateOf(id)).toBe("rejected");
+    expect((await app.inject({ url: "/api/invoices/7/approval" })).statusCode).toBe(404);
   });
 });

@@ -8,6 +8,8 @@ import { auditRoutes, type AuditOptions } from "./routes/audit.js";
 import type { InvoiceIssuer } from "./chain/issuer.js";
 import { nameRoutes, type NameMinter } from "./routes/names.js";
 import { roleRoutes } from "./routes/roles.js";
+import { approvalSignatureRoutes } from "./routes/approvalSignature.js";
+import type { ApprovalSigner } from "./approval/sign.js";
 import { buyerRoutes, type BuyerMinter } from "./routes/buyers.js";
 import { invoiceCreateRoutes, invoiceRoutes } from "./routes/invoices.js";
 import { saucerswapRoutes, type SaucerSwapRouteOptions } from "./routes/saucerswap.js";
@@ -40,12 +42,13 @@ export interface AppOptions {
   limits?: Partial<RateLimits>; // per-client requests per minute on the rate-limited endpoints
   issuer?: InvoiceIssuer; // creates invoices on-chain for POST /api/invoices; without it the route answers 503
   trustProxy?: boolean; // behind Caddy or a load balancer: use X-Forwarded-For so rate limits apply per visitor, not to the proxy
+  approvalSigner?: ApprovalSigner; // signs World-approved large payments for BuyerVault; without it GET /api/invoices/:id/approval answers 503
   buyerMinter?: BuyerMinter; // names a buyer's vault on Sepolia for POST /api/buyers; without it the route answers 503
   minter?: NameMinter; // registers seller ENS names on Sepolia for POST /api/names; without it the route answers 503
   saucerswap?: SaucerSwapRouteOptions; // read-only quote/status; execute stays in agents/scripts
 }
 
-export function buildApp({ dbPath, world, audit, onAudit, features = {}, limits, issuer, minter, buyerMinter, saucerswap, trustProxy }: AppOptions) {
+export function buildApp({ dbPath, world, audit, onAudit, features = {}, limits, issuer, minter, buyerMinter, approvalSigner, saucerswap, trustProxy }: AppOptions) {
   const db = openDb(dbPath);
 
   const app = Fastify({ logger: process.env.NODE_ENV !== "test" && !process.env.VITEST, bodyLimit: MAX_BODY_BYTES, trustProxy: Boolean(trustProxy) });
@@ -102,6 +105,7 @@ export function buildApp({ dbPath, world, audit, onAudit, features = {}, limits,
     invoiceCreateRoutes(scope, { issuer }, rates.invoiceCreatePerMinute);
     nameRoutes(scope, minter, rates.nameMintPerMinute);
     roleRoutes(scope, rates.nameMintPerMinute);
+    approvalSignatureRoutes(scope, approvalSigner, world?.now);
     buyerRoutes(scope, buyerMinter, rates.nameMintPerMinute);
   });
 

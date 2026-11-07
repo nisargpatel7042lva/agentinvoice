@@ -3,6 +3,7 @@ import {
   ApprovalSchema,
   ApprovalStartSchema,
   AgentListSchema,
+  InvoiceApprovalSchema,
   AuditListSchema,
   HealthSchema,
   InvoiceListSchema,
@@ -84,6 +85,17 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       mock
         ? Promise.resolve({ agents: [] as { vault: Address; name: string; owner: Address }[] })
         : call(AgentListSchema, "/api/agents"),
+
+    /** The signed approval for a Funded invoice above the vault's threshold, or null while no human has approved it yet. */
+    getInvoiceApproval: async (id: string) => {
+      if (mock) return null;
+      try {
+        return await call(InvoiceApprovalSchema, `/api/invoices/${encodeURIComponent(id)}/approval`);
+      } catch (e) {
+        if (e instanceof ApiError && (e.status === 404 || e.status === 503)) return null;
+        throw e;
+      }
+    },
 
     listAudit: () => (mock ? Promise.resolve(auditFixtures) : call(AuditListSchema, "/api/audit")),
 

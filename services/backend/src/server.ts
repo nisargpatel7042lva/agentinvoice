@@ -9,6 +9,7 @@ import { errorMessage } from "./errors.js";
 import { EnvError, loadEnv, type Config } from "./env.js";
 import { liveEnsDeps } from "./ens/live.js";
 import { liveMintDeps } from "./ens/liveMint.js";
+import { createApprovalSigner } from "./approval/sign.js";
 import { createEnsPublisher } from "./ens/publisher.js";
 import { atsIssuer } from "./bond/ats.js";
 import { createBondService } from "./bond/service.js";
@@ -30,6 +31,12 @@ function buyerMintFromEnv() {
   const rpc = process.env.HEDERA_RPC_URL || process.env.HEDERA_TESTNET_RPC_URL || hederaTestnet.rpcUrl;
   const client = createPublicClient({ chain: { id: hederaTestnet.id, name: hederaTestnet.name, nativeCurrency: hederaTestnet.nativeCurrency, rpcUrls: { default: { http: [rpc] } } }, transport: http(rpc, { timeout: 15_000, retryCount: 1 }) });
   return { ...base, vaultOwner: async (vault: `0x${string}`) => (await client.readContract({ address: vault, abi: buyerVaultAbi, functionName: "owner" })) as `0x${string}` };
+}
+
+// Large-payment approvals are signed by the vault's verifier key (the sponsor wallet), only after World ID approval.
+function approvalSignerFromEnv() {
+  const key = process.env.APPROVAL_SIGNER_PRIVATE_KEY || process.env.SPONSOR_PRIVATE_KEY;
+  return key ? createApprovalSigner(key as `0x${string}`, hederaTestnet.id) : undefined;
 }
 
 let config: Config;
@@ -55,6 +62,7 @@ const app = buildApp({
   issuer: config.issuer && config.indexer ? hederaIssuer({ market: config.indexer.market, privateKey: config.issuer.privateKey, rpcUrl: config.indexer.rpcUrl }) : undefined,
   minter: mintFromEnv(),
   buyerMinter: buyerMintFromEnv(),
+  approvalSigner: approvalSignerFromEnv(),
   trustProxy: process.env.TRUST_PROXY === "1",
   features: { indexer: Boolean(config.indexer), ens: Boolean(config.ens), audit: Boolean(submit) },
   onAudit: (event: AuditInput) => {

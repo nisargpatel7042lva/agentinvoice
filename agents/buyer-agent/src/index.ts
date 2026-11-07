@@ -62,7 +62,7 @@ async function start(stop: { stopped: boolean }): Promise<void> {
       readSupplier: (supplier) => extra.recipient(supplier),
       readThreshold: async () => (await extra.rules()).approvalThreshold,
       accept: (id) => extra.accept(market, id),
-      pay: (id) => extra.pay(market, id),
+      pay: (id, approval) => extra.pay(market, id, approval),
     };
     opsCache.set(vault.toLowerCase(), ops);
     return ops;
@@ -70,6 +70,8 @@ async function start(stop: { stopped: boolean }): Promise<void> {
 
   const agent = createBuyerAgent({
     api,
+    // Payments above the vault's threshold carry a verifier-signed approval, available once a World-verified human has approved the invoice.
+    approvalFor: async (id) => (await api.getInvoiceApproval(id))?.approval ?? null,
     extraVaults: async () => (await api.listAgents()).agents.map((a) => a.vault),
     opsFor,
     vaultAddress: spender.address,
@@ -79,7 +81,7 @@ async function start(stop: { stopped: boolean }): Promise<void> {
     readSupplier: (supplier) => spender.recipient(supplier),
     readThreshold: async () => (await spender.rules()).approvalThreshold,
     accept: (id) => spender.accept(market, id),
-    pay: (id) => spender.pay(market, id),
+    pay: (id, approval) => spender.pay(market, id, approval),
   });
 
   log(`buyer agent started dryRun=${config.dryRun} account=${spender.provider}`);

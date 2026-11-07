@@ -1,4 +1,5 @@
 import { formatUnits, type Address, type ApiClient, type Hash32 } from "@invoiceagent/shared";
+import type { Hex } from "viem";
 import { decide, decisionLine } from "./decide.js";
 
 export const MAX_RETRIES = 3;
@@ -8,11 +9,13 @@ export interface VaultOps {
   readSupplier: (supplier: Address) => Promise<{ allowed: boolean; limit: bigint }>;
   readThreshold: () => Promise<bigint>;
   accept: (id: bigint) => Promise<Hash32>;
-  pay: (id: bigint) => Promise<Hash32>;
+  pay: (id: bigint, approval?: Hex) => Promise<Hash32>;
 }
 
 export interface BuyerDeps extends VaultOps {
   api: Pick<ApiClient, "listInvoices" | "getInvoice">;
+  /** The signed sponsor approval for an invoice above the vault's threshold, or null until a World-verified human has approved it. */
+  approvalFor?: (invoiceId: string) => Promise<Hex | null>;
   vaultAddress: Address; // the default vault, served with the ops above
   marketAddress: Address;
   /** Other vaults to serve, such as ones buyers registered on the website. Optional; a failed read means only the default vault this tick. */
@@ -79,27 +82,33 @@ export function createBuyerAgent(deps: BuyerDeps) {
         if (!thresholds.has(vaultKey)) thresholds.set(vaultKey, await ops.readThreshold());
         const threshold = thresholds.get(vaultKey) as bigint;
         const supplier = await ops.readSupplier(invoice.supplier);
+        // Above the threshold the vault wants a signed approval. Ask for it only when the invoice is due, so we never nag the backend early.
+        const face = BigInt(invoice.faceAmount);
+        let approval: Hex | null = null;
+        if (invoice.status === "Funded" && now >= invoice.dueDate && face > threshold && deps.approvalFor) {
+          approval = await deps.approvalFor(invoice.id).catch(() => null);
+        }
         const decision = decide({
           invoice,
           supplierAllowed: supplier.allowed,
           supplierLimit: supplier.limit,
           approvalThreshold: threshold,
           now,
-          sponsorApprovalAvailable: false,
+          sponsorApprovalAvailable: approval !== null,
         });
-        const face = formatUnits(invoice.faceAmount);
+        const faceText = formatUnits(invoice.faceAmount);
         const tries = failures.get(invoice.id) ?? 0;
         if (decision.action !== "skip" && tries >= MAX_RETRIES) {
-          log(`${decisionLine(invoice.id, { action: "skip", reason: `gave up after ${MAX_RETRIES} failed tries` })} face=${face}`);
+          log(`${decisionLine(invoice.id, { action: "skip", reason: `gave up after ${MAX_RETRIES} failed tries` })} face=${faceText}`);
           continue;
         }
         if (decision.action === "skip" || deps.dryRun) {
           const dry = deps.dryRun && decision.action !== "skip" ? " dry-run" : "";
-          log(`${decisionLine(invoice.id, decision)}${dry} face=${face}`);
+          log(`${decisionLine(invoice.id, decision)}${dry} face=${faceText}`);
           continue;
         }
-        const hash = decision.action === "accept" ? await ops.accept(BigInt(invoice.id)) : await ops.pay(BigInt(invoice.id));
-        log(`${decisionLine(invoice.id, decision)} tx=${hash} face=${face}`);
+        const hash = decision.action === "accept" ? await ops.accept(BigInt(invoice.id)) : (approval ? await ops.pay(BigInt(invoice.id), approval) : await ops.pay(BigInt(invoice.id)));
+        log(`${decisionLine(invoice.id, decision)} tx=${hash} face=${faceText}`);
       } catch (error) {
         const n = (failures.get(item.id) ?? 0) + 1;
         failures.set(item.id, n);
