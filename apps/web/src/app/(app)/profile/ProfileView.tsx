@@ -8,6 +8,7 @@ import { ArrowUpRight, FilePlus2, LayoutList } from "lucide-react";
 import type { Invoice, Status } from "@invoiceagent/shared";
 import { loadProfile, mintName, nameClaimMessage, roleMessage, setRole, type Role } from "@/app/actions";
 import { BuyerSetup } from "@/components/BuyerSetup";
+import { BuyerVaultPanel } from "@/components/BuyerVaultPanel";
 import { Banner } from "@/components/Banner";
 import { StatusBadge } from "@/components/StatusBadge";
 import { toast } from "@/components/ToastHost";
@@ -179,9 +180,10 @@ export function ProfileView() {
       {profile?.role === "buyer" && !profile.name && profile.parent && <BuyerSetup parent={profile.parent} onDone={refresh} />}
       {profile?.role === "buyer" && profile.name && (
         <p className="-mt-4 text-sm text-ink-muted">
-          Your agent is <span className="font-mono text-ink">{profile.name}</span>, paying from vault <span className="font-mono text-ink">{profile.vault ? shortHex(profile.vault) : ""}</span>. Fund the vault with HBAR so it can pay invoices.
+          Your agent is <span className="font-mono text-ink">{profile.name}</span>, paying from vault <span className="font-mono text-ink">{profile.vault ? shortHex(profile.vault) : ""}</span>.
         </p>
       )}
+      {profile?.role === "buyer" && profile.vault && <BuyerVaultPanel vault={profile.vault as `0x${string}`} />}
       {profile?.role === "seller" && !profile.name && (
         <Card className="p-6">
           <h2 className="text-base font-semibold">

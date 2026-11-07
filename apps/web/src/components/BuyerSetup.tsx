@@ -28,14 +28,16 @@ export function BuyerSetup({ parent, onDone }: { parent: string; onDone: () => v
   const [limit, setLimit] = useState("500");
   const [threshold, setThreshold] = useState("50");
   const [label, setLabel] = useState("");
+  const [agentWallet, setAgentWallet] = useState(AGENT ?? ""); // who may spend from the vault; ours by default, or the buyer's own agent wallet
   const [busy, setBusy] = useState<"" | "deploy" | "name">("");
-  const configured = Boolean(AGENT && VERIFIER);
+  const configured = Boolean(VERIFIER);
 
   async function deploy() {
-    if (!address || !AGENT || !VERIFIER) return;
+    if (!address || !VERIFIER) return;
+    if (!isAddress(agentWallet)) return toast("error", "Enter the agent wallet address (0x…).");
     let args: readonly [Address, Address, Address, bigint, bigint];
     try {
-      args = [address, AGENT as Address, VERIFIER as Address, parseUnits(limit), parseUnits(threshold)];
+      args = [address, agentWallet as Address, VERIFIER as Address, parseUnits(limit), parseUnits(threshold)];
     } catch {
       return toast("error", "Limits must be numbers like 500 or 50.5.");
     }
@@ -102,10 +104,15 @@ export function BuyerSetup({ parent, onDone }: { parent: string; onDone: () => v
                 <label className="block text-sm">Daily limit (HBAR)<input className={input} value={limit} onChange={(e) => setLimit(e.target.value)} inputMode="decimal" /></label>
                 <label className="block text-sm">Human approval above (HBAR)<input className={input} value={threshold} onChange={(e) => setThreshold(e.target.value)} inputMode="decimal" /></label>
               </div>
+              <label className="block text-sm">
+                Agent wallet
+                <input className={input + " font-mono"} value={agentWallet} onChange={(e) => setAgentWallet(e.target.value.trim())} placeholder="0x…" autoComplete="off" />
+                <span className="mt-1 block text-xs text-ink-muted">The wallet that signs your payments. The default is ours, so we pay for you inside your limits. If you run your own agent, put its wallet here.</span>
+              </label>
               <Button className="w-fit" onClick={() => void deploy()} disabled={busy !== ""} aria-busy={busy === "deploy"}>{busy === "deploy" ? "Deploying…" : "Deploy my vault"}</Button>
             </>
           ) : (
-            <p className="text-sm text-ink-muted">Deploying here is not set up (NEXT_PUBLIC_AGENT_ADDRESS and NEXT_PUBLIC_VERIFIER_ADDRESS). You can still paste a vault you already own.</p>
+            <p className="text-sm text-ink-muted">Deploying here is not set up (NEXT_PUBLIC_VERIFIER_ADDRESS). You can still paste a vault you already own.</p>
           )}
           <label className="block text-sm">
             Vault address
