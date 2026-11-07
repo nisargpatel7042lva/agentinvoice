@@ -13,7 +13,9 @@ interface IBuyerVault {
     event ApprovalUsed(uint256 indexed nonce, address indexed verifier);
     event Paid(address indexed market, uint256 indexed id, uint256 amount);
 
-    function deposit() external payable;
+    function deposit(uint256 amount) external;
+    function balance() external view returns (uint256);
+    function token() external view returns (address);
     function withdraw(uint256 amount) external;
     function freeze() external;
     function unfreeze() external;

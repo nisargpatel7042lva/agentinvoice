@@ -3,11 +3,14 @@ pragma solidity ^0.8.24;
 
 import {IInvoiceMarket, Invoice, Status} from "./interfaces/IInvoiceMarket.sol";
 import {IBondIssuer} from "./interfaces/IBondIssuer.sol";
+import {TokenLib} from "./TokenLib.sol";
 
-// UNITS: faceAmount, price, msg.value and claimable are in tinybars: inside the Hedera EVM msg.value and address.balance are tinybars
-// (1 HBAR = 1e8), so they are compared directly. Never scale by 1e10 here; clients convert to the 18-decimal JSON-RPC wire format
-// at the edge (packages/shared units.ts tinybarToWeibar). See docs/notes/contracts-review.md.
+// SETTLEMENT TOKEN: every payment moves the USDC token (SaucerSwap testnet USDC 0.0.5449, 6 decimals), never HBAR.
+// faceAmount, price and claimable are USDC base units. Investors approve this contract for `price`, then fund();
+// the buyer's vault approves `faceAmount`, then payInvoice(); the holder then claim()s USDC.
 contract InvoiceMarket is IInvoiceMarket {
+    using TokenLib for address;
+
     error ZeroAddress();
     error InvalidFaceAmount();
     error InvalidPrice();
@@ -28,6 +31,8 @@ contract InvoiceMarket is IInvoiceMarket {
 
     address public immutable owner;
     uint64 public immutable gracePeriod;
+    /// The settlement token (USDC).
+    address public immutable override token;
 
     address public bondIssuer;
     uint256 public nextInvoiceId = 1;
@@ -44,9 +49,18 @@ contract InvoiceMarket is IInvoiceMarket {
         _locked = 1;
     }
 
-    constructor(uint64 _gracePeriod) {
+    constructor(uint64 _gracePeriod, address _token) {
+        if (_token == address(0)) revert ZeroAddress();
         owner = msg.sender;
         gracePeriod = _gracePeriod;
+        token = _token;
+        // On Hedera the market must be associated with USDC to hold repayments until they are claimed.
+        _token.associateSelf();
+    }
+
+    /// Re-try the HTS association (anyone may call; harmless if already associated).
+    function associateToken() external {
+        token.associateSelf();
     }
 
     function setBondIssuer(address _bondIssuer) external {
@@ -95,11 +109,10 @@ contract InvoiceMarket is IInvoiceMarket {
         emit InvoiceAccepted(id, msg.sender);
     }
 
-    function fund(uint256 id) public payable nonReentrant {
+    function fund(uint256 id) public nonReentrant {
         Invoice storage inv = invoices[id];
         if (inv.status != Status.Open) revert InvoiceNotOpen();
         if (block.timestamp >= inv.dueDate) revert DueDatePassed();
-        if (msg.value != inv.price) revert InvalidPaymentAmount();
 
         inv.status = Status.Funded;
         inv.holder = msg.sender;
@@ -109,14 +122,13 @@ contract InvoiceMarket is IInvoiceMarket {
             IBondIssuer(bondIssuer).issue(msg.sender, inv.faceAmount);
         }
 
-        // Send payment to supplier
-        (bool success, ) = inv.supplier.call{value: msg.value}("");
-        if (!success) revert TransferFailed();
+        // The investor pays the supplier directly in USDC (needs an allowance of `price` for this contract).
+        token.safeTransferFrom(msg.sender, inv.supplier, inv.price);
 
         emit InvoiceFunded(id, msg.sender, inv.faceAmount);
     }
 
-    function buy(uint256 id) external payable {
+    function buy(uint256 id) external {
         fund(id);
     }
 
@@ -128,19 +140,21 @@ contract InvoiceMarket is IInvoiceMarket {
         emit BondIssued(id, bondAddress, inv.holder);
     }
 
-    function payInvoice(uint256 id) public payable nonReentrant {
+    function payInvoice(uint256 id) public nonReentrant {
         Invoice storage inv = invoices[id];
         if (msg.sender != inv.buyerVault) revert OnlyBuyerVault();
         if (inv.status != Status.Funded && inv.status != Status.Late) revert InvoiceNotPayable();
-        if (msg.value != inv.faceAmount) revert InvalidPaymentAmount();
 
         inv.status = Status.Paid;
-        claimable[inv.holder] += msg.value;
+        claimable[inv.holder] += inv.faceAmount;
 
-        emit InvoicePaid(id, msg.sender, msg.value);
+        // The vault repays the full face amount in USDC (it approves this contract first).
+        token.safeTransferFrom(msg.sender, address(this), inv.faceAmount);
+
+        emit InvoicePaid(id, msg.sender, inv.faceAmount);
     }
 
-    function markPaid(uint256 id) external payable {
+    function markPaid(uint256 id) external {
         payInvoice(id);
     }
 
@@ -167,8 +181,7 @@ contract InvoiceMarket is IInvoiceMarket {
         if (amount == 0) revert NothingToClaim();
 
         claimable[msg.sender] = 0;
-        (bool success, ) = msg.sender.call{value: amount}("");
-        if (!success) revert TransferFailed();
+        token.safeTransfer(msg.sender, amount);
 
         emit Claimed(msg.sender, amount);
     }

@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {TestBase} from "./utils/TestBase.sol";
+import {MockUSDC, UsdcTestBase} from "./utils/MockUSDC.sol";
 import {InvoiceMarket} from "../src/InvoiceMarket.sol";
 import {BuyerVault} from "../src/BuyerVault.sol";
 import {Invoice, Status} from "../src/interfaces/IInvoiceMarket.sol";
 
 // The approval path (EIP-712 LargePayment signed by the verifier), the daily limit, the market allowlist and the access rules.
 // Amounts use tinybar scale (1 HBAR = 1e8), the unit the contracts use inside the Hedera EVM.
-contract BuyerVaultApprovalTest is TestBase {
+contract BuyerVaultApprovalTest is UsdcTestBase {
     InvoiceMarket internal market;
     BuyerVault internal vault;
 
@@ -27,9 +27,9 @@ contract BuyerVaultApprovalTest is TestBase {
     function setUp() public {
         verifier = vm.addr(VERIFIER_PK);
         vm.warp(1_800_000_000);
-        market = new InvoiceMarket(1 days);
-        vault = new BuyerVault(owner, agent, verifier, DAILY, THRESHOLD);
-        vm.deal(address(vault), 1000e8);
+        market = new InvoiceMarket(1 days, address(usdc));
+        vault = new BuyerVault(owner, agent, verifier, DAILY, THRESHOLD, address(usdc));
+        usdc.mint(address(vault), 1000e8);
         vm.startPrank(owner);
         vault.allowSupplier(supplier, 500e8);
         vault.allowMarket(address(market), true);
@@ -47,9 +47,9 @@ contract BuyerVaultApprovalTest is TestBase {
         id = market.createInvoice(address(vault), face, _price(face), uint64(block.timestamp + 7 days), keccak256(abi.encode(face, block.timestamp)));
         vm.prank(agent);
         vault.accept(address(market), id);
-        vm.deal(investor, _price(face));
+        _give(investor, _price(face), address(market));
         vm.prank(investor);
-        market.fund{value: _price(face)}(id);
+        market.fund(id);
     }
 
     function _digest(uint256 id, uint256 amount, uint256 nonce, uint256 expiry) internal view returns (bytes32) {
@@ -86,12 +86,12 @@ contract BuyerVaultApprovalTest is TestBase {
     function test_above_threshold_pays_with_a_valid_approval() public {
         uint256 face = THRESHOLD + 10e8;
         uint256 id = _openFunded(face);
-        uint256 balanceBefore = address(vault).balance;
+        uint256 balanceBefore = usdc.balanceOf(address(vault));
 
         _pay(id, _approval(VERIFIER_PK, id, face, 1, block.timestamp + 600));
 
         assertEq(uint256(market.getInvoice(id).status), uint256(Status.Paid), "invoice paid");
-        assertEq(address(vault).balance, balanceBefore - face, "vault paid exactly the face amount");
+        assertEq(usdc.balanceOf(address(vault)), balanceBefore - face, "vault paid exactly the face amount");
         assertEq(market.claimable(investor), face, "holder can claim the face amount");
         assertTrue(vault.usedNonces(1), "nonce consumed");
         assertEq(vault.spentToday(), face, "counts toward the daily limit");
@@ -244,17 +244,17 @@ contract BuyerVaultApprovalTest is TestBase {
     }
 
     function test_withdraw_sends_exactly_the_amount_to_the_owner() public {
-        uint256 before_ = owner.balance;
+        uint256 before_ = usdc.balanceOf(owner);
         vm.prank(owner);
         vault.withdraw(10e8);
-        assertEq(owner.balance, before_ + 10e8, "owner received");
-        assertEq(address(vault).balance, 990e8, "vault balance reduced");
+        assertEq(usdc.balanceOf(owner), before_ + 10e8, "owner received");
+        assertEq(usdc.balanceOf(address(vault)), 990e8, "vault balance reduced");
     }
 
     // ---------- the market allowlist ----------
 
     function test_a_market_the_owner_did_not_allow_is_never_called() public {
-        InvoiceMarket other = new InvoiceMarket(1 days);
+        InvoiceMarket other = new InvoiceMarket(1 days, address(usdc));
         vm.prank(supplier);
         uint256 id = other.createInvoice(address(vault), 10e8, 9e8, uint64(block.timestamp + 1 days), bytes32(uint256(1)));
         vm.prank(agent);
@@ -272,14 +272,52 @@ contract BuyerVaultApprovalTest is TestBase {
 
     function test_a_fake_market_cannot_drain_the_vault() public {
         FakeMarket fake = new FakeMarket(supplier, 100e8);
-        uint256 balanceBefore = address(vault).balance;
+        uint256 balanceBefore = usdc.balanceOf(address(vault));
 
         vm.prank(agent);
         vm.expectRevert(BuyerVault.MarketNotAllowed.selector);
         vault.accept(address(fake), 1);
 
-        assertEq(address(vault).balance, balanceBefore, "nothing left the vault");
-        assertEq(address(fake).balance, 0, "the fake market received nothing");
+        assertEq(usdc.balanceOf(address(vault)), balanceBefore, "nothing left the vault");
+        assertEq(usdc.balanceOf(address(fake)), 0, "the fake market received nothing");
+    }
+
+    // ---------- USDC settlement ----------
+
+    function test_paying_leaves_the_market_no_allowance_over_the_vault() public {
+        uint256 id = _openFunded(THRESHOLD);
+        uint256 balanceBefore = usdc.balanceOf(address(vault));
+        _pay(id, "");
+        assertEq(usdc.balanceOf(address(vault)), balanceBefore - THRESHOLD, "vault paid exactly the face amount in USDC");
+        assertEq(usdc.allowance(address(vault), address(market)), 0, "no allowance left for the market to pull more");
+    }
+
+    function test_the_vault_refuses_a_market_that_settles_in_another_token() public {
+        MockUSDC other = new MockUSDC();
+        InvoiceMarket foreign = new InvoiceMarket(1 days, address(other));
+        vm.prank(owner);
+        vm.expectRevert(BuyerVault.WrongToken.selector);
+        vault.allowMarket(address(foreign), true);
+    }
+
+    function test_deposit_pulls_usdc_and_only_the_owner_withdraws_it() public {
+        _give(investor, 25e8, address(vault));
+        vm.prank(investor);
+        vault.deposit(25e8);
+        assertEq(vault.balance(), 1025e8, "deposit pulled 25 USDC-units into the vault");
+
+        vm.prank(investor);
+        vm.expectRevert(BuyerVault.Unauthorized.selector);
+        vault.withdraw(1);
+
+        vm.expectRevert(BuyerVault.InvalidAmount.selector);
+        vault.deposit(0);
+    }
+
+    function test_both_contracts_associate_with_usdc_when_deployed() public view {
+        // MockUSDC counts HIP-719 associate() calls: one from the market and one from the vault in setUp.
+        assertTrue(usdc.associateCalls() >= 2, "market and vault associated themselves with USDC");
+        assertTrue(market.token() == address(usdc) && vault.token() == address(usdc), "both settle in the same token");
     }
 }
 
@@ -304,5 +342,9 @@ contract FakeMarket {
 
     function acceptInvoice(uint256) external {}
 
-    function payInvoice(uint256) external payable {}
+    function payInvoice(uint256) external {}
+
+    function token() external pure returns (address) {
+        return address(0);
+    }
 }

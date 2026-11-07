@@ -4,10 +4,12 @@ pragma solidity ^0.8.24;
 import {InvoiceMarket} from "../src/InvoiceMarket.sol";
 import {BuyerVault} from "../src/BuyerVault.sol";
 import {IInvoiceMarket, Invoice, Status} from "../src/interfaces/IInvoiceMarket.sol";
+import {MockUSDC} from "./utils/MockUSDC.sol";
 
 contract BuyerVaultTest {
     InvoiceMarket public market;
     BuyerVault public vault;
+    MockUSDC public usdc;
 
     uint256 internal ownerPk = 0xA11CE;
     uint256 internal agentPk = 0xB0B;
@@ -27,7 +29,8 @@ contract BuyerVaultTest {
         verifier = vm_addr(verifierPk);
         supplier = vm_addr(supplierPk);
 
-        market = new InvoiceMarket(86400);
+        usdc = new MockUSDC();
+        market = new InvoiceMarket(86400, address(usdc));
 
         // Vault with daily limit = 200 ether, approval threshold = 50 ether
         vault = new BuyerVault(
@@ -35,12 +38,14 @@ contract BuyerVaultTest {
             address(this), // agent is test contract
             verifier,
             200 ether,
-            50 ether
+            50 ether,
+            address(usdc)
         );
 
-        // Fund vault with 500 ether
-        (bool sent, ) = address(vault).call{value: 500 ether}("");
-        require(sent);
+        // Fund the vault with 500 USDC-units, and let this test contract (the investor) spend its USDC on the market
+        usdc.mint(address(vault), 500 ether);
+        usdc.mint(address(this), 1_000 ether);
+        usdc.approve(address(market), type(uint256).max);
 
         // The vault only calls markets its owner allowed (test contract is the owner)
         vault.allowMarket(address(market), true);
@@ -93,7 +98,7 @@ contract BuyerVaultTest {
         assert(vault.dailyLimit() == 200 ether);
         assert(vault.approvalThreshold() == 50 ether);
         assert(!vault.isFrozen());
-        assert(address(vault).balance == 500 ether);
+        assert(usdc.balanceOf(address(vault)) == 500 ether);
     }
 
     function test_allowSupplier_and_limits() public {
@@ -140,7 +145,7 @@ contract BuyerVaultTest {
         vault.accept(address(market), id);
 
         // Investor funds the invoice
-        market.fund{value: 38 ether}(id);
+        market.fund(id);
         assert(market.getInvoice(id).status == Status.Funded);
 
         // Vault pays invoice (40 ether <= threshold 50 ether)
@@ -181,8 +186,8 @@ contract BuyerVaultTest {
     }
 
     function test_withdraw_owner_only() public {
-        uint256 balBefore = address(this).balance;
+        uint256 balBefore = usdc.balanceOf(address(this));
         vault.withdraw(50 ether);
-        assert(address(vault).balance == 450 ether);
+        assert(usdc.balanceOf(address(vault)) == 450 ether);
     }
 }
