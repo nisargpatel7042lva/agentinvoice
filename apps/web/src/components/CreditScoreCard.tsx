@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ExternalLink, ShieldCheck } from "lucide-react";
-import { formatUnits, type CreditFactor, type CreditReport } from "@invoiceagent/shared";
+import { formatAmountUnits, type CreditFactor, type CreditReport } from "@invoiceagent/shared";
 import { copy } from "@/lib/copy";
 import { Section } from "./Section";
 
@@ -156,7 +156,7 @@ export function CreditScoreCard({ report, className = "" }: { report: CreditRepo
           <div className="rounded-xl bg-[#fe8a70] p-3 text-[#161513] sm:col-span-2">
             <div className="text-[11px] font-semibold tracking-[0.04em] uppercase opacity-65">Open exposure</div>
             <div className="mt-1 text-2xl font-semibold">
-              {formatUnits(report.openExposure)} HBAR
+              {formatAmountUnits(report.openExposure)} USDC
             </div>
           </div>
         </div>

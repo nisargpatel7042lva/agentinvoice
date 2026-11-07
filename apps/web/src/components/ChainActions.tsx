@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Link2 } from "lucide-react";
 import { useAccount, useReadContract } from "wagmi";
-import { buyerVaultAbi, contracts, formatUnits, invoiceMarketAbi, type Address, type Status } from "@invoiceagent/shared";
+import { buyerVaultAbi, contracts, formatAmountUnits, invoiceMarketAbi, type Address, type Status } from "@invoiceagent/shared";
 import { Button } from "@/components/ui";
 import { useChainTx } from "@/lib/useChainTx";
 import { hederaTestnet } from "@/lib/wagmi";
@@ -45,13 +45,13 @@ export function ChainActions({ id, status, dueDate, buyerVault }: { id: string; 
   if (isAgent && status === "Pending")
     buttons.push({ key: "accept", label: "Accept as buyer agent", note: "Your wallet is this vault's agent.", run: () => send({ address: buyerVault, abi: buyerVaultAbi, functionName: "accept", args: [market, BigInt(id)], success: `Invoice #${id} accepted.` }) });
   if (isAgent && (status === "Funded" || status === "Late"))
-    buttons.push({ key: "pay", label: "Pay from the buyer vault", note: "Paid from the vault's HBAR, within its daily limit.", run: () => send({ address: buyerVault, abi: buyerVaultAbi, functionName: "payInvoice", args: [market, BigInt(id), "0x"], success: `Invoice #${id} paid.` }) });
+    buttons.push({ key: "pay", label: "Pay from the buyer vault", note: "Paid from the vault's USDC, within its daily limit.", run: () => send({ address: buyerVault, abi: buyerVaultAbi, functionName: "payInvoice", args: [market, BigInt(id), "0x"], success: `Invoice #${id} paid.` }) });
   if (status === "Funded" && now > dueDate)
     buttons.push({ key: "late", label: "Mark as late", note: "Anyone can do this after the due date.", run: () => send({ address: market, abi: invoiceMarketAbi, functionName: "markLate", args: [BigInt(id)], success: `Invoice #${id} marked late.` }) });
   if (status === "Late" && graceSecs !== null && now > dueDate + graceSecs)
     buttons.push({ key: "default", label: "Mark as defaulted", note: "Anyone can do this after the grace period.", run: () => send({ address: market, abi: invoiceMarketAbi, functionName: "markDefaulted", args: [BigInt(id)], success: `Invoice #${id} marked defaulted.` }) });
   if (owed > 0n)
-    buttons.push({ key: "claim", label: `Claim ${formatUnits(owed)} HBAR`, note: "Repayments waiting for your wallet (from all your invoices).", run: async () => { await send({ address: market, abi: invoiceMarketAbi, functionName: "claim", success: "Repayment claimed to your wallet." }); refetch(); } });
+    buttons.push({ key: "claim", label: `Claim ${formatAmountUnits(owed)} USDC`, note: "Repayments waiting for your wallet (from all your invoices).", run: async () => { await send({ address: market, abi: invoiceMarketAbi, functionName: "claim", success: "Repayment claimed to your wallet." }); refetch(); } });
 
   if (!address || buttons.length === 0) return null;
   return (

@@ -171,7 +171,7 @@ export function Belt() {
       }
       ctx.globalAlpha = 1;
 
-      // Counter: HBAR repaid by the invoice crossing the line right now.
+      // Counter: USDC repaid by the invoice crossing the line right now.
       if (now_crossing !== -1) {
         const it = ITEMS[now_crossing];
         if (now_crossing !== crossing) {
@@ -180,7 +180,7 @@ export function Belt() {
           label.current!.textContent = `#${it.id} on time`;
         }
         shown += (it.face * progress - shown) * Math.min(1, dt * 14);
-        amount.current!.textContent = `+${hbar(shown)} HBAR`;
+        amount.current!.textContent = `+${hbar(shown)} USDC`;
       }
       raf = requestAnimationFrame(frame);
     };
@@ -204,10 +204,10 @@ export function Belt() {
           <div key={it.id} ref={(n) => { receipts.current[i] = n; }} className="lp-receipt">
             <pre>{`<receipt network="hedera-testnet">
   invoice    #${it.id}
-  repaid     ${hbar(it.face)} HBAR
+  repaid     ${hbar(it.face)} USDC
   by         ${it.to}
   investor   paid ${hbar(it.price)} on day 0
-  return     +${hbar(it.face - it.price)} HBAR
+  return     +${hbar(it.face - it.price)} USDC
   status     Paid · on time
 </receipt>`}</pre>
             <pre className="lp-receipt-meta">{`<!-- hcs seq #${it.seq} -->
@@ -223,7 +223,7 @@ export function Belt() {
               <span>INVOICE #{it.id}</span>
               <span className="lp-inv-status">Funded</span>
             </div>
-            <div className="lp-inv-amt">{hbar(it.face)} <small>HBAR</small></div>
+            <div className="lp-inv-amt">{hbar(it.face)} <small>USDC</small></div>
             <dl className="lp-inv-meta">
               <div><dt>From</dt><dd>{it.from}</dd></div>
               <div><dt>Bill to</dt><dd>{it.to}</dd></div>
@@ -240,7 +240,7 @@ export function Belt() {
       <div className="lp-badge" aria-hidden="true">
         <span className="lp-badge-label">Settled on Hedera</span>
         <span className="lp-badge-pill">
-          <span ref={amount}>+0.00 HBAR</span>
+          <span ref={amount}>+0.00 USDC</span>
           <span ref={label}>on time</span>
         </span>
       </div>

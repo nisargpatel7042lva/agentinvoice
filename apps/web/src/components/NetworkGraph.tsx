@@ -6,7 +6,7 @@ import { HEALTH_COLOR, PartyDialog, ROLE_COLOR, ROLE_LABEL } from "./PartyDialog
 import type { FGLink, FGNode, FGRef } from "./ForceGraphClient";
 import type { GraphLink, GraphNode, LinkKind } from "@/lib/graph";
 import { cn } from "@/lib/cn";
-import { formatHbar } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 
 // Canvas + physics only exist in the browser.
 const ForceGraph2D = dynamic(() => import("./ForceGraphClient"), { ssr: false });
@@ -129,7 +129,7 @@ export function NetworkGraph({ nodes, links, height = 560, compact = false, focu
               cooldownTicks={120}
               nodeId="id"
               nodeVal={(n) => radius(n)}
-              nodeLabel={(n) => `${n.name} · ${ROLE_LABEL[n.role]} · ${formatHbar(n.volume)}`}
+              nodeLabel={(n) => `${n.name} · ${ROLE_LABEL[n.role]} · ${formatMoney(n.volume)}`}
               onNodeHover={(n) => setHover(n ? String(n.id) : null)}
               onNodeClick={(n) => setSelected(String(n.id))}
               onBackgroundClick={() => setSelected(null)}

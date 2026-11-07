@@ -5,7 +5,7 @@ import { NetworkGraph } from "@/components/NetworkGraph";
 import { Section } from "@/components/Section";
 import { Table, TableBox, Td, Th } from "@/components/ui";
 import type { Health } from "@/lib/graph";
-import { formatHbar } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 import { loadNetwork } from "@/lib/network";
 import { cn } from "@/lib/cn";
 
@@ -94,7 +94,7 @@ export default async function NetworkPage() {
                   <span className="mt-2 block truncate text-base font-semibold">{n.name}</span>
                   <span className={"mt-3 flex items-baseline justify-between gap-2 border-t pt-3 text-[13px] " + (skin === "pl-dark" ? "border-white/15" : "border-[#161513]/15")}>
                     <span>{n.invoices} invoices</span>
-                    <span className="font-semibold">{formatHbar(n.volume)}</span>
+                    <span className="font-semibold">{formatMoney(n.volume)}</span>
                   </span>
                 </>
               );
@@ -125,7 +125,7 @@ export default async function NetworkPage() {
                   <Td className="text-ink-muted">{VERB[l.kind]}</Td>
                   <Td className="font-medium">{name(l.target)}</Td>
                   <Td className="text-right">{l.count}</Td>
-                  <Td className="text-right">{formatHbar(l.hbar)}</Td>
+                  <Td className="text-right">{formatMoney(l.hbar)}</Td>
                   <Td><span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", HEALTH[l.health].cls)}>{HEALTH[l.health].label}</span></Td>
                 </tr>
               ))}

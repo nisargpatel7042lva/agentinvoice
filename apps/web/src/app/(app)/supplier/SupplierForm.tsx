@@ -89,11 +89,11 @@ export function SupplierForm({ aside }: { aside?: React.ReactNode }) {
         </label>
         <div className="grid gap-5 sm:grid-cols-2">
           <label className={label}>
-            {copy.supplier.faceLabel} (HBAR)
+            {copy.supplier.faceLabel} (USDC)
             <input className={input} inputMode="decimal" value={face} onChange={(e) => setFace(e.target.value)} placeholder="10" />
           </label>
           <label className={label}>
-            {copy.supplier.priceLabel} (HBAR)
+            {copy.supplier.priceLabel} (USDC)
             <input className={input} inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="9.5" />
           </label>
         </div>

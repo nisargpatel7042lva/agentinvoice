@@ -18,7 +18,7 @@ export function InvoicePreview({ buyer, verified, face, price, due, description,
       <div>
         <div className="text-[13px] opacity-70">Amount owed</div>
         <div className="mt-1 text-[44px] leading-none font-medium tracking-[-0.045em]">
-          {f > 0 ? f.toLocaleString("en-US", { maximumFractionDigits: 2 }) : "0"} <span className="text-lg tracking-normal opacity-60">HBAR</span>
+          {f > 0 ? f.toLocaleString("en-US", { maximumFractionDigits: 2 }) : "0"} <span className="text-lg tracking-normal opacity-60">USDC</span>
         </div>
       </div>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-[#161513]/20 pt-4 text-[13px]">
@@ -44,7 +44,7 @@ export function InvoicePreview({ buyer, verified, face, price, due, description,
       </dl>
       <div className="flex items-center justify-between gap-3 rounded-xl bg-[#161513] px-4 py-3 text-[#f3f1ec]">
         <span className="text-[13px] opacity-75">You receive today</span>
-        <span className="pl-serif text-2xl">{p > 0 ? p.toLocaleString("en-US", { maximumFractionDigits: 2 }) + " HBAR" : "—"}</span>
+        <span className="pl-serif text-2xl">{p > 0 ? p.toLocaleString("en-US", { maximumFractionDigits: 2 }) + " USDC" : "—"}</span>
       </div>
       {f > 0 && p >= f && <p className="text-[13px] font-medium">The price must be lower than the amount owed, or no investor will fund it.</p>}
     </div>

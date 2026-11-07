@@ -2,6 +2,7 @@ import { SAUCERSWAP_TESTNET_USDC } from "@invoiceagent/shared";
 import { ApiError } from "@invoiceagent/shared";
 import { Banner } from "@/components/Banner";
 import { Section } from "@/components/Section";
+import { TreasurySwaps } from "./TreasurySwaps";
 import { api } from "@/lib/api";
 import { formatAmount, formatUsdc } from "@/lib/format";
 
@@ -23,16 +24,16 @@ export default async function TreasuryPage() {
         eyebrow="SaucerSwap · Hedera testnet"
         title={
           <>
-            USDC treasury
+            Get USDC
             <br />
-            <em>HBAR in, USDC out.</em>
+            <em>pay in USDC.</em>
           </>
         }
         sub={
           <>
-            Invoice market settlements stay in <strong>HBAR</strong> on-chain. Agents can optionally swap excess HBAR into{" "}
-            <strong>{SAUCERSWAP_TESTNET_USDC.label}</strong> (<code className="font-mono text-[13px]">{SAUCERSWAP_TESTNET_USDC.tokenId}</code>) via
-            SaucerSwap V2.
+            Every invoice payment settles in <strong>USDC</strong>: investors fund suppliers in USDC and buyer vaults repay in USDC. Swap
+            HBAR for <strong>{SAUCERSWAP_TESTNET_USDC.label}</strong> (<code className="font-mono text-[13px]">{SAUCERSWAP_TESTNET_USDC.tokenId}</code>) on
+            SaucerSwap V2, from your own wallet.
           </>
         }
         cards={
@@ -49,6 +50,8 @@ export default async function TreasuryPage() {
           </div>
         }
       />
+
+      <TreasurySwaps />
 
       {unavailable && (
         <p className="rounded-xl border border-line bg-surface px-5 py-4 text-sm text-ink-muted">

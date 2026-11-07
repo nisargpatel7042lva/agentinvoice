@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { Abi, Address } from "viem";
-import { useAccount, useWriteContract } from "wagmi";
+import type { Abi, Address, Hex } from "viem";
+import { useAccount, useSendTransaction, useWriteContract } from "wagmi";
 import { getPublicClient, waitForTransactionReceipt } from "wagmi/actions";
 import { toast } from "@/components/ToastHost";
 import { hederaTestnet, wagmiConfig } from "@/lib/wagmi";
@@ -14,7 +14,9 @@ const MIN_GAS = 100_000n;
 export function explainTxError(e: unknown): string {
   const m = (e as { shortMessage?: string; message?: string })?.shortMessage ?? (e as Error)?.message ?? "Unknown error";
   if (/rejected|denied/i.test(m)) return "You cancelled in your wallet. Nothing was sent.";
-  if (/insufficient/i.test(m)) return "Your wallet does not have enough HBAR (testnet HBAR is free at portal.hedera.com).";
+  if (/TOKEN_NOT_ASSOCIATED|not associated/i.test(m)) return "This wallet has not turned on USDC yet. Use \"Turn on USDC\" first.";
+  if (/TokenTransferFailed|SPENDER_DOES_NOT_HAVE_ALLOWANCE|INSUFFICIENT_TOKEN_BALANCE/i.test(m)) return "Not enough USDC, or the market is not approved for this amount yet.";
+  if (/insufficient/i.test(m)) return "Your wallet does not have enough HBAR for this (testnet HBAR is free at portal.hedera.com).";
   const custom = m.match(/reverted with the following reason:\s*\n?\s*([^\n]+)|Error: ([A-Za-z]+)\(\)/);
   if (custom) return `The contract refused: ${custom[1] ?? custom[2]}.`;
   return m.split("\n")[0];
@@ -27,6 +29,7 @@ export function explainTxError(e: unknown): string {
 export function useChainTx() {
   const router = useRouter();
   const { writeContractAsync } = useWriteContract();
+  const { sendTransactionAsync } = useSendTransaction();
   const { address: account } = useAccount();
   const [busy, setBusy] = useState(false);
 
@@ -56,5 +59,24 @@ export function useChainTx() {
     }
   }
 
-  return { send, busy };
+  /** A raw transaction (e.g. the SaucerSwap router multicall). `value` is weibar (tinybarToWeibar). */
+  async function sendRaw(args: { to: Address; data: Hex; value?: bigint; gas?: bigint; success: string }) {
+    setBusy(true);
+    try {
+      toast("pending", "Confirm in your wallet, then wait for the network…");
+      const hash = await sendTransactionAsync({ to: args.to, data: args.data, value: args.value, gas: args.gas ?? 400_000n, chainId: hederaTestnet.id });
+      const receipt = await waitForTransactionReceipt(wagmiConfig, { hash, chainId: hederaTestnet.id });
+      if (receipt.status !== "success") throw new Error("The transaction was reverted.");
+      toast("success", `${args.success} View on HashScan: ${hederaTestnet.blockExplorers.default.url}/transaction/${hash}`);
+      router.refresh();
+      return hash;
+    } catch (e) {
+      toast("error", explainTxError(e));
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return { send, sendRaw, busy };
 }

@@ -3,7 +3,7 @@
 // mock mode changes the in-memory demo store; real mode is where each owner wires their piece.
 // See docs/notes/frontend-actions.md.
 import { revalidatePath } from "next/cache";
-import { ApiError, createApiClient, parseUnits, type Hash32, type Invoice } from "@invoiceagent/shared";
+import { ApiError, createApiClient, parseAmount, type Hash32, type Invoice } from "@invoiceagent/shared";
 import { lookupBuyer as lookupBuyerName, type BuyerLookup } from "@/lib/ens";
 
 const backend = createApiClient({ baseUrl: process.env.NEXT_PUBLIC_BACKEND_URL });
@@ -120,7 +120,7 @@ export type ActionResult<T = undefined> = { ok: true; message: string; data?: T 
 // ---- supplier ----
 export interface CreateInvoiceInput {
   buyerName: string;
-  face: string; // HBAR, e.g. "10.5"
+  face: string; // USDC, e.g. "10.5" (invoices settle in USDC)
   price: string;
   dueDate: string; // yyyy-mm-dd
   description: string;
@@ -131,8 +131,8 @@ export interface CreateInvoiceInput {
 export async function createInvoice(input: CreateInvoiceInput): Promise<ActionResult<{ id: string }>> {
   let face: bigint, price: bigint;
   try {
-    face = parseUnits(input.face.trim());
-    price = parseUnits(input.price.trim());
+    face = parseAmount(input.face.trim());
+    price = parseAmount(input.price.trim());
   } catch {
     return { ok: false, message: "Amounts must be numbers like 10 or 9.5." };
   }
@@ -176,4 +176,32 @@ export async function decideApproval(_id: string, approve: boolean, invoiceId?: 
     const status = e instanceof ApiError ? e.status : 0;
     return { ok: false, message: status === 503 ? "World ID approvals are not configured on the backend (WORLD_CLIENT_ID, WORLD_CLIENT_SECRET, WORLD_REDIRECT_URI)." : "Could not start the World ID approval. Is the backend running?" };
   }
+}
+
+// ---- USDC (every invoice payment settles in USDC; people get it by swapping HBAR on SaucerSwap) ----
+export interface SwapQuoteView {
+  amountInTinybar: string;
+  amountOut: string; // USDC base units
+  amountOutMinimum: string; // after the max slippage
+  expiresAt: number; // unix ms
+}
+
+/** Live SaucerSwap quote for HBAR -> USDC (read-only Mirror call; nothing is signed or spent here). */
+export async function quoteHbarForUsdc(amountInTinybar: string): Promise<ActionResult<SwapQuoteView>> {
+  let amount: bigint;
+  try {
+    amount = BigInt(amountInTinybar);
+  } catch {
+    return { ok: false, message: "Enter an HBAR amount." };
+  }
+  const [{ quoteHbarToUsdc }, { createSaucerSwapConfig }] = await Promise.all([import("@invoiceagent/shared/saucerswap/quote"), import("@invoiceagent/shared/saucerswap/config")]);
+  // The website caps a single swap at 100 HBAR and 1% slippage.
+  const config = createSaucerSwapConfig({ dryRun: true, maxSwapHbarTinybar: 100n * 10n ** 8n, maxSlippageBps: 100 });
+  const q = await quoteHbarToUsdc({ amountInTinybar: amount }, config);
+  if (!q.ok) return { ok: false, message: q.code === "INVALID_QUOTE" && amount > config.maxSwapHbarTinybar ? "Swap at most 100 HBAR at a time." : `SaucerSwap could not quote this: ${q.reason}` };
+  return {
+    ok: true,
+    message: "ok",
+    data: { amountInTinybar: q.quote.amountInTinybar.toString(), amountOut: q.quote.amountOut.toString(), amountOutMinimum: q.quote.amountOutMinimum.toString(), expiresAt: q.quote.expiresAt },
+  };
 }

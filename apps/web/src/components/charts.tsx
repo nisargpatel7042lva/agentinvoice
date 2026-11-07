@@ -9,13 +9,13 @@ const tooltipStyle = { borderRadius: 8, border: "1px solid var(--color-line)", b
 
 export function FaceByStatusChart({ data }: { data: { status: string; hbar: number }[] }) {
   return (
-    <div role="img" aria-label={`Face value by status: ${data.map((d) => `${d.status} ${d.hbar} HBAR`).join(", ")}`} className="h-[180px] w-full">
+    <div role="img" aria-label={`Face value by status: ${data.map((d) => `${d.status} ${d.hbar} USDC`).join(", ")}`} className="h-[180px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
           <CartesianGrid vertical={false} stroke={C.grid} />
           <XAxis dataKey="status" tickLine={false} axisLine={false} fontSize={12} stroke={C.axis} />
           <YAxis tickLine={false} axisLine={false} fontSize={12} stroke={C.axis} width={48} />
-          <Tooltip cursor={{ fill: C.grid }} contentStyle={tooltipStyle} formatter={(v) => [`${v} HBAR`, "Face value"]} />
+          <Tooltip cursor={{ fill: C.grid }} contentStyle={tooltipStyle} formatter={(v) => [`${v} USDC`, "Face value"]} />
           <Bar isAnimationActive={false} dataKey="hbar" fill={C.accent} radius={[4, 4, 0, 0]} maxBarSize={44} />
         </BarChart>
       </ResponsiveContainer>
