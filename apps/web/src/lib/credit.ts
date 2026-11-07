@@ -27,6 +27,17 @@ export const readSpentToday = cache(async (vault: string): Promise<string | null
   }
 });
 
+/** BuyerVault.approvalThreshold() straight from Hedera (tinybar string), or null when it can't be read. Payments above it need a human. */
+export const readApprovalThreshold = cache(async (vault: string): Promise<string | null> => {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(vault)) return null;
+  try {
+    const t = (await hederaClient().readContract({ address: vault as Address, abi: buyerVaultAbi, functionName: "approvalThreshold" })) as bigint;
+    return t.toString();
+  } catch {
+    return null;
+  }
+});
+
 // One read per request, shared by every credit report computation on the page.
 export const loadAllInvoices = cache(async () => {
   try {
