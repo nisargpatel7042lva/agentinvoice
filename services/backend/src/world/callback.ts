@@ -155,7 +155,11 @@ async function exchangeCode(code: string, codeVerifier: string, ctx: CallbackCon
     throw new StepUpError("token_exchange_failed", "token endpoint unreachable");
   }
 
-  if (!res.ok) throw new StepUpError("token_exchange_failed", `token endpoint returned ${res.status}`);
+  if (!res.ok) {
+    // Only World's own OAuth error fields (for example invalid_client, invalid_grant), never the request, so the log says why without leaking anything.
+    const why = await res.json().then((b: { error?: unknown; error_description?: unknown }) => [b.error, b.error_description].filter((x) => typeof x === "string").join(": ").slice(0, 160)).catch(() => "");
+    throw new StepUpError("token_exchange_failed", `token endpoint returned ${res.status}${why ? ` (${why})` : ""}`);
+  }
   const body = (await res.json()) as { id_token?: unknown };
   if (typeof body.id_token !== "string") throw new StepUpError("token_exchange_failed", "no id_token in response");
   return body.id_token;

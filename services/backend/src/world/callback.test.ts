@@ -136,6 +136,15 @@ describe("handleCallback", () => {
     expect(await codeOf(handleCallback(okInput, ctx))).toBe("token_exchange_failed");
   });
 
+  it("says why in the error: World's own OAuth error, and nothing from the request", async () => {
+    const { ctx } = makeCtx({});
+    ctx.fetchImpl = (async () => new Response(JSON.stringify({ error: "invalid_client", error_description: "Client authentication failed" }), { status: 401 })) as typeof fetch;
+    const err = await handleCallback(okInput, ctx).catch((e: unknown) => e as StepUpError);
+    expect(err).toBeInstanceOf(StepUpError);
+    expect((err as StepUpError).message).toBe("token endpoint returned 401 (invalid_client: Client authentication failed)");
+    expect((err as StepUpError).message).not.toContain(ctx.config.clientSecret);
+  });
+
   it.each([
     ["wrong signing key", () => makeToken({ key: otherPrivateKey })],
     ["wrong audience", () => makeToken({ aud: "other_client" })],
