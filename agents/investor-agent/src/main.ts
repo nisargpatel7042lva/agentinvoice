@@ -9,9 +9,12 @@ import { createInvestorAgent } from "./agent.js";
 import { rulesFromEnv } from "./decide.js";
 import { createScoreReader, type PayAndGet } from "./score.js";
 import { loadInvestorSwapConfig, maybeSwapExcessHbarToUsdc, swapRulesFromEnv } from "./swap.js";
+import { fundInUsdc } from "./usdcFund.js";
+import { quoteHbarToUsdc } from "@invoiceagent/shared/saucerswap/quote";
+import { createSaucerSwapConfig } from "@invoiceagent/shared/saucerswap/config";
 
-// Spec v2 name is fund(id). Mann's notes call it buy(id); change here if the contract ships as buy.
-const MARKET_ABI = parseAbi(["function fund(uint256 id) payable"]);
+// fund(id) is not payable: it pulls the price in USDC (approved first) from this wallet to the supplier.
+const MARKET_ABI = parseAbi(["function fund(uint256 id)"]);
 
 function need(name: string): string {
   const v = process.env[name];
@@ -49,6 +52,8 @@ async function main() {
   const wallet = account ? createWalletClient({ account, chain, transport: http() }) : undefined;
   const reader = createPublicClient({ chain, transport: http() });
 
+  // Most HBAR one USDC top-up may swap (USDC_TOPUP_MAX_HBAR, default 20).
+  const maxSwapTinybar = shared.parseUnits(process.env.USDC_TOPUP_MAX_HBAR ?? "20", 8);
   const swapConfig = loadInvestorSwapConfig();
   const swapRules = swapRulesFromEnv();
 
@@ -58,12 +63,32 @@ async function main() {
     rules: rulesFromEnv(),
     dryRun,
     txUrl: (h) => `${shared.hederaTestnet.explorerUrl}/transaction/${h}`,
-    buy: async (id, value) => {
+    buy: async (id, price) => {
       if (!wallet || !account) throw new Error("no wallet (DRY_RUN?)");
-      const hash = await wallet.writeContract({ address: market, abi: MARKET_ABI, functionName: "fund", args: [id], value, account, chain });
-      const receipt = await reader.waitForTransactionReceipt({ hash });
-      if (receipt.status !== "success") throw new Error(`tx reverted ${hash}`);
-      return hash;
+      const confirm = async (hash: Hex) => {
+        const receipt = await reader.waitForTransactionReceipt({ hash });
+        if (receipt.status !== "success") throw new Error(`tx reverted ${hash}`);
+        return hash as shared.Hash32;
+      };
+      const usdc = shared.contracts.usdc;
+      const swapCfg = createSaucerSwapConfig({ dryRun: true, maxSwapHbarTinybar: maxSwapTinybar, maxSlippageBps: 100 });
+      return fundInUsdc(id, price, {
+        maxSwapTinybar,
+        log: (l) => console.log(`invoice=${id} ${l}`),
+        usdcBalance: () => reader.readContract({ address: usdc, abi: shared.settlementTokenAbi, functionName: "balanceOf", args: [account.address] }) as Promise<bigint>,
+        allowance: () => reader.readContract({ address: usdc, abi: shared.settlementTokenAbi, functionName: "allowance", args: [account.address, market] }) as Promise<bigint>,
+        quoteMinOut: async (amountIn) => {
+          const q = await quoteHbarToUsdc({ amountInTinybar: amountIn }, swapCfg);
+          if (!q.ok) throw new Error(`SaucerSwap quote failed: ${q.reason}`);
+          return q.quote.amountOutMinimum;
+        },
+        swap: async (amountIn, minOut) => {
+          const tx = shared.buildHbarToUsdcSwap({ amountInTinybar: amountIn, amountOutMinimum: minOut, recipient: account.address, deadline: Math.floor(Date.now() / 1000) + 600 });
+          return confirm(await wallet.sendTransaction({ to: tx.to, data: tx.data, value: shared.tinybarToWeibar(tx.valueTinybar), gas: 400_000n, account, chain }));
+        },
+        approve: async (amount) => confirm(await wallet.writeContract({ address: usdc, abi: shared.settlementTokenAbi, functionName: "approve", args: [market, amount], account, chain })),
+        fund: async (invoiceId) => confirm(await wallet.writeContract({ address: market, abi: MARKET_ABI, functionName: "fund", args: [invoiceId], account, chain, gas: 400_000n })),
+      });
     },
     treasurySwap: swapConfig
       ? () => maybeSwapExcessHbarToUsdc(swapConfig, swapRules).then(() => undefined)

@@ -14,7 +14,7 @@ export interface DecideInput {
   sponsorApprovalAvailable: boolean;
 }
 
-/** Pure: same inputs, same answer. Amounts are the invoice face amount in tinybar. */
+/** Pure: same inputs, same answer. Amounts are the invoice face amount in USDC base units. */
 export function decide(input: DecideInput): BuyerDecision {
   const { invoice, now } = input;
   const face = BigInt(invoice.faceAmount);

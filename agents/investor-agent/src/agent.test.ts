@@ -43,7 +43,7 @@ describe("decide", () => {
     expect(rulesFromEnv({}).minBand).toBe("B");
     expect(rulesFromEnv({}).minScore).toBe(650);
     expect(rulesFromEnv({ MIN_SCORE: "750" }).minScore).toBe(750);
-    expect(rulesFromEnv({ MAX_PRICE: "1.5" }).maxPrice).toBe(150_000_000n);
+    expect(rulesFromEnv({ MAX_PRICE: "1.5" }).maxPrice).toBe(1_500_000n); // USDC, 6 decimals
     expect(() => rulesFromEnv({ MIN_BAND: "D" })).toThrow();
     expect(() => rulesFromEnv({ MIN_SCORE: "299" })).toThrow(/MIN_SCORE/);
     expect(() => rulesFromEnv({ MIN_SCORE: "901" })).toThrow(/MIN_SCORE/);
@@ -91,7 +91,7 @@ describe("agent loop", () => {
     const a = { ...forVault(A), id: "11" };
     const { agent, lines, buy } = setup([c, a]);
     expect(await agent.tick()).toBe("11");
-    expect(buy).toHaveBeenCalledWith(11n, 950_000_000n * 10n ** 10n);
+    expect(buy).toHaveBeenCalledWith(11n, 950_000_000n); // the price in USDC base units, no HBAR value
     expect(lines[0]).toMatch(/^invoice=10 score=480 band=C discount=500bps skipped reason="credit score 480 below minimum 650"$/);
     expect(lines[1]).toMatch(/^invoice=11 score=782 band=A discount=500bps bought tx=0xabc/);
   });

@@ -22,7 +22,8 @@ describe("marketStats", () => {
 
 describe("chart data", () => {
   it("face value per status", () => {
-    expect(faceByStatus(invoiceFixtures).map((d) => d.hbar)).toEqual([10, 10, 10, 10, 10, 10]);
+    // Fixture face amounts are 1_000_000_000 base units = 1,000 USDC each (invoices settle in USDC, 6 decimals).
+    expect(faceByStatus(invoiceFixtures).map((d) => d.hbar)).toEqual([1000, 1000, 1000, 1000, 1000, 1000]);
   });
   it("buckets only settled invoices by due week, oldest first", () => {
     const weeks = repaymentsByWeek(invoiceFixtures);

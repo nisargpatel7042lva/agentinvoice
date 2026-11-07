@@ -1,4 +1,4 @@
-import { formatUnits, type Address, type ApiClient, type Hash32, type Invoice } from "@invoiceagent/shared";
+import { formatAmountUnits, type Address, type ApiClient, type Hash32, type Invoice } from "@invoiceagent/shared";
 import { decide, decisionLine } from "./decide.js";
 
 export const MAX_RETRIES = 3;
@@ -47,7 +47,7 @@ export function createBuyerAgent(deps: BuyerDeps) {
           now,
           sponsorApprovalAvailable: false,
         });
-        const face = formatUnits(invoice.faceAmount);
+        const face = `${formatAmountUnits(invoice.faceAmount)} USDC`;
         const tries = failures.get(invoice.id) ?? 0;
         if (decision.action !== "skip" && tries >= MAX_RETRIES) {
           log(`${decisionLine(invoice.id, { action: "skip", reason: `gave up after ${MAX_RETRIES} failed tries` })} face=${face}`);

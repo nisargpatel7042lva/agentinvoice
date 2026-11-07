@@ -1,11 +1,11 @@
-import { parseUnits, type Invoice, type ScoreBand, type BuyerScore } from "@invoiceagent/shared";
+import { parseAmount, type Invoice, type ScoreBand, type BuyerScore } from "@invoiceagent/shared";
 
 export interface Rules {
   minScore: number; // MIN_SCORE, default 650
   minBand: ScoreBand; // MIN_BAND, default B
   minDiscountBps: number; // MIN_DISCOUNT_BPS
-  maxPrice: bigint; // MAX_PRICE per invoice, tinybar
-  maxOpenExposure: bigint; // MAX_OPEN_EXPOSURE per vault, tinybar
+  maxPrice: bigint; // MAX_PRICE per invoice, USDC base units (invoices settle in USDC)
+  maxOpenExposure: bigint; // MAX_OPEN_EXPOSURE per vault, USDC base units
 }
 
 export type Decision = { action: "buy"; reason: string } | { action: "skip"; reason: string };
@@ -41,7 +41,7 @@ export function decide(invoice: Invoice, score: BuyerScore | null, rules: Rules,
 
 const BANDS = new Set<string>(["A", "B", "C", "New"]);
 
-/** Reads rules from env. Amounts in env are HBAR decimals (e.g. MAX_PRICE=50). */
+/** Reads rules from env. Amounts in env are USDC decimals (e.g. MAX_PRICE=50 means 50 USDC). */
 export function rulesFromEnv(env: Record<string, string | undefined> = process.env): Rules {
   const rawScore = env.MIN_SCORE ?? "650";
   const minScore = Number(rawScore);
@@ -55,7 +55,7 @@ export function rulesFromEnv(env: Record<string, string | undefined> = process.e
     minScore,
     minBand,
     minDiscountBps: Number(env.MIN_DISCOUNT_BPS ?? "100"),
-    maxPrice: parseUnits(env.MAX_PRICE ?? "100"),
-    maxOpenExposure: parseUnits(env.MAX_OPEN_EXPOSURE ?? "500"),
+    maxPrice: parseAmount(env.MAX_PRICE ?? "100"),
+    maxOpenExposure: parseAmount(env.MAX_OPEN_EXPOSURE ?? "500"),
   };
 }

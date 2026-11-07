@@ -1,8 +1,8 @@
-import { tinybarToWeibar, type ApiClient, type Hash32, type Invoice, type BuyerScore } from "@invoiceagent/shared";
+import type { ApiClient, Hash32, Invoice, BuyerScore } from "@invoiceagent/shared";
 import { decide, discountBps, type Decision, type Rules } from "./decide.js";
 
-/** Buys an invoice on-chain. Implemented with viem in main.ts; faked in tests. `value` is msg.value in weibar. */
-export type BuyFn = (id: bigint, valueWeibar: bigint) => Promise<Hash32>;
+/** Funds an invoice on-chain in USDC (swapping HBAR first if short). Implemented in main.ts with usdcFund.ts; faked in tests. `price` is USDC base units. */
+export type BuyFn = (id: bigint, price: bigint) => Promise<Hash32>;
 
 export interface AgentDeps {
   api: Pick<ApiClient, "listInvoices">;
@@ -54,7 +54,7 @@ export function createInvestorAgent(deps: AgentDeps) {
         continue;
       }
       try {
-        const hash = await deps.buy(BigInt(inv.id), tinybarToWeibar(inv.price));
+        const hash = await deps.buy(BigInt(inv.id), BigInt(inv.price));
         exposure.set(vault, (exposure.get(vault) ?? 0n) + BigInt(inv.price));
         line(inv, score, d, `bought tx=${deps.txUrl ? deps.txUrl(hash) : hash}`);
         bought = inv.id;

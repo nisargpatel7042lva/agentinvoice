@@ -84,3 +84,10 @@ export function buildHbarToUsdcSwap(args: { amountInTinybar: bigint; amountOutMi
 export function shortfall(have: bigint, need: bigint): bigint {
   return have >= need ? 0n : need - have;
 }
+
+/** HBAR (tinybar) to swap for `shortUsdc`, given the USDC a 1 HBAR quote yields after slippage, plus 5% headroom; rounded up. */
+export function hbarForUsdc(shortUsdc: bigint, usdcPerHbar: bigint): bigint {
+  if (usdcPerHbar <= 0n) throw new Error("SaucerSwap returned no USDC for 1 HBAR");
+  const TINYBAR = 100_000_000n;
+  return (shortUsdc * TINYBAR * 105n + usdcPerHbar * 100n - 1n) / (usdcPerHbar * 100n);
+}

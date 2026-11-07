@@ -1,4 +1,5 @@
 import type { Address, CreditFactor, CreditReport, Invoice, ScoreBand } from "./types";
+import { formatAmountUnits } from "./settlement";
 
 export const CREDIT_MODEL_VERSION = "invoiceagent-credit-v1";
 
@@ -6,7 +7,7 @@ export interface ComputeCreditReportParams {
   vault: Address;
   invoices: Invoice[]; // all invoices; filter to this vault (case-insensitive)
   everLateIds?: Set<string>; // invoice ids that ever had an "invoice.late" audit event (optional)
-  dailyLimit?: bigint; // vault daily limit in tinybar, if known
+  dailyLimit?: bigint; // vault daily limit in USDC base units, if known
   now?: number; // unix seconds, default Date.now()/1000
 }
 
@@ -77,13 +78,13 @@ export function computeCreditReport({
       rawU = (1 - u) / 0.7; // linear 1 -> 0 between 0.3 and 1
     }
     const pct = Math.round(u * 100);
-    detailU = `${openExposure.toString()} tinybar open exposure vs ${dailyLimit.toString()} daily limit (${pct}% utilization)`;
+    detailU = `${formatAmountUnits(openExposure)} USDC open exposure vs ${formatAmountUnits(dailyLimit)} USDC daily limit (${pct}% utilization)`;
   } else {
     rawU = openExposure === 0n ? 1 : 0.5;
     detailU =
       openExposure === 0n
         ? "No open exposure (daily limit unknown)"
-        : `${openExposure.toString()} tinybar open exposure (daily limit unknown)`;
+        : `${formatAmountUnits(openExposure)} USDC open exposure (daily limit unknown)`;
   }
   const U = round4(Math.max(0, Math.min(1, rawU)));
 
