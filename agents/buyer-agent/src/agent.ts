@@ -1,16 +1,24 @@
-import { formatAmountUnits, type Address, type ApiClient, type Hash32, type Invoice } from "@invoiceagent/shared";
+import { formatAmountUnits, type Address, type ApiClient, type Hash32 } from "@invoiceagent/shared";
 import { decide, decisionLine } from "./decide.js";
 
 export const MAX_RETRIES = 3;
 
-export interface BuyerDeps {
-  api: Pick<ApiClient, "listInvoices" | "getInvoice">;
-  vaultAddress: Address;
-  marketAddress: Address;
+/** What the agent can do for one vault: read its rules and spend from it. */
+export interface VaultOps {
   readSupplier: (supplier: Address) => Promise<{ allowed: boolean; limit: bigint }>;
   readThreshold: () => Promise<bigint>;
   accept: (id: bigint) => Promise<Hash32>;
   pay: (id: bigint) => Promise<Hash32>;
+}
+
+export interface BuyerDeps extends VaultOps {
+  api: Pick<ApiClient, "listInvoices" | "getInvoice">;
+  vaultAddress: Address; // the default vault, served with the ops above
+  marketAddress: Address;
+  /** Other vaults to serve, such as ones buyers registered on the website. Optional; a failed read means only the default vault this tick. */
+  extraVaults?: () => Promise<Address[]>;
+  /** Ops for an extra vault, or null when this agent must not spend from it (its on-chain agent is someone else). */
+  opsFor?: (vault: Address) => Promise<VaultOps | null>;
   dryRun?: boolean;
   log?: (line: string) => void;
   now?: () => number;
@@ -21,24 +29,56 @@ export function createBuyerAgent(deps: BuyerDeps) {
   const failures = new Map<string, number>();
   let stopped = false;
 
-  const ours = (invoice: Invoice) => invoice.buyerVault.toLowerCase() === deps.vaultAddress.toLowerCase();
+  const key = (vault: string) => vault.toLowerCase();
+  const defaultOps: VaultOps = { readSupplier: deps.readSupplier, readThreshold: deps.readThreshold, accept: deps.accept, pay: deps.pay };
+  const ownVault = key(deps.vaultAddress);
+  const refused = new Set<string>(); // extra vaults this agent may not spend from, logged once
+
+  // Vault -> ops for this tick: the default vault, plus every extra vault this agent is allowed to spend from.
+  async function servedVaults(): Promise<Map<string, VaultOps>> {
+    const served = new Map<string, VaultOps>([[ownVault, defaultOps]]);
+    if (!deps.extraVaults || !deps.opsFor) return served;
+    const extras = await deps.extraVaults().catch(() => [] as Address[]);
+    for (const vault of extras) {
+      const k = key(vault);
+      if (served.has(k) || refused.has(k)) continue;
+      try {
+        const ops = await deps.opsFor(vault);
+        if (ops) served.set(k, ops);
+        else {
+          refused.add(k);
+          log(`vault=${vault} skipped: this agent is not its on-chain agent`);
+        }
+      } catch (error) {
+        log(`vault=${vault} not ready this round: ${(error as Error).message}`); // retried next tick
+      }
+    }
+    return served;
+  }
 
   async function tick(): Promise<void> {
     const [pending, funded] = await Promise.all([
       deps.api.listInvoices("Pending"),
       deps.api.listInvoices("Funded"),
     ]);
-    const listed = [...pending, ...funded].filter(ours);
+    const all = [...pending, ...funded];
+    if (all.length === 0 || stopped) return;
+    const served = await servedVaults();
+    const listed = all.filter((invoice) => served.has(key(invoice.buyerVault)));
     if (listed.length === 0 || stopped) return;
-    const threshold = await deps.readThreshold();
+    const thresholds = new Map<string, bigint>();
     const now = deps.now?.() ?? Math.floor(Date.now() / 1000);
 
     for (const item of listed) {
       if (stopped) break;
       try {
         const invoice = await deps.api.getInvoice(item.id);
-        if (!ours(invoice)) continue;
-        const supplier = await deps.readSupplier(invoice.supplier);
+        const vaultKey = key(invoice.buyerVault);
+        const ops = served.get(vaultKey);
+        if (!ops) continue;
+        if (!thresholds.has(vaultKey)) thresholds.set(vaultKey, await ops.readThreshold());
+        const threshold = thresholds.get(vaultKey) as bigint;
+        const supplier = await ops.readSupplier(invoice.supplier);
         const decision = decide({
           invoice,
           supplierAllowed: supplier.allowed,
@@ -58,7 +98,7 @@ export function createBuyerAgent(deps: BuyerDeps) {
           log(`${decisionLine(invoice.id, decision)}${dry} face=${face}`);
           continue;
         }
-        const hash = decision.action === "accept" ? await deps.accept(BigInt(invoice.id)) : await deps.pay(BigInt(invoice.id));
+        const hash = decision.action === "accept" ? await ops.accept(BigInt(invoice.id)) : await ops.pay(BigInt(invoice.id));
         log(`${decisionLine(invoice.id, decision)} tx=${hash} face=${face}`);
       } catch (error) {
         const n = (failures.get(item.id) ?? 0) + 1;

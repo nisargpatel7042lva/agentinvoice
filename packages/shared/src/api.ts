@@ -2,6 +2,7 @@ import type { z } from "zod";
 import {
   ApprovalSchema,
   ApprovalStartSchema,
+  AgentListSchema,
   AuditListSchema,
   HealthSchema,
   InvoiceListSchema,
@@ -77,6 +78,12 @@ export function createApiClient(opts: ApiClientOptions = {}) {
       mock
         ? Promise.resolve({ ...invoiceFixtures[0], ...body, id: "99", status: "Pending" as const })
         : call(InvoiceSchema, "/api/invoices", { method: "POST", body: JSON.stringify(body) }),
+
+    /** Vault -> ENS name pairs buyers registered on the website. Read-only, public. */
+    listAgents: () =>
+      mock
+        ? Promise.resolve({ agents: [] as { vault: Address; name: string; owner: Address }[] })
+        : call(AgentListSchema, "/api/agents"),
 
     listAudit: () => (mock ? Promise.resolve(auditFixtures) : call(AuditListSchema, "/api/audit")),
 

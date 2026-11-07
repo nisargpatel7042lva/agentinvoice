@@ -122,3 +122,61 @@ describe("buyer flow", () => {
     expect(lines.some((line) => line.includes("action=accept"))).toBe(true);
   });
 });
+
+describe("many vaults", () => {
+  const VAULT_B = "0xb0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0" as Address;
+  const VAULT_C = "0xc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0" as Address;
+  const mine = invoiceFixtures[0]; // pending, default vault
+  const forB = { ...invoiceFixtures[0], id: "2", buyerVault: VAULT_B, evidenceHash: `0x${"22".repeat(32)}` as Hash32 };
+  const forC = { ...invoiceFixtures[0], id: "3", buyerVault: VAULT_C, evidenceHash: `0x${"33".repeat(32)}` as Hash32 };
+  const opsFake = () => ({
+    readSupplier: vi.fn(async () => ({ allowed: true, limit: 1_000_000_000n })),
+    readThreshold: vi.fn(async () => 1_000_000_000n),
+    accept: vi.fn(async () => hash),
+    pay: vi.fn(async () => hash),
+  });
+
+  it("serves the default vault and a registered one in the same tick, each with its own ops", async () => {
+    const opsB = opsFake();
+    const wired = deps([mine, forB], { extraVaults: async () => [VAULT_B], opsFor: async () => opsB });
+    await createBuyerAgent(wired).tick();
+    expect(wired.accept).toHaveBeenCalledWith(1n);
+    expect(wired.accept).toHaveBeenCalledTimes(1);
+    expect(opsB.accept).toHaveBeenCalledWith(2n);
+  });
+
+  it("never spends from a vault whose on-chain agent is someone else, and says so once", async () => {
+    const lines: string[] = [];
+    const opsFor = vi.fn(async () => null);
+    const wired = deps([forB], { extraVaults: async () => [VAULT_B], opsFor, log: (l: string) => lines.push(l) });
+    const agent = createBuyerAgent(wired);
+    await agent.tick();
+    await agent.tick();
+    expect(wired.accept).not.toHaveBeenCalled();
+    expect(opsFor).toHaveBeenCalledTimes(1);
+    expect(lines.filter((l) => l.includes("not its on-chain agent"))).toHaveLength(1);
+  });
+
+  it("keeps serving the other vaults when one fails, and retries the failed one next tick", async () => {
+    const opsB = opsFake();
+    let calls = 0;
+    const opsFor = vi.fn(async (vault: Address) => {
+      if (vault === VAULT_C && calls++ === 0) throw new Error("rpc down");
+      return vault === VAULT_B ? opsB : opsFake();
+    });
+    const wired = deps([mine, forB, forC], { extraVaults: async () => [VAULT_B, VAULT_C], opsFor });
+    const agent = createBuyerAgent(wired);
+    await agent.tick();
+    expect(wired.accept).toHaveBeenCalledWith(1n);
+    expect(opsB.accept).toHaveBeenCalledWith(2n);
+    await agent.tick();
+    expect(opsFor).toHaveBeenCalledWith(VAULT_C);
+    expect(calls).toBe(2);
+  });
+
+  it("falls back to the default vault when the vault list cannot be read", async () => {
+    const wired = deps([mine], { extraVaults: async () => { throw new Error("backend down"); }, opsFor: async () => null });
+    await createBuyerAgent(wired).tick();
+    expect(wired.accept).toHaveBeenCalledWith(1n);
+  });
+});

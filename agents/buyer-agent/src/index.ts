@@ -1,11 +1,11 @@
 import { pathToFileURL } from "node:url";
-import { buildHbarToUsdcSwap, contracts, createAgentAccount, createApiClient, hederaTestnet, invoiceMarketAbi, parseUnits, settlementTokenAbi, tinybarToWeibar, type Hash32 } from "@invoiceagent/shared";
+import { buildHbarToUsdcSwap, buyerVaultAbi, contracts, createAgentAccount, createApiClient, hederaTestnet, invoiceMarketAbi, parseUnits, settlementTokenAbi, tinybarToWeibar, type Address, type Hash32 } from "@invoiceagent/shared";
 import { quoteHbarToUsdc } from "@invoiceagent/shared/saucerswap/quote";
 import { createSaucerSwapConfig } from "@invoiceagent/shared/saucerswap/config";
 import { ensureVaultUsdc } from "./topUp.js";
 import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { createBuyerAgent } from "./agent.js";
+import { createBuyerAgent, type VaultOps } from "./agent.js";
 import { loadConfig } from "./config.js";
 import { log } from "./logger.js";
 
@@ -50,8 +50,59 @@ async function start(stop: { stopped: boolean }): Promise<void> {
     },
   });
 
+  // Every vault pays in USDC. Before a vault pays, top it up if it is short: the agent swaps HBAR and SaucerSwap delivers
+  // the USDC straight into that vault. USDC_AUTO_TOPUP=0 turns this off.
+  const maxSwapTinybar = parseUnits(process.env.USDC_TOPUP_MAX_HBAR ?? "50", 8);
+  const swapCfg = createSaucerSwapConfig({ dryRun: true, maxSwapHbarTinybar: maxSwapTinybar, maxSlippageBps: 100 });
+  const topUpThenPay = async (vault: Address, id: bigint, pay: () => Promise<Hash32>): Promise<Hash32> => {
+    if (wallet && account && process.env.USDC_AUTO_TOPUP !== "0") {
+      const inv = (await reader.readContract({ address: market, abi: invoiceMarketAbi, functionName: "getInvoice", args: [id] })) as { faceAmount: bigint };
+      await ensureVaultUsdc(inv.faceAmount, {
+        maxSwapTinybar,
+        log,
+        vaultUsdc: () => reader.readContract({ address: contracts.usdc, abi: settlementTokenAbi, functionName: "balanceOf", args: [vault] }) as Promise<bigint>,
+        quoteMinOut: async (amountIn) => {
+          const q = await quoteHbarToUsdc({ amountInTinybar: amountIn }, swapCfg);
+          if (!q.ok) throw new Error(`SaucerSwap quote failed: ${q.reason}`);
+          return q.quote.amountOutMinimum;
+        },
+        swapToVault: async (amountIn, minOut) => {
+          const tx = buildHbarToUsdcSwap({ amountInTinybar: amountIn, amountOutMinimum: minOut, recipient: vault, deadline: Math.floor(Date.now() / 1000) + 600 });
+          const hash = await wallet.sendTransaction({ to: tx.to, data: tx.data, value: tinybarToWeibar(tx.valueTinybar), gas: 400_000n, account, chain });
+          const receipt = await reader.waitForTransactionReceipt({ hash });
+          if (receipt.status !== "success") throw new Error(`top-up swap reverted ${hash}`);
+          return hash as Hash32;
+        },
+      });
+    }
+    return pay();
+  };
+
+  const api = createApiClient({ baseUrl: config.backendUrl });
+  // Vaults buyers registered on the website. This agent serves one only if it is that vault's on-chain agent, so a stranger's vault is never spent from.
+  const opsCache = new Map<string, VaultOps>();
+  const opsFor = async (vault: Address): Promise<VaultOps | null> => {
+    const cached = opsCache.get(vault.toLowerCase());
+    if (cached) return cached;
+    if (account) {
+      const onChainAgent = (await reader.readContract({ address: vault, abi: buyerVaultAbi, functionName: "agent" })) as Address;
+      if (onChainAgent.toLowerCase() !== account.address.toLowerCase()) return null;
+    }
+    const extra = createAgentAccount({ provider: "buyer-vault", vault, reader, writer: wallet });
+    const ops: VaultOps = {
+      readSupplier: (supplier) => extra.recipient(supplier),
+      readThreshold: async () => (await extra.rules()).approvalThreshold,
+      accept: (id) => extra.accept(market, id),
+      pay: (id) => topUpThenPay(vault, id, () => extra.pay(market, id)),
+    };
+    opsCache.set(vault.toLowerCase(), ops);
+    return ops;
+  };
+
   const agent = createBuyerAgent({
-    api: createApiClient({ baseUrl: config.backendUrl }),
+    api,
+    extraVaults: async () => (await api.listAgents()).agents.map((a) => a.vault),
+    opsFor,
     vaultAddress: spender.address,
     marketAddress: market,
     dryRun: config.dryRun,
@@ -59,32 +110,7 @@ async function start(stop: { stopped: boolean }): Promise<void> {
     readSupplier: (supplier) => spender.recipient(supplier),
     readThreshold: async () => (await spender.rules()).approvalThreshold,
     accept: (id) => spender.accept(market, id),
-    // The vault pays in USDC. If it is short, top it up first: the agent swaps HBAR and SaucerSwap delivers USDC into the vault.
-    pay: async (id) => {
-      if (wallet && account && process.env.USDC_AUTO_TOPUP !== "0") {
-        const inv = (await reader.readContract({ address: market, abi: invoiceMarketAbi, functionName: "getInvoice", args: [id] })) as { faceAmount: bigint };
-        const maxSwapTinybar = parseUnits(process.env.USDC_TOPUP_MAX_HBAR ?? "50", 8);
-        const swapCfg = createSaucerSwapConfig({ dryRun: true, maxSwapHbarTinybar: maxSwapTinybar, maxSlippageBps: 100 });
-        await ensureVaultUsdc(inv.faceAmount, {
-          maxSwapTinybar,
-          log,
-          vaultUsdc: () => reader.readContract({ address: contracts.usdc, abi: settlementTokenAbi, functionName: "balanceOf", args: [spender.address] }) as Promise<bigint>,
-          quoteMinOut: async (amountIn) => {
-            const q = await quoteHbarToUsdc({ amountInTinybar: amountIn }, swapCfg);
-            if (!q.ok) throw new Error(`SaucerSwap quote failed: ${q.reason}`);
-            return q.quote.amountOutMinimum;
-          },
-          swapToVault: async (amountIn, minOut) => {
-            const tx = buildHbarToUsdcSwap({ amountInTinybar: amountIn, amountOutMinimum: minOut, recipient: spender.address, deadline: Math.floor(Date.now() / 1000) + 600 });
-            const hash = await wallet.sendTransaction({ to: tx.to, data: tx.data, value: tinybarToWeibar(tx.valueTinybar), gas: 400_000n, account, chain });
-            const receipt = await reader.waitForTransactionReceipt({ hash });
-            if (receipt.status !== "success") throw new Error(`top-up swap reverted ${hash}`);
-            return hash as Hash32;
-          },
-        });
-      }
-      return spender.pay(market, id);
-    },
+    pay: (id) => topUpThenPay(spender.address, id, () => spender.pay(market, id)),
   });
 
   log(`buyer agent started dryRun=${config.dryRun} account=${spender.provider}`);
