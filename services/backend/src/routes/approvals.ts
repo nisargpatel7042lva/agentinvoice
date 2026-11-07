@@ -133,8 +133,8 @@ export function approvalRoutes(app: FastifyInstance, world: WorldOptions | undef
       return redirect("approved");
     } catch (err) {
       if (!(err instanceof StepUpError)) throw err;
-      // Never log tokens, codes or the client secret: only the error code.
-      req.log.info({ code: err.code }, "world step-up refused");
+      // Never log tokens, codes or the client secret. The message is ours or World's own error code, so it is safe and says why.
+      req.log.info({ code: err.code, reason: err.message }, "world step-up refused");
       const before = state ? getApproval(app.db, state, now()) : undefined;
       if (state && before && REJECTING.has(err.code) && before.state === "pending") {
         decide(app.db, state, "reject", { now: now() });
