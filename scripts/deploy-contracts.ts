@@ -5,15 +5,18 @@
 //
 // Needs `forge build` in contracts/ first (it reads contracts/out). Env: DEPLOYER_PRIVATE_KEY (required, a funded Hedera ECDSA key),
 // VERIFIER_ADDRESS (the address whose signatures approve large payments; defaults to SPONSOR_ADDRESS), OWNER_ADDRESS and AGENT_ADDRESS
-// (default: the deployer), GRACE_PERIOD_SECONDS (86400), DAILY_LIMIT_HBAR (500), APPROVAL_THRESHOLD_HBAR (50), HEDERA_RPC_URL.
+// (default: the deployer), GRACE_PERIOD_SECONDS (86400), DAILY_LIMIT_USDC (500), APPROVAL_THRESHOLD_USDC (50), HEDERA_RPC_URL,
+// SETTLEMENT_TOKEN_ADDRESS (default: SaucerSwap testnet USDC 0.0.5449).
 //
-// UNITS: the contracts count tinybars (1 HBAR = 1e8) inside the EVM. Over Hedera's JSON-RPC a transaction value is 18-decimal
-// weibars, so every value sent is tinybars * 1e10 (tinybarToWeibar). DEPLOY_TARGET=local (anvil) has no such conversion, so the
-// scale there is 1: the local run only checks the script and the lifecycle logic, not Hedera's unit behavior. The smoke test on
-// Hedera is what proves the units: `fund` only succeeds if msg.value equals the tinybar price inside the contract.
+// SETTLEMENT: invoices are paid in USDC (6 decimals), not HBAR. The contracts move the token with transferFrom/transfer; HBAR only
+// pays gas. The smoke test on Hedera swaps a little HBAR for USDC on SaucerSwap if the deployer has none, then runs a real lifecycle
+// in USDC. DEPLOY_TARGET=local deploys a mock USDC (from contracts/test/utils) so the lifecycle logic can be checked on anvil.
 import { readFileSync, writeFileSync } from "node:fs";
 import { createPublicClient, createWalletClient, defineChain, getAddress, http, keccak256, toHex, type Abi, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { buildHbarToUsdcSwap, parseAmount, SETTLEMENT, settlementTokenAbi } from "../packages/shared/src/settlement";
+import { quoteHbarToUsdc } from "../packages/shared/src/saucerswap/quote";
+import { createSaucerSwapConfig } from "../packages/shared/src/saucerswap/config";
 
 const args = new Set(process.argv.slice(2));
 const target = process.env.DEPLOY_TARGET ?? "hedera";
@@ -42,8 +45,9 @@ const agent = optionalAddress("AGENT_ADDRESS", account.address);
 const verifier = getAddress(process.env.VERIFIER_ADDRESS || need("SPONSOR_ADDRESS"));
 const grace = BigInt(process.env.GRACE_PERIOD_SECONDS ?? 86_400);
 const TINYBAR_PER_HBAR = 10n ** 8n;
-const dailyLimit = BigInt(process.env.DAILY_LIMIT_HBAR ?? 500) * TINYBAR_PER_HBAR;
-const approvalThreshold = BigInt(process.env.APPROVAL_THRESHOLD_HBAR ?? 50) * TINYBAR_PER_HBAR;
+const dailyLimit = parseAmount(process.env.DAILY_LIMIT_USDC ?? "500");
+const approvalThreshold = parseAmount(process.env.APPROVAL_THRESHOLD_USDC ?? "50");
+let usdc: Address = getAddress(process.env.SETTLEMENT_TOKEN_ADDRESS || SETTLEMENT.address);
 
 const chain = defineChain({
   id: expectedChainId,
@@ -79,18 +83,24 @@ async function main() {
   if (balance === 0n) throw new Error("The deployer has no HBAR. Fund it (Hedera portal faucet) and run again.");
   if (target === "hedera" && balance < 10n * 10n ** 18n) console.log("  WARNING: under 10 HBAR; a deploy plus smoke test may run out");
   console.log(`owner ${owner}, agent ${agent}, verifier ${verifier}`);
-  console.log(`daily limit ${dailyLimit} tinybar, approval threshold ${approvalThreshold} tinybar, grace ${grace}s`);
+  console.log(`daily limit ${dailyLimit} USDC units, approval threshold ${approvalThreshold} USDC units, grace ${grace}s`);
 
   const txFee = { type: "legacy" as const, gasPrice };
   const marketArt = artifact("InvoiceMarket");
   const vaultArt = artifact("BuyerVault");
 
   console.log("\n1. deploy");
-  const marketReceipt = await send("InvoiceMarket", await wallet.deployContract({ abi: marketArt.abi, bytecode: marketArt.bytecode, args: [grace], ...txFee }));
+  if (target === "local") {
+    const mock = artifact("MockUSDC");
+    const r = await send("MockUSDC (local only)", await wallet.deployContract({ abi: mock.abi, bytecode: mock.bytecode, args: [], ...txFee }));
+    usdc = r.contractAddress as Address;
+  }
+  console.log(`  settlement token (USDC) ${usdc}`);
+  const marketReceipt = await send("InvoiceMarket", await wallet.deployContract({ abi: marketArt.abi, bytecode: marketArt.bytecode, args: [grace, usdc], gas: 3_000_000n, ...txFee }));
   const market = marketReceipt.contractAddress as Address;
   const vaultReceipt = await send(
     "BuyerVault",
-    await wallet.deployContract({ abi: vaultArt.abi, bytecode: vaultArt.bytecode, args: [owner, agent, verifier, dailyLimit, approvalThreshold], ...txFee }),
+    await wallet.deployContract({ abi: vaultArt.abi, bytecode: vaultArt.bytecode, args: [owner, agent, verifier, dailyLimit, approvalThreshold, usdc], gas: 4_000_000n, ...txFee }),
   );
   const vault = vaultReceipt.contractAddress as Address;
   console.log(`  InvoiceMarket ${market}\n  BuyerVault    ${vault}`);
@@ -110,6 +120,8 @@ async function main() {
   check("market.owner", await read(market, marketArt.abi, "owner"), account.address);
   check("market.gracePeriod", BigInt(await read<bigint>(market, marketArt.abi, "gracePeriod")), grace);
   check("market.nextInvoiceId", await read(market, marketArt.abi, "nextInvoiceId"), 1n);
+  check("market.token (USDC)", await read(market, marketArt.abi, "token"), usdc);
+  check("vault.token (USDC)", await read(vault, vaultArt.abi, "token"), usdc);
   check("vault.owner", await read(vault, vaultArt.abi, "owner"), owner);
   check("vault.agent", await read(vault, vaultArt.abi, "agent"), agent);
   check("vault.verifier", await read(vault, vaultArt.abi, "verifier"), verifier);
@@ -129,8 +141,12 @@ async function main() {
     writeFileSync(new URL("abi/InvoiceMarket.json", dir), `${JSON.stringify(marketArt.abi, null, 2)}\n`);
     writeFileSync(new URL("abi/BuyerVault.json", dir), `${JSON.stringify(vaultArt.abi, null, 2)}\n`);
     writeFileSync(
+      new URL("abi/buyerVaultBytecode.ts", dir),
+      `// Creation bytecode of contracts/src/BuyerVault.sol (forge build output), so a buyer's wallet can deploy their own vault from the browser.\n// Regenerate after any change to BuyerVault.sol: bytecode.object from contracts/out/BuyerVault.sol/BuyerVault.json.\nimport type { Hex } from "viem";\n\nexport const buyerVaultBytecode: Hex =\n  "${vaultArt.bytecode}";\n`,
+    );
+    writeFileSync(
       new URL("addresses.json", dir),
-      `${JSON.stringify({ chainId, network: "hedera:testnet", invoiceMarket: market, buyerVault: vault, deployer: account.address, verifier, lastUpdated: new Date().toISOString() }, null, 2)}\n`,
+      `${JSON.stringify({ chainId, network: "hedera:testnet", invoiceMarket: market, buyerVault: vault, usdc, deployer: account.address, verifier, lastUpdated: new Date().toISOString() }, null, 2)}\n`,
     );
     console.log("\n  wrote packages/shared/src/addresses.json and abi/*.json");
   } else {
@@ -139,32 +155,55 @@ async function main() {
 
   if (smoke) await smokeTest(market, vault, marketArt.abi, vaultArt.abi, txFee);
 
-  console.log(`\nVerify the source on Sourcify (a separate step, needs network):\n  cd contracts && forge verify-contract ${market} src/InvoiceMarket.sol:InvoiceMarket --chain 296 --verifier sourcify --constructor-args $(cast abi-encode "constructor(uint64)" ${grace})`);
+  console.log(`\nVerify the source on Sourcify (a separate step, needs network):\n  cd contracts && forge verify-contract ${market} src/InvoiceMarket.sol:InvoiceMarket --chain 296 --verifier sourcify --constructor-args $(cast abi-encode "constructor(uint64,address)" ${grace} ${usdc})`);
   console.log("Done.");
 }
 
-// A tiny real lifecycle: deposit, allow a supplier, create an invoice, accept it through the vault, fund it, repay it, claim it.
-// Amounts are a few thousand tinybars (a fraction of a cent). It needs owner = agent = deployer.
+// A tiny real lifecycle in USDC: get USDC (swap a little HBAR on SaucerSwap if needed), deposit it into the vault, allow a supplier,
+// create an invoice, accept it through the vault, fund it (investor -> supplier in USDC), repay it from the vault, claim it.
+// Amounts are a few cents of USDC. It needs owner = agent = deployer.
 async function smokeTest(market: Address, vault: Address, marketAbi: Abi, vaultAbi: Abi, txFee: { type: "legacy"; gasPrice: bigint }) {
-  console.log("\n4. post-deploy smoke test (a real lifecycle with tiny amounts)");
+  console.log("\n4. post-deploy smoke test (a real USDC lifecycle with tiny amounts)");
   if (owner.toLowerCase() !== account.address.toLowerCase() || agent.toLowerCase() !== account.address.toLowerCase()) {
     console.log("  SKIPPED: the smoke test needs owner = agent = deployer.");
     return;
   }
-  const face = 2_000n; // tinybars
-  const price = 1_900n;
-  const deposit = 10_000n;
+  const face = 20_000n; // 0.02 USDC
+  const price = 19_000n; // 0.019 USDC
+  const deposit = 100_000n; // 0.1 USDC
   const wire = (tinybar: bigint) => tinybar * WIRE_SCALE;
-  // Hedera's gas estimate can come out too low for calls that send HBAR out of a contract (claim ran out of gas at 39,237 on
-  // testnet), so every call gets a margin: twice the estimate, and never under 100,000.
+  // Hedera's gas estimate can come out too low for calls into HTS (token transfers), so every call gets a margin.
   const call = async (address: Address, abi: Abi, functionName: string, fnArgs: unknown[], tinybarValue = 0n) => {
     const value = wire(tinybarValue);
-    const estimate = await client.estimateContractGas({ account, address, abi, functionName, args: fnArgs, value });
-    return wallet.writeContract({ address, abi, functionName, args: fnArgs, value, gas: estimate * 2n > 100_000n ? estimate * 2n : 100_000n, ...txFee });
+    const estimate = await client.estimateContractGas({ account, address, abi, functionName, args: fnArgs, value }).catch(() => 400_000n);
+    return wallet.writeContract({ address, abi, functionName, args: fnArgs, value, gas: estimate * 2n > 150_000n ? estimate * 2n : 150_000n, ...txFee });
   };
+  const usdcBalance = async (who: Address) => (await client.readContract({ address: usdc, abi: settlementTokenAbi, functionName: "balanceOf", args: [who] })) as bigint;
   const status = async (id: bigint) => ((await client.readContract({ address: market, abi: marketAbi, functionName: "getInvoice", args: [id] })) as { status: number }).status;
 
-  await send("vault.deposit", await call(vault, vaultAbi, "deposit", [], deposit));
+  const need = deposit + price;
+  if (target === "local") {
+    await send("mock USDC mint", await call(usdc, [{ type: "function", name: "mint", stateMutability: "nonpayable", inputs: [{ name: "to", type: "address" }, { name: "amount", type: "uint256" }], outputs: [] }] as Abi, "mint", [account.address, need * 10n]));
+  } else {
+    // The deployer must be associated with USDC to receive it (harmless if it already is).
+    try {
+      await send("USDC associate (deployer)", await call(usdc, settlementTokenAbi as unknown as Abi, "associate", []));
+    } catch (e) {
+      console.log(`  (associate skipped: ${(e as Error).message.split("\n")[0]})`);
+    }
+    if ((await usdcBalance(account.address)) < need) {
+      const amountInTinybar = TINYBAR_PER_HBAR; // swap 1 HBAR, far more than the few cents needed
+      const q = await quoteHbarToUsdc({ amountInTinybar }, createSaucerSwapConfig({ dryRun: true }));
+      if (!q.ok) throw new Error(`SaucerSwap quote failed: ${q.reason}`);
+      const tx = buildHbarToUsdcSwap({ amountInTinybar, amountOutMinimum: q.quote.amountOutMinimum, recipient: account.address, deadline: Math.floor(Date.now() / 1000) + 600 });
+      const hash = await wallet.sendTransaction({ to: tx.to, data: tx.data, value: wire(tx.valueTinybar), gas: 400_000n, ...txFee });
+      await send(`SaucerSwap 1 HBAR -> USDC (min ${q.quote.amountOutMinimum} units)`, hash);
+    }
+  }
+  console.log(`  deployer USDC: ${await usdcBalance(account.address)} units`);
+
+  await send("USDC approve vault", await call(usdc, settlementTokenAbi as unknown as Abi, "approve", [vault, deposit]));
+  await send("vault.deposit (USDC)", await call(vault, vaultAbi, "deposit", [deposit]));
   await send("vault.allowSupplier(deployer)", await call(vault, vaultAbi, "allowSupplier", [account.address, 1_000_000n]));
   const due = BigInt(Math.floor(Date.now() / 1000) + 3600);
   const evidence = keccak256(toHex(`smoke-${Date.now()}`));
@@ -172,17 +211,18 @@ async function smokeTest(market: Address, vault: Address, marketAbi: Abi, vaultA
   await send("market.createInvoice", await call(market, marketAbi, "createInvoice", [vault, face, price, due, evidence]));
   await send("vault.accept", await call(vault, vaultAbi, "accept", [market, id]));
   if ((await status(id)) !== 1) throw new Error("invoice is not Open after accept");
-  // THE UNITS PROOF: this only succeeds if msg.value inside the contract equals the tinybar price.
-  await send(`market.fund (value = ${price} tinybar)`, await call(market, marketAbi, "fund", [id], price));
+  await send("USDC approve market (price)", await call(usdc, settlementTokenAbi as unknown as Abi, "approve", [market, price]));
+  await send(`market.fund (${price} USDC units, investor -> supplier)`, await call(market, marketAbi, "fund", [id]));
   if ((await status(id)) !== 2) throw new Error("invoice is not Funded after fund");
-  await send("vault.payInvoice (no approval: face is under the threshold)", await call(vault, vaultAbi, "payInvoice", [market, id]));
+  await send("vault.payInvoice (USDC; under the threshold, no approval)", await call(vault, vaultAbi, "payInvoice", [market, id]));
   if ((await status(id)) !== 3) throw new Error("invoice is not Paid after payInvoice");
-  const before = await client.getBalance({ address: account.address });
+  const before = await usdcBalance(account.address);
   await send("market.claim", await call(market, marketAbi, "claim", []));
   const claimable = (await client.readContract({ address: market, abi: marketAbi, functionName: "claimable", args: [account.address] })) as bigint;
   if (claimable !== 0n) throw new Error("claimable is not zero after claim");
-  const after = await client.getBalance({ address: account.address });
-  console.log(`  smoke test passed: invoice ${id} went Pending > Open > Funded > Paid and was claimed (balance change on claim: ${Number(after - before) / 1e18} HBAR incl. gas)`);
+  const gained = (await usdcBalance(account.address)) - before;
+  if (gained !== face) throw new Error(`claim paid ${gained} USDC units, expected ${face}`);
+  console.log(`  smoke test passed: invoice ${id} went Pending > Open > Funded > Paid and the holder claimed exactly ${face} USDC units`);
 }
 
 main().catch((err) => {
