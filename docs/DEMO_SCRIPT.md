@@ -37,7 +37,7 @@ A small business gets paid early on an invoice owed by an AI agent. An investor 
 
 **6. The agent's public record (40 s)** **Agent** page and `sepolia.app.ens.domains/buyer.agentinvoicenf71.eth`: limit and threshold (set by the sponsor), paid and late counts and status (written by the backend publisher, which cannot touch the limits). Say: "A new supplier can read this before they trust the agent."
 
-**7. Human in the loop (40 s, only if the World ID setup is live)** A payment above 50 HBAR needs the sponsor. Start the approval, sign in at auth.world.org with an Orb-verified account, and the backend records the approval. Be honest: the final signed authorization that lets the vault release a large payment is not built yet (issue #31).
+**7. Human in the loop (60 s, needs World ID configured)** Use an invoice **above 50 HBAR** (the vault threshold), due now. Open it: the page shows "Human approval needed". Click **Approve with World ID** and sign in at auth.world.org with an Orb-verified account (fresh verification, valid 10 minutes, one payment). The page then says Approved. Within about 10 s the buyer agent fetches the signed approval and pays; the vault contract refuses a payment above the threshold without it. Say: "Without the human, the contract itself says no, not just our software." If `WORLD_ALLOWED_SUBJECT_HASHES` is set, only the sponsor's own World identity is accepted; anyone else is rejected.
 
 **8. Pay-per-use data (optional, 30 s)** The investor agent buys the buyer's credit score over x402 from the paid API for a tiny HBAR fee, then decides whether to fund.
 
@@ -47,11 +47,10 @@ Real, live on testnet:
 - Invoice market and buyer vault on Hedera testnet, with on-chain limits.
 - Indexer, backend API, buyer agent, investor wallet flow, claim.
 - ENS: live reads in the create form, agent page, the agent's published record, and seller name minting on Sepolia.
-- World ID step-up login validated with a real Orb account.
+- World ID step-up login validated with a real Orb account, and the signed approval for payments above the threshold (backend signs after World, the agent attaches it, the vault verifies it).
 - Tokenize: ATS bond units issued per funded invoice, redeemed at repayment, holder frozen on default. Only live once the bond is created and `ATS_BOND_ADDRESS` is set.
 
 Not done, do not claim:
-- Signed approval for payments above the threshold (issue #31).
 - AgentKit registration; HCS audit topic; public hosting (this is local).
 - The bond is a trusted mirror made by our issuer wallet, not the source of payment. Token transfers are not restricted yet, so moving a token does not move the right to be paid.
 

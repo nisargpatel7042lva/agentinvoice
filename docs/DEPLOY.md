@@ -25,6 +25,8 @@ Add these once to the server `.env` (use `nano`, do not paste secrets in chat):
 - `TRUST_PROXY=1` so rate limits apply per visitor behind Caddy.
 - `APP_URL=https://<your-vercel-address>` so World approval links open the site people use.
 - `ATS_BOND_ADDRESS=0x...` after step 3.
+- `APPROVAL_SIGNER_PRIVATE_KEY` (optional; defaults to `SPONSOR_PRIVATE_KEY`): must be the vault's `verifier` wallet (the demo vault's is the sponsor `0x27a3…`). It signs payment approvals only after World ID approves.
+- `WORLD_ALLOWED_SUBJECT_HASHES` (optional): comma-separated sha256 hashes of the World identities allowed to approve. Leave empty at first, approve once, read the hash from `journalctl -u ai-backend | grep subjectHash`, then set it so only the sponsor can approve.
 - `WORLD_REDIRECT_URI=https://52.63.226.208.sslip.io/api/world/callback` (already set; must match the World portal exactly, no trailing slash).
 
 Check it:
@@ -79,7 +81,7 @@ The factory call from our code reverts with empty data and is not solved, so the
 
 ## 6. Known gaps (say them out loud)
 
-- Signed approval for payments above the threshold (issue #31) is not built.
+- A vault's verifier is the platform sponsor wallet, so one key signs approvals for every vault. A real product would let each buyer name their own verifier.
 - The bond is a trusted mirror from the platform issuer. Moving the token does not move the right to be paid, because the market contract pays the stored holder. Transfers are not restricted yet.
 - Sellers own their ENS name but do not control their own resolver records.
 - AgentKit registration and the HCS audit topic are not done.

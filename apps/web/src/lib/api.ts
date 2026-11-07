@@ -9,6 +9,7 @@ export const api = {
   getInvoice: real.getInvoice,
   listAudit: real.listAudit,
   getApproval: real.getApproval,
+  getInvoiceApproval: real.getInvoiceApproval,
   getScoreMock: real.getScoreMock,
   getSaucerSwapStatus: real.getSaucerSwapStatus,
   getSaucerSwapQuote: real.getSaucerSwapQuote,

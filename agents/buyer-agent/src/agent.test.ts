@@ -180,3 +180,45 @@ describe("many vaults", () => {
     expect(wired.accept).toHaveBeenCalledWith(1n);
   });
 });
+
+describe("large payments with a sponsor approval", () => {
+  const funded = () => invoiceFixtures.find((invoice) => invoice.status === "Funded")!;
+  const signed = "0xabcdef" as `0x${string}`;
+
+  it("pays an invoice above the threshold with the signed approval once a human approved it", async () => {
+    const inv = funded();
+    const approvalFor = vi.fn(async () => signed);
+    const wired = deps([inv], { now: () => inv.dueDate, readThreshold: async () => 1n, approvalFor });
+    await createBuyerAgent(wired).tick();
+    expect(approvalFor).toHaveBeenCalledWith(inv.id);
+    expect(wired.pay).toHaveBeenCalledWith(BigInt(inv.id), signed);
+  });
+
+  it("does not pay above the threshold while no approval exists, and says it needs one", async () => {
+    const inv = funded();
+    const lines: string[] = [];
+    const wired = deps([inv], { now: () => inv.dueDate, readThreshold: async () => 1n, approvalFor: async () => null, log: (l: string) => lines.push(l) });
+    await createBuyerAgent(wired).tick();
+    expect(wired.pay).not.toHaveBeenCalled();
+    expect(lines.some((l) => l.includes("needs sponsor approval"))).toBe(true);
+  });
+
+  it("does not ask for an approval below the threshold or before the due date", async () => {
+    const inv = funded();
+    const approvalFor = vi.fn(async () => signed);
+    const below = deps([inv], { now: () => inv.dueDate, approvalFor });
+    await createBuyerAgent(below).tick();
+    expect(approvalFor).not.toHaveBeenCalled();
+    expect(below.pay).toHaveBeenCalledWith(BigInt(inv.id));
+    const early = deps([inv], { now: () => inv.dueDate - 100, readThreshold: async () => 1n, approvalFor });
+    await createBuyerAgent(early).tick();
+    expect(approvalFor).not.toHaveBeenCalled();
+  });
+
+  it("treats a failing approval lookup as no approval", async () => {
+    const inv = funded();
+    const wired = deps([inv], { now: () => inv.dueDate, readThreshold: async () => 1n, approvalFor: async () => { throw new Error("backend down"); } });
+    await createBuyerAgent(wired).tick();
+    expect(wired.pay).not.toHaveBeenCalled();
+  });
+});

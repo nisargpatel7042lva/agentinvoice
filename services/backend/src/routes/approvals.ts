@@ -14,6 +14,7 @@ export interface WorldOptions {
   redirectUri: string; // the registered World callback, i.e. <public url>/api/world/callback
   appUrl: string; // where the sponsor is sent after the callback
   ttlSeconds?: number; // how long an approval stays valid; default 600
+  allowedSubjects?: string[]; // sha256 hashes of `issuer:subject` for the people allowed to approve; empty or missing means any verified human
   getKey?: CallbackContext["getKey"];
   fetchImpl?: typeof fetch;
   now?: () => number; // unix seconds
@@ -29,6 +30,7 @@ export function worldFromEnv(env: NodeJS.ProcessEnv = process.env): WorldOptions
     redirectUri,
     appUrl: env.APP_URL || "http://localhost:3000",
     ttlSeconds: env.APPROVAL_TTL_SECONDS ? Number(env.APPROVAL_TTL_SECONDS) : undefined,
+    allowedSubjects: env.WORLD_ALLOWED_SUBJECT_HASHES?.split(",").map((x) => x.trim().toLowerCase()).filter(Boolean),
   };
 }
 
@@ -119,6 +121,13 @@ export function approvalRoutes(app: FastifyInstance, world: WorldOptions | undef
       const current = state ? getApproval(app.db, state, now()) : undefined;
       if (!state || current?.state !== "pending") return redirect(current?.state ?? "error", "approval_not_pending");
       const subjectHash = createHash("sha256").update(`${verified.issuer}:${verified.subject}`).digest("hex");
+      // Never log the token; the hash alone lets the operator list their own identity in WORLD_ALLOWED_SUBJECT_HASHES.
+      req.log.info({ subjectHash }, "world step-up verified");
+      if (world.allowedSubjects?.length && !world.allowedSubjects.includes(subjectHash)) {
+        decide(app.db, state, "reject", { now: now() });
+        app.audit({ type: "approval.rejected", invoiceId: current.invoiceId, data: { approvalId: state, reason: "not_sponsor" } });
+        return redirect("rejected", "not_sponsor");
+      }
       decide(app.db, state, "approve", { now: now(), subjectHash });
       app.audit({ type: "approval.approved", invoiceId: current.invoiceId, data: { approvalId: state } });
       return redirect("approved");
