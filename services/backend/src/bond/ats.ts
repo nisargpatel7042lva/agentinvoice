@@ -19,6 +19,9 @@ export const ATS_TESTNET = {
   bondConfigId: "0x0000000000000000000000000000000000000000000000000000000000000002" as Hex,
 };
 
+/** ATS KycStatus enum: 0 NOT_GRANTED, 1 GRANTED. */
+const KYC_GRANTED = 1;
+
 // Role ids from the ATS contracts (constants/roles.sol).
 export const ROLES = {
   admin: "0x0000000000000000000000000000000000000000000000000000000000000000",
@@ -57,6 +60,8 @@ export interface AtsIssuer {
   address: Address;
   createBond(args: { name: string; symbol: string; isin: string; units: bigint; maturity: number }): Promise<Address>;
   grantKyc(bond: Address, investor: Address): Promise<Hex>;
+  /** True when the holder already has KYC on this bond. ATS refuses a second grant, so a holder's later invoices must skip it. */
+  isKycGranted(bond: Address, holder: Address): Promise<boolean>;
   issue(bond: Address, holder: Address, units: bigint, data?: Hex): Promise<Hex>;
   balanceOf(bond: Address, holder: Address): Promise<bigint>;
   freeze(bond: Address, account: Address, frozen: boolean): Promise<Hex>;
@@ -133,6 +138,7 @@ export function atsIssuer(privateKey: Hex, rpcUrl = hederaTestnet.rpcUrl): AtsIs
     },
 
     grantKyc: (bond, investor) => send(bond, "grantKyc", [investor, "invoiceagent", 0n, BigInt(2 ** 40), account.address]),
+    isKycGranted: async (bond, holder) => Number(await reader.readContract({ address: bond, abi: atsBondAbi, functionName: "getKycStatusFor", args: [holder] })) === KYC_GRANTED,
     issue: (bond, holder, units, data = "0x") => send(bond, "issue", [holder, units, data]),
     balanceOf: (bond, holder) => reader.readContract({ address: bond, abi: atsBondAbi, functionName: "balanceOf", args: [holder] }) as Promise<bigint>,
     freeze: (bond, who, frozen) => send(bond, "setAddressFrozen", [who, frozen]),

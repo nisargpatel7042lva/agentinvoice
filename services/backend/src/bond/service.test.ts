@@ -36,6 +36,16 @@ describe("bond service", () => {
     expect(calls).toEqual([`kyc ${HOLDER}`, `issue 1000 0x${"0".repeat(63)}7`]);
     expect((db.prepare("SELECT bond FROM invoices WHERE id='7'").get() as { bond: string }).bond).toBe(BOND);
   });
+  it("skips the KYC grant when the holder already has it from an earlier invoice, and still issues", async () => {
+    const withKyc = createBondService({ db, ats: { ...ats, isKycGranted: async () => true } as never, bond: BOND });
+    await withKyc.reconcile();
+    expect(calls).toEqual([`issue 1000 0x${"0".repeat(63)}7`]);
+  });
+  it("grants KYC first when the holder has none", async () => {
+    const noKyc = createBondService({ db, ats: { ...ats, isKycGranted: async () => false } as never, bond: BOND });
+    await noKyc.reconcile();
+    expect(calls[0]).toBe(`kyc ${HOLDER}`);
+  });
   it("retries after a failed issue without double issuing", async () => {
     failIssue = true;
     await svc().reconcile();

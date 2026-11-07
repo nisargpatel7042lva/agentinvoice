@@ -21,7 +21,7 @@ export interface BondService {
   reconcile(): Promise<void>;
 }
 
-export function createBondService(opts: { db: Database.Database; ats: Pick<AtsIssuer, "grantKyc" | "issue" | "controllerRedeem" | "freeze">; bond: Address; now?: () => number; onError?: (err: unknown, invoiceId: string) => void }): BondService {
+export function createBondService(opts: { db: Database.Database; ats: Pick<AtsIssuer, "grantKyc" | "issue" | "controllerRedeem" | "freeze"> & Partial<Pick<AtsIssuer, "isKycGranted">>; bond: Address; now?: () => number; onError?: (err: unknown, invoiceId: string) => void }): BondService {
   const { db, ats, bond } = opts;
   const now = opts.now ?? (() => Math.floor(Date.now() / 1000));
   let running = false;
@@ -39,7 +39,8 @@ export function createBondService(opts: { db: Database.Database; ats: Pick<AtsIs
     if ((inv.status === "Funded" || inv.status === "Late") && !row) {
       if (begin.run(inv.id, bond, holder, inv.face_amount, now()).changes === 0) return;
       try {
-        await ats.grantKyc(bond, holder);
+        // A holder keeps their KYC across invoices, and ATS refuses a second grant, so only grant it the first time.
+        if (!(ats.isKycGranted && (await ats.isKycGranted(bond, holder)))) await ats.grantKyc(bond, holder);
         const tx = await ats.issue(bond, holder, BigInt(inv.face_amount), numberToHex(BigInt(inv.id), { size: 32 }) as Hex);
         issued.run(tx, now(), inv.id);
         setBond.run(bond, inv.id);
