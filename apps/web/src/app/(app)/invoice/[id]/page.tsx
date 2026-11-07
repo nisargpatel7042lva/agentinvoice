@@ -16,7 +16,7 @@ import { ChainActions } from "@/components/ChainActions";
 import { api } from "@/lib/api";
 import { loadEnsByVault } from "@/lib/agents";
 import { SponsorApproval } from "@/components/SponsorApproval";
-import { loadCreditReport } from "@/lib/credit";
+import { loadCreditReport, readApprovalThreshold } from "@/lib/credit";
 import { cn } from "@/lib/cn";
 import { copy } from "@/lib/copy";
 import { discountPct, formatAmount, formatDate, shortHex } from "@/lib/format";
@@ -42,7 +42,9 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const agent = "agent" in ens ? ens.agent : undefined;
   const buyer = agent?.name ?? shortHex(inv.buyerVault);
   // Above the vault threshold a human must approve before the vault pays.
-  const needsApproval = inv.status === "Funded" && !!agent && BigInt(inv.faceAmount) > BigInt(agent.threshold);
+  // The threshold comes from the ENS record when there is one, else straight from the vault, so a buyer without a record still gets the panel.
+  const threshold = inv.status === "Funded" ? (agent?.threshold ?? (await readApprovalThreshold(inv.buyerVault))) : null;
+  const needsApproval = threshold !== null && BigInt(inv.faceAmount) > BigInt(threshold);
   const approved = needsApproval ? (await api.getInvoiceApproval(inv.id).catch(() => null)) !== null : false;
   const history = audit.filter((e) => e.invoiceId === inv.id);
   const notes = Object.fromEntries(
@@ -71,7 +73,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
         {/* Summary: what you pay, what you get, and the one action. Sticky on desktop, first on phones. */}
         <aside aria-label="Deal summary" className="flex flex-col gap-4 lg:sticky lg:top-24 lg:col-start-2 lg:row-start-1">
-          {needsApproval && agent && <SponsorApproval invoiceId={inv.id} amount={inv.faceAmount} threshold={agent.threshold} approved={approved} />}
+          {needsApproval && threshold !== null && <SponsorApproval invoiceId={inv.id} amount={inv.faceAmount} threshold={threshold} approved={approved} />}
           <Card className="p-5">
             <dl className="m-0">
               <div className="flex items-baseline justify-between gap-4 pb-3">
