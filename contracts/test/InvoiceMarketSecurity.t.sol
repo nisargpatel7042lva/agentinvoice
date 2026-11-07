@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {TestBase} from "./utils/TestBase.sol";
+import {UsdcTestBase, ITokenHook} from "./utils/MockUSDC.sol";
 import {InvoiceMarket} from "../src/InvoiceMarket.sol";
 import {Invoice, Status} from "../src/interfaces/IInvoiceMarket.sol";
 import {IBondIssuer} from "../src/interfaces/IBondIssuer.sol";
+import {TokenLib as TokenLibErrors} from "../src/TokenLib.sol";
 
-// State machine edges, exact-value payments, reentrancy, hostile receivers and conservation of money.
-// Amounts use tinybar scale (1 HBAR = 1e8), the unit the contracts use inside the Hedera EVM.
-contract InvoiceMarketSecurityTest is TestBase {
+// State machine edges, exact token payments, reentrancy, hostile receivers and conservation of money.
+// Every payment is the USDC token (6 decimals); amounts are USDC base units.
+contract InvoiceMarketSecurityTest is UsdcTestBase {
     InvoiceMarket internal market;
 
     address internal owner = address(this);
@@ -18,7 +19,7 @@ contract InvoiceMarketSecurityTest is TestBase {
 
     function setUp() public {
         vm.warp(1_800_000_000);
-        market = new InvoiceMarket(1 days);
+        market = new InvoiceMarket(1 days, address(usdc));
     }
 
     function _create(uint256 face, uint256 price) internal returns (uint256 id) {
@@ -34,15 +35,15 @@ contract InvoiceMarketSecurityTest is TestBase {
 
     function _funded(uint256 face, uint256 price, address holder) internal returns (uint256 id) {
         id = _open(face, price);
-        vm.deal(holder, price);
+        _give(holder, price, address(market));
         vm.prank(holder);
-        market.fund{value: price}(id);
+        market.fund(id);
     }
 
     function _pay(uint256 id, uint256 face) internal {
-        vm.deal(buyerVault, face);
+        _give(buyerVault, face, address(market));
         vm.prank(buyerVault);
-        market.payInvoice{value: face}(id);
+        market.payInvoice(id);
     }
 
     // ---------- creating and accepting ----------
@@ -78,97 +79,110 @@ contract InvoiceMarketSecurityTest is TestBase {
 
     function test_a_pending_invoice_cannot_be_funded() public {
         uint256 id = _create(100, 95);
-        vm.deal(investor, 95);
+        _give(investor, 95, address(market));
         vm.prank(investor);
         vm.expectRevert(InvoiceMarket.InvoiceNotOpen.selector);
-        market.fund{value: 95}(id);
+        market.fund(id);
     }
 
     // ---------- funding ----------
 
     function test_fund_pays_the_supplier_the_price_and_records_the_holder() public {
         uint256 id = _open(100e8, 95e8);
-        vm.deal(investor, 95e8);
+        _give(investor, 95e8, address(market));
         vm.prank(investor);
-        market.fund{value: 95e8}(id);
+        market.fund(id);
 
         Invoice memory inv = market.getInvoice(id);
         assertEq(uint256(inv.status), uint256(Status.Funded), "funded");
         assertTrue(inv.holder == investor, "holder recorded");
-        assertEq(supplier.balance, 95e8, "supplier got the price");
-        assertEq(address(market).balance, 0, "the market holds nothing yet");
+        assertEq(usdc.balanceOf(supplier), 95e8, "supplier got the price");
+        assertEq(usdc.balanceOf(address(market)), 0, "the market holds nothing yet");
     }
 
-    function testFuzz_fund_needs_exactly_the_price(uint96 priceIn, uint96 sentIn) public {
+    function testFuzz_fund_moves_exactly_the_price_or_nothing(uint96 priceIn, uint96 balanceIn, uint96 allowanceIn) public {
         uint256 price = bound(priceIn, 1, 1e24);
-        uint256 sent = bound(sentIn, 0, 2e24);
-        uint256 id = _open(price + 1e8, price);
-        vm.deal(investor, sent);
-
+        uint256 balance = bound(balanceIn, 0, 2e24);
+        uint256 allowance = bound(allowanceIn, 0, 2e24);
+        uint256 id = _open(price + 1e6, price);
+        usdc.mint(investor, balance);
         vm.prank(investor);
-        if (sent != price) vm.expectRevert(InvoiceMarket.InvalidPaymentAmount.selector);
-        market.fund{value: sent}(id);
+        usdc.approve(address(market), allowance);
 
-        if (sent == price) {
-            assertEq(supplier.balance, price, "supplier paid");
+        bool enough = balance >= price && allowance >= price;
+        vm.prank(investor);
+        if (!enough) vm.expectRevert(TokenLibErrors.TokenTransferFailed.selector);
+        market.fund(id);
+
+        if (enough) {
+            assertEq(usdc.balanceOf(supplier), price, "supplier got exactly the price");
+            assertEq(usdc.balanceOf(investor), balance - price, "investor paid exactly the price");
         } else {
-            assertEq(uint256(market.getInvoice(id).status), uint256(Status.Open), "still open after a wrong payment");
-            assertEq(supplier.balance, 0, "supplier unpaid");
+            assertEq(uint256(market.getInvoice(id).status), uint256(Status.Open), "still open");
+            assertEq(usdc.balanceOf(supplier), 0, "supplier unpaid");
+            assertEq(usdc.balanceOf(investor), balance, "investor kept everything");
         }
     }
 
     function test_funding_twice_and_after_the_due_date_reverts() public {
         uint256 id = _funded(100, 95, investor);
-        vm.deal(address(0x2), 95);
+        _give(address(0x2), 95, address(market));
         vm.prank(address(0x2));
         vm.expectRevert(InvoiceMarket.InvoiceNotOpen.selector);
-        market.fund{value: 95}(id);
+        market.fund(id);
 
         uint256 late = _open(100, 95);
         vm.warp(block.timestamp + 8 days);
-        vm.deal(investor, 95);
+        _give(investor, 95, address(market));
         vm.prank(investor);
         vm.expectRevert(InvoiceMarket.DueDatePassed.selector);
-        market.fund{value: 95}(late);
+        market.fund(late);
     }
 
     function test_buy_is_the_same_as_fund() public {
         uint256 id = _open(100, 95);
-        vm.deal(investor, 95);
+        _give(investor, 95, address(market));
         vm.prank(investor);
-        market.buy{value: 95}(id);
+        market.buy(id);
         assertTrue(market.getInvoice(id).holder == investor, "buy funds the invoice");
     }
 
     // ---------- repayment ----------
 
-    function test_only_the_buyer_vault_repays_and_only_the_exact_face() public {
+    function test_only_the_buyer_vault_repays_and_it_pays_exactly_the_face() public {
         uint256 id = _funded(100, 95, investor);
 
-        vm.deal(supplier, 100);
+        _give(supplier, 100, address(market));
         vm.prank(supplier);
         vm.expectRevert(InvoiceMarket.OnlyBuyerVault.selector);
-        market.payInvoice{value: 100}(id);
+        market.payInvoice(id);
 
-        vm.deal(buyerVault, 200);
-        vm.startPrank(buyerVault);
-        vm.expectRevert(InvoiceMarket.InvalidPaymentAmount.selector);
-        market.payInvoice{value: 99}(id);
-        vm.expectRevert(InvoiceMarket.InvalidPaymentAmount.selector);
-        market.payInvoice{value: 101}(id);
-        vm.stopPrank();
+        // A vault without enough USDC cannot repay, and nothing changes.
+        _give(buyerVault, 99, address(market));
+        vm.prank(buyerVault);
+        vm.expectRevert(TokenLibErrors.TokenTransferFailed.selector);
+        market.payInvoice(id);
+        assertEq(uint256(market.getInvoice(id).status), uint256(Status.Funded), "still funded");
+        assertEq(market.claimable(investor), 0, "nothing credited");
+
+        usdc.mint(buyerVault, 101);
+        vm.prank(buyerVault);
+        market.payInvoice(id);
+        assertEq(usdc.balanceOf(buyerVault), 100, "vault paid exactly the face amount (200 - 100)");
+        assertEq(usdc.balanceOf(address(market)), 100, "market holds the repayment");
+        assertEq(market.claimable(investor), 100, "holder credited the face amount");
     }
 
     function test_double_repayment_reverts_and_markPaid_is_the_same_function() public {
         uint256 id = _funded(100, 95, investor);
-        vm.deal(buyerVault, 200);
+        _give(buyerVault, 200, address(market));
         vm.prank(buyerVault);
-        market.markPaid{value: 100}(id);
+        market.markPaid(id);
         assertEq(uint256(market.getInvoice(id).status), uint256(Status.Paid), "paid");
 
         vm.prank(buyerVault);
         vm.expectRevert(InvoiceMarket.InvoiceNotPayable.selector);
-        market.payInvoice{value: 100}(id);
+        market.payInvoice(id);
     }
 
     function test_a_late_invoice_can_still_be_repaid_but_a_defaulted_one_cannot() public {
@@ -183,10 +197,10 @@ contract InvoiceMarketSecurityTest is TestBase {
         market.markLate(dead);
         vm.warp(block.timestamp + 1 days + 1);
         market.markDefaulted(dead);
-        vm.deal(buyerVault, 100);
+        _give(buyerVault, 100, address(market));
         vm.prank(buyerVault);
         vm.expectRevert(InvoiceMarket.InvoiceNotPayable.selector);
-        market.payInvoice{value: 100}(dead);
+        market.payInvoice(dead);
     }
 
     function test_markLate_and_markDefaulted_timing() public {
@@ -216,8 +230,8 @@ contract InvoiceMarketSecurityTest is TestBase {
 
         vm.prank(investor);
         market.claim();
-        assertEq(investor.balance, 100e8, "holder received the face amount");
-        assertEq(address(market).balance, 0, "market emptied");
+        assertEq(usdc.balanceOf(investor), 100e8, "holder received the face amount");
+        assertEq(usdc.balanceOf(address(market)), 0, "market emptied");
 
         vm.prank(investor);
         vm.expectRevert(InvoiceMarket.NothingToClaim.selector);
@@ -237,33 +251,42 @@ contract InvoiceMarketSecurityTest is TestBase {
 
     function test_claim_cannot_be_reentered() public {
         ReentrantHolder holder = new ReentrantHolder(market);
-        uint256 id = _open(100e8, 95e8);
-        vm.deal(address(holder), 95e8);
-        holder.fundInvoice(id, 95e8);
-        _pay(id, 100e8);
+        uint256 id = _open(100e6, 95e6);
+        _give(address(holder), 95e6, address(market));
+        holder.fundInvoice(id);
+        _pay(id, 100e6);
 
+        usdc.setCallsBack(address(holder), true); // the token calls the holder on receipt; it tries to claim again
         holder.claimNow();
-        assertEq(address(holder).balance, 100e8, "paid exactly once");
+        assertEq(usdc.balanceOf(address(holder)), 100e6, "paid exactly once");
         assertTrue(holder.reentryBlocked(), "the nested claim was refused");
         assertTrue(!holder.reentrySucceeded(), "the nested claim did not succeed");
-        assertEq(address(market).balance, 0, "market emptied");
+        assertEq(usdc.balanceOf(address(market)), 0, "market emptied");
     }
 
-    function test_a_supplier_that_rejects_payment_blocks_only_its_own_funding() public {
-        RejectingSupplier bad = new RejectingSupplier();
-        vm.prank(address(bad));
+    function test_a_supplier_without_usdc_association_blocks_only_its_own_funding() public {
+        address bad = address(0xBADD);
+        usdc.setNotAssociated(bad, true); // on Hedera an account must associate USDC before it can receive it
+        vm.prank(bad);
         uint256 id = market.createInvoice(buyerVault, 100, 95, uint64(block.timestamp + 7 days), bytes32(uint256(5)));
         vm.prank(buyerVault);
         market.acceptInvoice(id);
 
-        vm.deal(investor, 95);
+        _give(investor, 95, address(market));
         vm.prank(investor);
-        vm.expectRevert(InvoiceMarket.TransferFailed.selector);
-        market.fund{value: 95}(id);
+        vm.expectRevert(TokenLibErrors.TokenTransferFailed.selector);
+        market.fund(id);
 
         assertEq(uint256(market.getInvoice(id).status), uint256(Status.Open), "invoice unchanged");
-        assertEq(investor.balance, 95, "the investor keeps their money");
-        assertEq(address(market).balance, 0, "nothing stuck in the market");
+        assertEq(usdc.balanceOf(investor), 95, "the investor keeps their money");
+        assertEq(usdc.balanceOf(address(market)), 0, "nothing stuck in the market");
+
+        // Other invoices are unaffected.
+        uint256 ok = _open(100, 95);
+        _give(investor, 95, address(market));
+        vm.prank(investor);
+        market.fund(ok);
+        assertEq(usdc.balanceOf(supplier), 95, "a normal supplier is still paid");
     }
 
     function test_a_supplier_cannot_reenter_fund_to_steal() public {
@@ -273,12 +296,14 @@ contract InvoiceMarketSecurityTest is TestBase {
         vm.prank(buyerVault);
         market.acceptInvoice(id);
         evil.setTarget(id);
+        usdc.setCallsBack(address(evil), true);
 
-        vm.deal(investor, 95);
+        _give(investor, 190, address(market));
         vm.prank(investor);
-        market.fund{value: 95}(id);
+        market.fund(id);
 
-        assertEq(address(evil).balance, 95, "supplier received the price once");
+        assertEq(usdc.balanceOf(address(evil)), 95, "supplier received the price once");
+        assertEq(usdc.balanceOf(investor), 95, "the investor paid once");
         assertTrue(evil.reentryBlocked(), "the nested fund was refused");
     }
 
@@ -292,15 +317,15 @@ contract InvoiceMarketSecurityTest is TestBase {
 
         market.setBondIssuer(address(issuer));
         uint256 id = _open(100, 95);
-        vm.deal(investor, 95);
+        _give(investor, 95, address(market));
         vm.prank(investor);
         vm.expectRevert(bytes("issuer down"));
-        market.fund{value: 95}(id);
+        market.fund(id);
         assertEq(uint256(market.getInvoice(id).status), uint256(Status.Open), "still open");
 
         market.setBondIssuer(address(0)); // owner can switch the hook off
         vm.prank(investor);
-        market.fund{value: 95}(id);
+        market.fund(id);
     }
 
     function test_confirmIssued_is_restricted_and_needs_a_funded_invoice() public {
@@ -308,9 +333,9 @@ contract InvoiceMarketSecurityTest is TestBase {
         vm.expectRevert(InvoiceMarket.InvoiceNotFunded.selector);
         market.confirmIssued(id, address(0xB0AD));
 
-        vm.deal(investor, 95);
+        _give(investor, 95, address(market));
         vm.prank(investor);
-        market.fund{value: 95}(id);
+        market.fund(id);
 
         vm.prank(supplier);
         vm.expectRevert(InvoiceMarket.OnlyOwnerOrIssuer.selector);
@@ -329,17 +354,17 @@ contract InvoiceMarketSecurityTest is TestBase {
         if (price == 0) price = 1;
 
         uint256 id = _funded(face, price, investor);
-        assertEq(supplier.balance, price, "supplier got the price");
+        assertEq(usdc.balanceOf(supplier), price, "supplier got the price");
         _pay(id, face);
         vm.prank(investor);
         market.claim();
 
-        assertEq(investor.balance, face, "holder got the face amount");
-        assertEq(address(market).balance, 0, "the market keeps nothing");
+        assertEq(usdc.balanceOf(investor), face, "holder got the face amount");
+        assertEq(usdc.balanceOf(address(market)), 0, "the market keeps nothing");
     }
 }
 
-contract ReentrantHolder {
+contract ReentrantHolder is ITokenHook {
     InvoiceMarket internal immutable market;
     bool public reentryBlocked;
     bool public reentrySucceeded;
@@ -348,15 +373,15 @@ contract ReentrantHolder {
         market = m;
     }
 
-    function fundInvoice(uint256 id, uint256 price) external {
-        market.fund{value: price}(id);
+    function fundInvoice(uint256 id) external {
+        market.fund(id);
     }
 
     function claimNow() external {
         market.claim();
     }
 
-    receive() external payable {
+    function onTokenReceived() external {
         try market.claim() {
             reentrySucceeded = true;
         } catch {
@@ -365,7 +390,7 @@ contract ReentrantHolder {
     }
 }
 
-contract ReentrantSupplier {
+contract ReentrantSupplier is ITokenHook {
     InvoiceMarket internal immutable market;
     uint256 internal target;
     bool public reentryBlocked;
@@ -378,16 +403,10 @@ contract ReentrantSupplier {
         target = id;
     }
 
-    receive() external payable {
-        try market.fund{value: 0}(target) {} catch {
+    function onTokenReceived() external {
+        try market.fund(target) {} catch {
             reentryBlocked = true;
         }
-    }
-}
-
-contract RejectingSupplier {
-    receive() external payable {
-        revert("no thanks");
     }
 }
 

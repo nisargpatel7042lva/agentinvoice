@@ -43,7 +43,7 @@ export const partyOf = (a: string): Party | undefined => byAddress.get(a.toLower
 
 const BOND = "0x4444444444444444444444444444444444444444" as Address;
 const hash = (n: number) => `0x${n.toString(16).padStart(64, "0")}` as const;
-const HBAR = (n: number) => String(Math.round(n * 1e8));
+const HBAR = (n: number) => String(Math.round(n * 1e6)); // whole USDC -> USDC base units (name kept for the fixture table)
 
 type Seed = [id: number, supplier: string, buyer: string, face: number, price: number, due: number, status: Invoice["status"], holder?: string, desc?: string];
 

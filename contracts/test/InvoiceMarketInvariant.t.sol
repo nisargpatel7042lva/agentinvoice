@@ -2,13 +2,15 @@
 pragma solidity ^0.8.24;
 
 import {TestBase} from "./utils/TestBase.sol";
+import {MockUSDC, UsdcTestBase} from "./utils/MockUSDC.sol";
 import {InvoiceMarket} from "../src/InvoiceMarket.sol";
 import {Invoice, Status} from "../src/interfaces/IInvoiceMarket.sol";
 
 // Stateful invariant test: a handler drives random sequences of calls, and these properties must hold after every call.
-// Amounts use tinybar scale (1 HBAR = 1e8).
+// Every payment is the USDC token (6 decimals); amounts are USDC base units.
 contract MarketHandler is TestBase {
     InvoiceMarket public immutable market;
+    MockUSDC public immutable usdc;
     address public constant SUPPLIER = address(0xD00D);
     address public constant BUYER_VAULT = address(0xBA11);
 
@@ -22,8 +24,9 @@ contract MarketHandler is TestBase {
     uint256 public totalClaimedOut; // sum of what holders actually received from claim()
     uint256 public calls;
 
-    constructor(InvoiceMarket m) {
+    constructor(InvoiceMarket m, MockUSDC token) {
         market = m;
+        usdc = token;
         holders.push(address(0x1AAE));
         holders.push(address(0x2BBE));
         holders.push(address(0x3CCE));
@@ -87,9 +90,11 @@ contract MarketHandler is TestBase {
         if (ok) {
             address holder = holders[holderSeed % holders.length];
             uint256 price = market.getInvoice(id).price;
-            vm.deal(holder, holder.balance + price);
+            usdc.mint(holder, price);
             vm.prank(holder);
-            try market.fund{value: price}(id) {
+            usdc.approve(address(market), type(uint256).max);
+            vm.prank(holder);
+            try market.fund(id) {
                 totalFundedIn += price;
             } catch {}
         }
@@ -100,9 +105,11 @@ contract MarketHandler is TestBase {
         (bool ok, uint256 id) = _pick(seed);
         if (ok) {
             uint256 face = market.getInvoice(id).faceAmount;
-            vm.deal(BUYER_VAULT, BUYER_VAULT.balance + face);
+            usdc.mint(BUYER_VAULT, face);
             vm.prank(BUYER_VAULT);
-            try market.payInvoice{value: face}(id) {
+            usdc.approve(address(market), type(uint256).max);
+            vm.prank(BUYER_VAULT);
+            try market.payInvoice(id) {
                 totalRepaidIn += face;
             } catch {}
         }
@@ -111,10 +118,10 @@ contract MarketHandler is TestBase {
 
     function claim(uint256 holderSeed) external {
         address holder = holders[holderSeed % holders.length];
-        uint256 before_ = holder.balance;
+        uint256 before_ = usdc.balanceOf(holder);
         vm.prank(holder);
         try market.claim() {
-            totalClaimedOut += holder.balance - before_;
+            totalClaimedOut += usdc.balanceOf(holder) - before_;
         } catch {}
         _track();
     }
@@ -141,7 +148,7 @@ contract MarketHandler is TestBase {
     }
 }
 
-contract InvoiceMarketInvariantTest is TestBase {
+contract InvoiceMarketInvariantTest is UsdcTestBase {
     InvoiceMarket internal market;
     MarketHandler internal handler;
 
@@ -152,8 +159,8 @@ contract InvoiceMarketInvariantTest is TestBase {
 
     function setUp() public {
         vm.warp(1_800_000_000);
-        market = new InvoiceMarket(1 days);
-        handler = new MarketHandler(market);
+        market = new InvoiceMarket(1 days, address(usdc));
+        handler = new MarketHandler(market, usdc);
     }
 
     // Foundry reads these to know what to call (the handler, and only its action functions).
@@ -184,16 +191,16 @@ contract InvoiceMarketInvariantTest is TestBase {
 
     // The market holds exactly what holders can still claim: repayments in, minus claims out.
     function invariant_market_balance_equals_what_holders_can_claim() public view {
-        assertEq(address(market).balance, _totalClaimable(), "balance == total claimable");
+        assertEq(usdc.balanceOf(address(market)), _totalClaimable(), "balance == total claimable");
     }
 
     function invariant_money_in_equals_money_out_plus_held() public view {
-        assertEq(handler.totalRepaidIn(), handler.totalClaimedOut() + address(market).balance, "repaid == claimed + held");
+        assertEq(handler.totalRepaidIn(), handler.totalClaimedOut() + usdc.balanceOf(address(market)), "repaid == claimed + held");
     }
 
     // Funding forwards the whole price to the supplier at once, so the market never holds funding money.
     function invariant_suppliers_received_exactly_the_funded_prices() public view {
-        assertEq(handler.SUPPLIER().balance, handler.totalFundedIn(), "supplier balance == sum of funded prices");
+        assertEq(usdc.balanceOf(handler.SUPPLIER()), handler.totalFundedIn(), "supplier balance == sum of funded prices");
     }
 
     function invariant_invoices_only_make_allowed_status_transitions() public view {

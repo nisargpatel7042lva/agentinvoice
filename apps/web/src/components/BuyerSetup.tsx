@@ -7,7 +7,7 @@ import { waitForTransactionReceipt } from "wagmi/actions";
 import { buyerNameMessage, mintBuyerName } from "@/app/actions";
 import { toast } from "@/components/ToastHost";
 import { Button, Card } from "@/components/ui";
-import { buyerVaultAbi, buyerVaultBytecode, contracts, parseUnits } from "@invoiceagent/shared";
+import { buyerVaultAbi, buyerVaultBytecode, contracts, parseAmount } from "@invoiceagent/shared";
 import { explainTxError, useChainTx } from "@/lib/useChainTx";
 import { hederaTestnet, wagmiConfig } from "@/lib/wagmi";
 
@@ -33,9 +33,10 @@ export function BuyerSetup({ parent, onDone }: { parent: string; onDone: () => v
 
   async function deploy() {
     if (!address || !AGENT || !VERIFIER) return;
-    let args: readonly [Address, Address, Address, bigint, bigint];
+    let args: readonly [Address, Address, Address, bigint, bigint, Address];
     try {
-      args = [address, AGENT as Address, VERIFIER as Address, parseUnits(limit), parseUnits(threshold)];
+      // Limits are USDC (the vault holds and pays USDC); the last argument is the settlement token.
+      args = [address, AGENT as Address, VERIFIER as Address, parseAmount(limit), parseAmount(threshold), contracts.usdc];
     } catch {
       return toast("error", "Limits must be numbers like 500 or 50.5.");
     }
@@ -91,7 +92,7 @@ export function BuyerSetup({ parent, onDone }: { parent: string; onDone: () => v
         Set up your <span className="pl-serif text-accent">buyer agent</span>
       </h2>
       <p className="mt-2 max-w-xl text-sm text-ink-soft">
-        Your vault holds the HBAR your agent pays invoices from, and enforces your daily limit on-chain. You own it. Then we register a public ENS name that points at it.
+        Your vault holds the USDC your agent pays invoices from, and enforces your daily limit on-chain. You own it. Then we register a public ENS name that points at it.
       </p>
       <div className="mt-4 grid max-w-xl gap-4">
         <div className="grid gap-3 rounded-xl border border-line p-4">
@@ -99,8 +100,8 @@ export function BuyerSetup({ parent, onDone }: { parent: string; onDone: () => v
           {configured ? (
             <>
               <div className="grid grid-cols-2 gap-3">
-                <label className="block text-sm">Daily limit (HBAR)<input className={input} value={limit} onChange={(e) => setLimit(e.target.value)} inputMode="decimal" /></label>
-                <label className="block text-sm">Human approval above (HBAR)<input className={input} value={threshold} onChange={(e) => setThreshold(e.target.value)} inputMode="decimal" /></label>
+                <label className="block text-sm">Daily limit (USDC)<input className={input} value={limit} onChange={(e) => setLimit(e.target.value)} inputMode="decimal" /></label>
+                <label className="block text-sm">Human approval above (USDC)<input className={input} value={threshold} onChange={(e) => setThreshold(e.target.value)} inputMode="decimal" /></label>
               </div>
               <Button className="w-fit" onClick={() => void deploy()} disabled={busy !== ""} aria-busy={busy === "deploy"}>{busy === "deploy" ? "Deploying…" : "Deploy my vault"}</Button>
             </>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowDown, Plus } from "lucide-react";
-import { formatUnits } from "@invoiceagent/shared";
+import { amountToNumber } from "@invoiceagent/shared";
 import { Banner } from "@/components/Banner";
 import { BestReturns } from "@/components/BestReturns";
 import { CountUp } from "@/components/CountUp";
@@ -43,7 +43,7 @@ export default async function MarketplacePage() {
   });
   const s = marketStats(invoices);
 
-  const hb = (x: bigint) => Number(formatUnits(x));
+  const hb = (x: bigint) => amountToNumber(x);
   const d = (n: number) => ({ ["--d" as string]: n + "s" });
 
   return (
@@ -93,7 +93,7 @@ export default async function MarketplacePage() {
               <span>
                 <span className="pl-k block">Funded so far</span>
                 <span className="mt-1 block text-xl font-semibold">
-                  <CountUp value={hb(s.fundedVolume)} decimals={1} suffix=" HBAR" />
+                  <CountUp value={hb(s.fundedVolume)} decimals={1} suffix=" USDC" />
                 </span>
               </span>
             </div>

@@ -9,7 +9,7 @@ import { HeroVerb } from "./HeroVerb";
 import { Belt } from "./Belt";
 
 const STEPS = [
-  { who: "Supplier", title: "Sells an invoice", body: "A buyer agent owes them 10 HBAR in 30 days. They list the invoice and take 9.5 HBAR today." },
+  { who: "Supplier", title: "Sells an invoice", body: "A buyer agent owes them 10 USDC in 30 days. They list the invoice and take 9.5 USDC today." },
   { who: "Investor", title: "Funds it", body: "They pay the supplier now, check the buyer's credit score first, and hold a bond token as proof." },
   { who: "Buyer agent", title: "Pays on time", body: "On the due date the agent repays the full amount within limits its human sponsor set on-chain." },
 ];

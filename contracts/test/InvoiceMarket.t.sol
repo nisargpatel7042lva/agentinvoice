@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {InvoiceMarket} from "../src/InvoiceMarket.sol";
 import {IInvoiceMarket, Invoice, Status} from "../src/interfaces/IInvoiceMarket.sol";
 import {IBondIssuer} from "../src/interfaces/IBondIssuer.sol";
+import {MockUSDC} from "./utils/MockUSDC.sol";
 
 contract MockBondIssuer is IBondIssuer {
     address public lastHolder;
@@ -23,7 +24,7 @@ contract MaliciousReceiver {
     }
 
     receive() external payable {
-        if (address(market).balance > 0) {
+        if (address(market).code.length > 0) {
             market.claim();
         }
     }
@@ -32,6 +33,7 @@ contract MaliciousReceiver {
 contract InvoiceMarketTest {
     InvoiceMarket public market;
     MockBondIssuer public mockIssuer;
+    MockUSDC public usdc;
 
     address public owner = address(this);
     address public supplier = address(0x101);
@@ -44,7 +46,10 @@ contract InvoiceMarketTest {
     receive() external payable {}
 
     function setUp() public {
-        market = new InvoiceMarket(GRACE_PERIOD);
+        usdc = new MockUSDC();
+        market = new InvoiceMarket(GRACE_PERIOD, address(usdc));
+        usdc.mint(address(this), 1_000_000 ether);
+        usdc.approve(address(market), type(uint256).max);
         mockIssuer = new MockBondIssuer();
     }
 
@@ -79,7 +84,7 @@ contract InvoiceMarketTest {
         uint256 id = _createSampleInvoice(due);
 
         // Buying while still Pending must revert
-        (bool success, ) = address(market).call{value: 95 ether}(
+        (bool success, ) = address(market).call(
             abi.encodeWithSelector(market.buy.selector, id)
         );
         assert(!success);
@@ -153,9 +158,9 @@ contract InvoiceMarketTest {
         uint256 id = market.createInvoice(address(this), 100 ether, 95 ether, due, bytes32(0));
         market.acceptInvoice(id);
 
-        uint256 supplierBalBefore = address(this).balance;
+        uint256 supplierBalBefore = usdc.balanceOf(address(this));
 
-        market.buy{value: 95 ether}(id);
+        market.buy(id);
 
         Invoice memory inv = market.getInvoice(id);
         assert(inv.status == Status.Funded);
@@ -168,23 +173,23 @@ contract InvoiceMarketTest {
         // buyerVault is address(this)
         uint256 id = market.createInvoice(address(this), 100 ether, 95 ether, due, bytes32(0));
         market.acceptInvoice(id);
-        market.buy{value: 95 ether}(id);
+        market.buy(id);
 
         // Confirm issued with mock bond
         market.confirmIssued(id, address(0xbeef));
 
         // Buyer pays invoice
-        market.payInvoice{value: 100 ether}(id);
+        market.payInvoice(id);
 
         Invoice memory inv = market.getInvoice(id);
         assert(inv.status == Status.Paid);
         assert(market.claimable(address(this)) == 100 ether);
 
         // Claim
-        uint256 balBefore = address(this).balance;
+        uint256 balBefore = usdc.balanceOf(address(this));
         market.claim();
         assert(market.claimable(address(this)) == 0);
-        assert(address(this).balance > balBefore);
+        assert(usdc.balanceOf(address(this)) > balBefore);
     }
 
     // 5. Late and Defaulted state flow
@@ -192,7 +197,7 @@ contract InvoiceMarketTest {
         uint64 due = uint64(block.timestamp + 1000);
         uint256 id = market.createInvoice(address(this), 100 ether, 95 ether, due, bytes32(0));
         market.acceptInvoice(id);
-        market.buy{value: 95 ether}(id);
+        market.buy(id);
 
         // Cannot mark late before due date
         (bool s1, ) = address(market).call(

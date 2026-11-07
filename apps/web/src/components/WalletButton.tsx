@@ -11,6 +11,8 @@ import { cn } from "@/lib/cn";
 import { copy } from "@/lib/copy";
 import { shortHex } from "@/lib/format";
 import { hederaTestnet } from "@/lib/wagmi";
+import { useUsdc } from "@/lib/useUsdc";
+import { formatAmountUnits } from "@invoiceagent/shared";
 
 /** Real wallet connection: browser wallets on Hedera testnet. */
 export function WalletButton() {
@@ -119,6 +121,7 @@ export function WalletButton() {
             <div className="text-xs text-ink-muted">Connected on Hedera testnet</div>
             <div className="mt-0.5 truncate font-mono text-sm">{address}</div>
             {balance && <div className="mt-1 text-sm font-semibold">{Number(formatUnits(balance.value, balance.decimals)).toLocaleString("en-US", { maximumFractionDigits: 2 })} HBAR</div>}
+            <UsdcBalanceLine />
           </div>
           <div className="my-1 border-t border-subtle" />
           <button role="menuitem" type="button" onClick={() => { navigator.clipboard?.writeText(address); toast("success", "Address copied."); setOpen(false); }} className={item}>
@@ -169,4 +172,11 @@ function Floating({ anchor, panel, children }: { anchor: React.RefObject<HTMLDiv
     </div>,
     document.body,
   );
+}
+
+/** The wallet's USDC (what invoices settle in), under its HBAR balance. */
+function UsdcBalanceLine() {
+  const usdc = useUsdc();
+  if (!usdc.loaded) return null;
+  return <div className="text-sm font-semibold">{Number(formatAmountUnits(usdc.balance)).toLocaleString("en-US", { maximumFractionDigits: 2 })} USDC</div>;
 }

@@ -44,7 +44,7 @@ export function HeroVerb({ children }: { children: ReactNode }) {
         <div className="lp-cards">
           <div className="lp-card lp-card-coral">
             <span className="lp-card-k">TO BE REPAID</span>
-            <span className="lp-card-big">10.00 HBAR</span>
+            <span className="lp-card-big">10.00 USDC</span>
             <span className="lp-chip">+5.3% return</span>
             <span className="lp-card-foot">
               Invoice #0413 · due 9 Nov <u>VIEW</u>

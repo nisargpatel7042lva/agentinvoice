@@ -6,7 +6,7 @@ import { ArrowUpRight, BadgeCheck, Copy, X } from "lucide-react";
 import { hederaTestnet } from "@invoiceagent/shared";
 import type { GraphLink, GraphNode, Health } from "@/lib/graph";
 import { toast } from "@/components/ToastHost";
-import { formatHbar, shortHex } from "@/lib/format";
+import { formatMoney, shortHex } from "@/lib/format";
 
 export const ROLE_LABEL = { buyer: "Buyer agent", supplier: "Supplier", investor: "Investor", sponsor: "Sponsor" } as const;
 // Same hues as the graph and the landing page.
@@ -82,7 +82,7 @@ export function PartyDialog({ node, links, nameOf, onClose }: { node: GraphNode;
           <dl className="grid grid-cols-2 gap-3">
             <div className="rounded-xl bg-[#f9cba9] p-3 text-[#161513]">
               <dt className="text-[11px] font-semibold tracking-[0.04em] uppercase opacity-65">Volume</dt>
-              <dd className="mt-0.5 text-xl font-semibold">{formatHbar(node.volume)}</dd>
+              <dd className="mt-0.5 text-xl font-semibold">{formatMoney(node.volume)}</dd>
             </div>
             <div className="rounded-xl bg-[#dfe9d4] p-3 text-[#161513]">
               <dt className="text-[11px] font-semibold tracking-[0.04em] uppercase opacity-65">Invoices</dt>
@@ -125,7 +125,7 @@ export function PartyDialog({ node, links, nameOf, onClose }: { node: GraphNode;
                     <span className="text-ink-muted">{verb} </span>
                     <span className="font-medium">{nameOf(other)}</span>
                     <span className="block text-xs text-ink-muted">
-                      {l.count} invoice{l.count === 1 ? "" : "s"} · {formatHbar(l.hbar)} · {HEALTH_LABEL[l.health]}
+                      {l.count} invoice{l.count === 1 ? "" : "s"} · {formatMoney(l.hbar)} · {HEALTH_LABEL[l.health]}
                     </span>
                   </span>
                 </li>

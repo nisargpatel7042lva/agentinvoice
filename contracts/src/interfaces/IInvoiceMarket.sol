@@ -50,13 +50,15 @@ interface IInvoiceMarket {
     ) external returns (uint256 id);
 
     function acceptInvoice(uint256 id) external;
-    function fund(uint256 id) external payable;
-    function buy(uint256 id) external payable;
-    function payInvoice(uint256 id) external payable;
-    function markPaid(uint256 id) external payable;
+    function fund(uint256 id) external;
+    function buy(uint256 id) external;
+    function payInvoice(uint256 id) external;
+    function markPaid(uint256 id) external;
     function markLate(uint256 id) external;
     function markDefaulted(uint256 id) external;
     function claim() external;
     function getInvoice(uint256 id) external view returns (Invoice memory);
+    /// The settlement token (USDC) every payment moves.
+    function token() external view returns (address);
 }
 

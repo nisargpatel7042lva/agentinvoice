@@ -1,4 +1,5 @@
 import type { Abi, Address } from "viem";
+import { SETTLEMENT } from "./settlement";
 import deployed from "./addresses.json";
 import buyerVaultAbiJson from "./abi/BuyerVault.json";
 import invoiceMarketAbiJson from "./abi/InvoiceMarket.json";
@@ -12,6 +13,8 @@ export const contracts = {
   chainId: deployed.chainId,
   invoiceMarket: deployed.invoiceMarket as Address,
   buyerVault: deployed.buyerVault as Address,
+  /** The settlement token every payment moves (USDC, HTS 0.0.5449). */
+  usdc: ((deployed as { usdc?: string }).usdc ?? SETTLEMENT.address) as Address,
 } as const;
 
 export const invoiceMarketAbi = invoiceMarketAbiJson as Abi;

@@ -3,11 +3,15 @@ pragma solidity ^0.8.24;
 
 import {IBuyerVault} from "./interfaces/IBuyerVault.sol";
 import {IInvoiceMarket, Invoice, Status} from "./interfaces/IInvoiceMarket.sol";
+import {IERC20} from "./interfaces/IERC20.sol";
+import {TokenLib} from "./TokenLib.sol";
 
-// UNITS: every amount in this contract (limits, face amounts, balances, msg.value) is in tinybars, because inside the Hedera EVM
-// msg.value, address.balance and call{value} are tinybars (1 HBAR = 1e8). Never scale by 1e10 here. Clients convert to the 18-decimal
-// JSON-RPC wire format at the edge (packages/shared units.ts tinybarToWeibar). See docs/notes/contracts-review.md.
+// SETTLEMENT TOKEN: the vault holds and pays USDC (SaucerSwap testnet USDC 0.0.5449, 6 decimals), never HBAR.
+// Every amount here (limits, face amounts, balances) is USDC base units. The buyer agent tops the vault up by swapping
+// HBAR -> USDC on SaucerSwap with the vault as the swap recipient; anyone may also transfer USDC in directly.
 contract BuyerVault is IBuyerVault {
+    using TokenLib for address;
+
     error Unauthorized();
     error VaultFrozen();
     error InsufficientBalance();
@@ -23,6 +27,7 @@ contract BuyerVault is IBuyerVault {
     error ZeroAddress();
     error TransferFailed();
     error MarketNotAllowed();
+    error WrongToken();
 
     bytes32 private immutable DOMAIN_SEPARATOR;
     bytes32 public constant LARGE_PAYMENT_TYPEHASH =
@@ -31,6 +36,8 @@ contract BuyerVault is IBuyerVault {
     address public immutable owner;
     address public immutable agent;
     address public immutable verifier;
+    /// The settlement token (USDC). Must match every allowed market's token.
+    address public immutable override token;
 
     uint256 public override dailyLimit;
     uint256 public override approvalThreshold;
@@ -68,12 +75,14 @@ contract BuyerVault is IBuyerVault {
         address _agent,
         address _verifier,
         uint256 _dailyLimit,
-        uint256 _approvalThreshold
+        uint256 _approvalThreshold,
+        address _token
     ) {
-        if (_owner == address(0) || _agent == address(0) || _verifier == address(0)) revert ZeroAddress();
+        if (_owner == address(0) || _agent == address(0) || _verifier == address(0) || _token == address(0)) revert ZeroAddress();
         owner = _owner;
         agent = _agent;
         verifier = _verifier;
+        token = _token;
         dailyLimit = _dailyLimit;
         approvalThreshold = _approvalThreshold;
 
@@ -86,21 +95,31 @@ contract BuyerVault is IBuyerVault {
                 address(this)
             )
         );
+        // On Hedera the vault must be associated with USDC before it can receive any.
+        _token.associateSelf();
     }
 
-    receive() external payable {
-        emit Deposited(msg.sender, msg.value);
+    /// Re-try the HTS association (anyone may call; harmless if already associated).
+    function associateToken() external {
+        token.associateSelf();
     }
 
-    function deposit() external payable override {
-        emit Deposited(msg.sender, msg.value);
+    /// Pulls `amount` USDC from the caller (who approved the vault first). Plain transfers to the vault also work.
+    function deposit(uint256 amount) external override {
+        if (amount == 0) revert InvalidAmount();
+        token.safeTransferFrom(msg.sender, address(this), amount);
+        emit Deposited(msg.sender, amount);
     }
 
     function withdraw(uint256 amount) external override onlyOwner {
-        if (address(this).balance < amount) revert InsufficientBalance();
-        (bool success, ) = owner.call{value: amount}("");
-        if (!success) revert TransferFailed();
+        if (IERC20(token).balanceOf(address(this)) < amount) revert InsufficientBalance();
+        token.safeTransfer(owner, amount);
         emit Withdrawn(owner, amount);
+    }
+
+    /// The vault's USDC balance, in base units.
+    function balance() external view override returns (uint256) {
+        return IERC20(token).balanceOf(address(this));
     }
 
     function freeze() external override onlyOwner {
@@ -134,6 +153,8 @@ contract BuyerVault is IBuyerVault {
 
     function allowMarket(address market, bool allowed) external onlyOwner {
         if (market == address(0)) revert ZeroAddress();
+        // A market that settles in another token could never be paid from this vault.
+        if (allowed && IInvoiceMarket(market).token() != token) revert WrongToken();
         allowedMarket[market] = allowed;
         emit MarketAllowed(market, allowed);
     }
@@ -162,7 +183,7 @@ contract BuyerVault is IBuyerVault {
         Invoice memory inv = IInvoiceMarket(market).getInvoice(id);
         uint256 amount = inv.faceAmount;
 
-        if (address(this).balance < amount) revert InsufficientBalance();
+        if (IERC20(token).balanceOf(address(this)) < amount) revert InsufficientBalance();
 
         uint256 today = block.timestamp / 1 days;
         uint256 newSpend = (today == currentDayBucket) ? currentDaySpend + amount : amount;
@@ -175,7 +196,10 @@ contract BuyerVault is IBuyerVault {
         currentDayBucket = today;
         currentDaySpend = newSpend;
 
-        IInvoiceMarket(market).payInvoice{value: amount}(id);
+        // Allow the market to pull exactly this invoice's face amount, pay, then clear any leftover allowance.
+        token.safeApprove(market, amount);
+        IInvoiceMarket(market).payInvoice(id);
+        if (IERC20(token).allowance(address(this), market) != 0) token.safeApprove(market, 0);
 
         emit Paid(market, id, amount);
     }

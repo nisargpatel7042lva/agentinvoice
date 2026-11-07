@@ -5,6 +5,7 @@ import {InvoiceMarket} from "../src/InvoiceMarket.sol";
 import {BuyerEscrow} from "../src/BuyerEscrow.sol";
 import {EscrowDeposit} from "../src/interfaces/IBuyerEscrow.sol";
 import {IInvoiceMarket, Invoice, Status} from "../src/interfaces/IInvoiceMarket.sol";
+import {MockUSDC} from "./utils/MockUSDC.sol";
 
 contract MockInvestor {
     receive() external payable {}
@@ -18,6 +19,7 @@ contract BuyerEscrowTest {
     Vm constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
     InvoiceMarket public market;
     BuyerEscrow public escrow;
+    MockUSDC public usdc;
 
     address public owner = address(this);
     address public sponsor = address(this);
@@ -29,7 +31,11 @@ contract BuyerEscrowTest {
     receive() external payable {}
 
     function setUp() public {
-        market = new InvoiceMarket(GRACE_PERIOD);
+        usdc = new MockUSDC();
+        market = new InvoiceMarket(GRACE_PERIOD, address(usdc));
+        // This test contract funds and repays invoices in USDC (collateral in the escrow stays HBAR).
+        usdc.mint(address(this), 1_000 ether);
+        usdc.approve(address(market), type(uint256).max);
         escrow = new BuyerEscrow(address(market));
         investor = new MockInvestor();
     }
@@ -45,7 +51,7 @@ contract BuyerEscrowTest {
         // Buyer accepts
         market.acceptInvoice(id);
         // Investor funds
-        (bool success, ) = address(market).call{value: price}(
+        (bool success, ) = address(market).call(
             abi.encodeWithSelector(market.fund.selector, id)
         );
         require(success, "funding failed");
@@ -85,7 +91,7 @@ contract BuyerEscrowTest {
         uint256 id1 = _createAndFundInvoice(10 ether, 9 ether, due1);
 
         // Pay invoice 1
-        market.payInvoice{value: 10 ether}(id1);
+        market.payInvoice(id1);
 
         // Record settlement 1
         escrow.recordSettlement(buyerVault, id1);
@@ -96,7 +102,7 @@ contract BuyerEscrowTest {
         // Invoice 2
         uint64 due2 = uint64(block.timestamp + 600);
         uint256 id2 = _createAndFundInvoice(15 ether, 14 ether, due2);
-        market.payInvoice{value: 15 ether}(id2);
+        market.payInvoice(id2);
 
         // Record settlement 2 -> should graduate!
         escrow.recordSettlement(buyerVault, id2);
@@ -110,7 +116,7 @@ contract BuyerEscrowTest {
 
         uint64 due = uint64(block.timestamp + 500);
         uint256 id = _createAndFundInvoice(10 ether, 9 ether, due);
-        market.payInvoice{value: 10 ether}(id);
+        market.payInvoice(id);
 
         escrow.recordSettlement(buyerVault, id);
 
@@ -126,7 +132,7 @@ contract BuyerEscrowTest {
 
         uint64 due = uint64(block.timestamp + 500);
         uint256 id = _createAndFundInvoice(10 ether, 9 ether, due);
-        market.payInvoice{value: 10 ether}(id);
+        market.payInvoice(id);
 
         escrow.recordSettlement(buyerVault, id);
 

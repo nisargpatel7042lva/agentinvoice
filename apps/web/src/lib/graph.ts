@@ -1,6 +1,6 @@
 // Turns invoices into a network: who owes whom, who funded whom, who vouches for which agent.
 // Pure and data-driven: every node and link comes from invoices (plus the name directory), nothing invented.
-import { formatUnits, type Invoice, type ScoreBand } from "@invoiceagent/shared";
+import { amountToNumber, type Invoice, type ScoreBand } from "@invoiceagent/shared";
 export type Role = "buyer" | "supplier" | "investor" | "sponsor";
 import { shortHex } from "./format";
 
@@ -12,7 +12,7 @@ export interface GraphNode {
   name: string;
   role: Role;
   band?: ScoreBand;
-  volume: number; // HBAR of invoices touching this party
+  volume: number; // USDC of invoices touching this party
   invoices: number;
 }
 
@@ -37,7 +37,8 @@ const RANK: Record<Health, number> = { open: 0, good: 1, late: 2, default: 3 };
 const healthOf = (inv: Invoice): Health =>
   inv.status === "Defaulted" ? "default" : inv.status === "Late" ? "late" : inv.status === "Paid" ? "good" : "open";
 const worse = (a: Health, b: Health) => (RANK[b] > RANK[a] ? b : a);
-const hbar = (amount: string) => Number(formatUnits(amount));
+// Whole USDC (invoice amounts are USDC base units). Field names say hbar for history; the values are USDC.
+const hbar = (amount: string) => amountToNumber(amount);
 
 export function buildGraph(invoices: Invoice[], look: Lookup): { nodes: GraphNode[]; links: GraphLink[] } {
   const nodes = new Map<string, GraphNode>();

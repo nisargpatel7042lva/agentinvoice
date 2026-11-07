@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
-import { formatUnits } from "@invoiceagent/shared";
+import { formatAmountUnits } from "@invoiceagent/shared";
 import { Card } from "@/components/ui";
 import { Legend } from "@/components/charts";
 import { EmptyState } from "@/components/EmptyState";
@@ -79,7 +79,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
               </div>
               <div className="flex items-baseline justify-between gap-4 border-t border-line pt-3">
                 <dt className="text-sm text-ink-muted">{copy.deal.return}</dt>
-                <dd className="font-semibold text-status-paid">+{formatUnits(ret)} HBAR · {retPct}%</dd>
+                <dd className="font-semibold text-status-paid">+{formatAmountUnits(ret)} USDC · {retPct}%</dd>
               </div>
             </dl>
             {inv.status === "Open" && <FundButton id={inv.id} price={inv.price} priceLabel={formatAmount(inv.price)} />}

@@ -6,7 +6,9 @@
   "exports": {
     ".": "./src/index.ts",
     "./payAndGet": "./src/payAndGet.ts",
-    "./saucerswap": "./src/saucerswap/index.ts"
+    "./saucerswap": "./src/saucerswap/index.ts",
+    "./saucerswap/quote": "./src/saucerswap/quote.ts",
+    "./saucerswap/config": "./src/saucerswap/config.ts"
   },
   "dependencies": {
     "zod": "^4.6.7",

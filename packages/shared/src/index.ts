@@ -13,3 +13,4 @@ export * from "./agentAccount";
 export * from "./creditScore";
 export * from "./score";
 export * from "./usdc";
+export * from "./settlement";
