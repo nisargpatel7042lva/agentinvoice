@@ -8,6 +8,7 @@ import { auditRoutes, type AuditOptions } from "./routes/audit.js";
 import type { InvoiceIssuer } from "./chain/issuer.js";
 import { nameRoutes, type NameMinter } from "./routes/names.js";
 import { roleRoutes } from "./routes/roles.js";
+import { descriptionRoutes } from "./routes/descriptions.js";
 import { buyerRoutes, type BuyerMinter } from "./routes/buyers.js";
 import { invoiceCreateRoutes, invoiceRoutes } from "./routes/invoices.js";
 import { saucerswapRoutes, type SaucerSwapRouteOptions } from "./routes/saucerswap.js";
@@ -102,6 +103,7 @@ export function buildApp({ dbPath, world, audit, onAudit, features = {}, limits,
     invoiceCreateRoutes(scope, { issuer }, rates.invoiceCreatePerMinute);
     nameRoutes(scope, minter, rates.nameMintPerMinute);
     roleRoutes(scope, rates.nameMintPerMinute);
+    descriptionRoutes(scope, rates.nameMintPerMinute);
     buyerRoutes(scope, buyerMinter, rates.nameMintPerMinute);
   });
 

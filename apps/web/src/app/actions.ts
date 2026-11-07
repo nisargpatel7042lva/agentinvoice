@@ -93,6 +93,23 @@ export async function mintBuyerName(label: string, owner: string, vault: string,
   return signedPost<{ name: string; vault: string; txHash: string }>("/api/buyers", { label, owner, vault, signature }, (j) => `Registered ${j.name} for your vault on Sepolia.`, "Could not register the name.");
 }
 
+export async function invoiceDescriptionMessage(id: string, owner: string, text: string): Promise<ActionResult<{ message: string }>> {
+  return messageFrom(`/api/invoices/${encodeURIComponent(id)}/description/message?owner=${owner}&text=${encodeURIComponent(text)}`);
+}
+/** Attaches the off-chain description to an invoice the seller created from their own wallet. `retry` means the indexer has not seen it yet. */
+export async function setInvoiceDescription(id: string, owner: string, description: string, signature: string): Promise<ActionResult & { retry?: boolean }> {
+  try {
+    const r = await fetch(`${backendUrl()}/api/invoices/${encodeURIComponent(id)}/description`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ description, owner, signature }) });
+    if (r.status === 404) return { ok: false, retry: true, message: "The invoice is not indexed yet." };
+    if (r.status === 409) return { ok: true, message: "Description already saved." };
+    if (!r.ok) return { ok: false, message: "Could not save the description." };
+    revalidatePath("/", "layout");
+    return { ok: true, message: "Description saved." };
+  } catch {
+    return { ok: false, retry: true, message: "Our server is not responding." };
+  }
+}
+
 export async function nameClaimMessage(label: string, owner: string): Promise<ActionResult<{ message: string }>> {
   try {
     const r = await fetch(`${backendUrl()}/api/names/message?label=${encodeURIComponent(label)}&owner=${owner}`, { cache: "no-store" });
