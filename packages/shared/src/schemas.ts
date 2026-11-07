@@ -171,3 +171,6 @@ export const SaucerSwapQuoteSchema = z.object({
   caveat: z.string(),
 });
 
+
+/** GET /api/agents: the vault -> ENS name pairs buyers registered on the website. */
+export const AgentListSchema = z.object({ agents: z.array(z.object({ vault: AddressSchema, name: z.string(), owner: AddressSchema })) });
